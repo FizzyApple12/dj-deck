@@ -22,9 +22,6 @@ nixos-raspberrypi.lib.nixosSystem {
       boot = {
         loader.raspberry-pi.bootloader = "kernel";
         tmp.useTmpfs = true;
-        kernelParams = [
-          "splash"
-        ];
       };
 
       users.users.dj = {

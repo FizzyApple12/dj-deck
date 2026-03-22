@@ -39,6 +39,7 @@
           nativeBuildInputs = [
             pkgs.git
             pkgs.rpiboot
+            pkgs.minicom
           ];
         };
 
