@@ -19,82 +19,39 @@
   };
 
   outputs = {
-    self,
     flake-utils,
-    nixpkgs,
     nixos-raspberrypi,
+    nixpkgs,
     ...
   } @ inputs:
     flake-utils.lib.eachDefaultSystem (
       system: let
-        # pkgs = nixpkgs.legacyPackages.${system};
-        lib = nixpkgs.lib;
+        pkgs = nixpkgs.legacyPackages.${system};
       in rec {
-        nixosConfigurations = {
-          djdeck = nixos-raspberrypi.lib.nixosSystemFull {
-            specialArgs = inputs;
-            modules = [
-              {
-                # Hardware specific configuration, see section below for a more complete
-                # list of modules
-                imports = with nixos-raspberrypi.nixosModules; [
-                  raspberry-pi-5.base
-                  raspberry-pi-5.page-size-16k
-                  raspberry-pi-5.display-vc4
-                ];
-              }
-              ({config, ...}: {
-                # imports = with nixos-raspberrypi.nixosModules; [
-                #   ./cm5-system.nix
-                #   # raspberry-pi-5.display-vc4
-                #   # raspberry-pi-5.page-size-16k
-                #   # ./pi5-configtxt.nix
-                # ];
-
-                time.timeZone = "UTC";
-                networking.hostName = "djdeck";
-
-                # boot.loader.raspberry-pi.bootloader = lib.mkForce "kernel";
-                # boot.loader.grub.enable = lib.mkForce false;
-                # boot.loader.systemd-boot.enable = lib.mkForce false;
-                boot.loader.generic-extlinux-compatible.enable = lib.mkForce false;
-
-                security.polkit.enable = true;
-
-                security.sudo = {
-                  enable = true;
-                  wheelNeedsPassword = false;
-                };
-
-                services.getty.autologinUser = "dj";
-
-                users.users.dj = {
-                  initialPassword = "thisIsMyMusic";
-                  isNormalUser = true;
-                  extraGroups = [
-                    "wheel"
-                    "networkmanager"
-                    "gpio"
-                    "i2c"
-                    "input"
-                    "plugdev"
-                    "spi"
-                    "video"
-                  ];
-                };
-
-                services.openssh.enable = true;
-                services.openssh.settings.PermitRootLogin = "yes";
-
-                nix.settings.trusted-users = ["dj"];
-
-                system.stateVersion = "25.11";
-              })
-            ];
-          };
+        nixosConfigurations.djdeck = import ./system-config {
+          inputs = inputs;
+          nixos-raspberrypi = nixos-raspberrypi;
         };
 
-        packages.default = nixosConfigurations.djdeck.config.system.build.images.sd-card;
+        packages.default = nixosConfigurations.djdeck.config.system.build.sdImage;
+
+        devShells.default = pkgs.mkShell {
+          nativeBuildInputs = [
+            pkgs.git
+            pkgs.rpiboot
+          ];
+        };
+
+        shellHook = ''
+          flashImage() {
+            if [ "$#" -eq 0 ]; then
+              echo "Please Specify a Block Device to Flash";
+            else
+              zstdcat result/sd-image/nixos-image-rpi5-kernel.img.zst | sudo dd of=$1 bs=100M status=progress
+            fi
+          }
+        '';
+        #
       }
     );
 }

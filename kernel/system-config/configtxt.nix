@@ -1,9 +1,4 @@
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}: {
+{lib, ...}: {
   hardware.raspberry-pi.config = {
     all = {
       options = {
@@ -22,20 +17,16 @@
           value = lib.mkDefault 2;
         };
 
-        # Don't have the firmware create an initial video= setting in cmdline.txt.
-        # Use the kernel's default instead.
         disable_fw_kms_setup = {
           enable = lib.mkDefault true;
           value = lib.mkDefault true;
         };
 
-        # Disable compensation for displays with overscan
         disable_overscan = {
           enable = lib.mkDefault true;
           value = lib.mkDefault true;
         };
 
-        # Run as fast as firmware / board allows
         arm_boost = {
           enable = lib.mkDefault true;
           value = lib.mkDefault true;
@@ -52,7 +43,6 @@
         };
       };
       base-dt-params = {
-        # Uncomment some or all of these to enable the optional hardware interfaces
         # i2c_arm = {
         #   enable = true;
         #   value = "on";
