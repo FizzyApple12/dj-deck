@@ -4,6 +4,8 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
 
+    flake-utils.url = "github:numtide/flake-utils";
+
     nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/main";
   };
 
@@ -16,57 +18,83 @@
     ];
   };
 
-  outputs = { self, nixpkgs, nixos-raspberrypi }@inputs:
-    rec {
-      nixosConfigurations = {
-        djdeck = nixos-raspberrypi.lib.nixosSystem {
-          specialArgs = inputs;
-          modules = [
-            ({...}: {
-              imports = with nixos-raspberrypi.nixosModules; [
-                raspberry-pi-5.base
-              ];
-
-              system.stateVersion = "25.11";
-
-              boot.loader.raspberry-pi.bootloader = "kernel";
-            })
-            ({ ... }: {
-              networking.hostName = "djdeck";
-              users.users.dj = {
-                initialPassword = "thisIsMyMusic";
-                isNormalUser = true;
-                extraGroups = [
-                  "wheel"
+  outputs = {
+    self,
+    flake-utils,
+    nixpkgs,
+    nixos-raspberrypi,
+    ...
+  } @ inputs:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        # pkgs = nixpkgs.legacyPackages.${system};
+        lib = nixpkgs.lib;
+      in rec {
+        nixosConfigurations = {
+          djdeck = nixos-raspberrypi.lib.nixosSystemFull {
+            specialArgs = inputs;
+            modules = [
+              {
+                # Hardware specific configuration, see section below for a more complete
+                # list of modules
+                imports = with nixos-raspberrypi.nixosModules; [
+                  raspberry-pi-5.base
+                  raspberry-pi-5.page-size-16k
+                  raspberry-pi-5.display-vc4
                 ];
-              };
+              }
+              ({config, ...}: {
+                # imports = with nixos-raspberrypi.nixosModules; [
+                #   ./cm5-system.nix
+                #   # raspberry-pi-5.display-vc4
+                #   # raspberry-pi-5.page-size-16k
+                #   # ./pi5-configtxt.nix
+                # ];
 
-              services.openssh.enable = true;
-            })
+                time.timeZone = "UTC";
+                networking.hostName = "djdeck";
 
-            ({ ... }: {
-              fileSystems = {
-                "/boot/firmware" = {
-                  device = "/dev/disk/by-uuid/2175-794E";
-                  fsType = "vfat";
-                  options = [
-                    "noatime"
-                    "noauto"
-                    "x-systemd.automount"
-                    "x-systemd.idle-timeout=1min"
+                # boot.loader.raspberry-pi.bootloader = lib.mkForce "kernel";
+                # boot.loader.grub.enable = lib.mkForce false;
+                # boot.loader.systemd-boot.enable = lib.mkForce false;
+                boot.loader.generic-extlinux-compatible.enable = lib.mkForce false;
+
+                security.polkit.enable = true;
+
+                security.sudo = {
+                  enable = true;
+                  wheelNeedsPassword = false;
+                };
+
+                services.getty.autologinUser = "dj";
+
+                users.users.dj = {
+                  initialPassword = "thisIsMyMusic";
+                  isNormalUser = true;
+                  extraGroups = [
+                    "wheel"
+                    "networkmanager"
+                    "gpio"
+                    "i2c"
+                    "input"
+                    "plugdev"
+                    "spi"
+                    "video"
                   ];
                 };
-                "/" = {
-                  device = "/dev/disk/by-uuid/44444444-4444-4444-8888-888888888888";
-                  fsType = "ext4";
-                  options = [ "noatime" ];
-                };
-              };
-            })
-          ];
-        };
-      };
 
-      images.djdeck = nixosConfigurations.djdeck.config.system.build.images.iso;
-    };
+                services.openssh.enable = true;
+                services.openssh.settings.PermitRootLogin = "yes";
+
+                nix.settings.trusted-users = ["dj"];
+
+                system.stateVersion = "25.11";
+              })
+            ];
+          };
+        };
+
+        packages.default = nixosConfigurations.djdeck.config.system.build.images.sd-card;
+      }
+    );
 }
