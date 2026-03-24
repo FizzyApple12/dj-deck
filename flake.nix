@@ -28,19 +28,44 @@
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
       in rec {
-        nixosConfigurations.djdeck = import ./system-config {
+        nixosConfigurations.djdeck = import ./deckos {
           inputs = inputs;
           nixos-raspberrypi = nixos-raspberrypi;
         };
 
-        packages.default = nixosConfigurations.djdeck.config.system.build.sdImage;
+        packages = {
+          deckos = nixosConfigurations.djdeck.config.system.build.sdImage;
+          deck-application = pkgs.callPackage ./package.nix {};
+        };
 
-        devShells.default = pkgs.mkShell {
+        devShells.default = pkgs.mkShell rec {
           nativeBuildInputs = [
+            pkgs.pkg-config
+            pkgs.systemd
+            pkgs.openssl
+            pkgs.cmake
             pkgs.git
             pkgs.rpiboot
             pkgs.minicom
           ];
+          buildInputs = [
+            pkgs.clang
+            pkgs.llvmPackages.bintools
+            pkgs.rustup
+            pkgs.bash
+            pkgs.yaml-language-server
+          ];
+
+          RUSTC_VERSION = "nightly";
+
+          LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.llvmPackages_latest.libclang.lib];
+
+          shellHook = ''
+            export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
+            export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin/
+          '';
+
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (buildInputs ++ nativeBuildInputs);
         };
 
         shellHook = ''
