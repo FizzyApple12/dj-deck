@@ -1,8 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "deck-application"
-, "libdatabase", "libdj", "libui"]
+    "deck-application",
+    "libdatabase",
+    "libdj",
+    "libui"
+]
 
 [workspace.package]
 version = "0.0.1"
@@ -10,6 +13,9 @@ edition = "2024"
 
 [workspace.dependencies]
 tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+thiserror = "2.0.18"
+nix = { version = "0.31.2", features = ["mount", "fs"] }
 
 [workspace.lints.rust]
 async_fn_in_trait = "allow"

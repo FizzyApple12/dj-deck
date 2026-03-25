@@ -4,6 +4,13 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+rekordcrate = { git = "https://github.com/FizzyApple12/rekordcrate.git", branch = "djdeck" }
+nusb = { version = "0.2.3", features = [ "tokio" ] }
+binrw = "0.15"
+thiserror.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+nix.workspace = true
 
 [lints]
 workspace = true
