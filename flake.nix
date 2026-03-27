@@ -47,6 +47,20 @@
             pkgs.git
             pkgs.rpiboot
             pkgs.minicom
+            pkgs.fontconfig
+            pkgs.vulkan-loader
+            pkgs.libxkbcommon
+            pkgs.xorg.libxcb
+            pkgs.xorg.libX11
+            pkgs.xorg.libXcursor
+            pkgs.xorg.libXi
+            pkgs.xorg.libXrandr
+            pkgs.xorg.libXxf86vm
+            pkgs.wayland
+            pkgs.wayland-protocols
+            pkgs.wayland-scanner
+            pkgs.alsa-lib
+            pkgs.libjack2
           ];
           buildInputs = [
             pkgs.clang

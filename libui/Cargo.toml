@@ -4,6 +4,16 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+winit = "0.30.12"
+masonry = "0.4.0"
+masonry_winit = "0.4.0"
+xilem = "0.4.0"
+xilem_core = "0.4.0"
+thiserror.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+libdj = { path = "../libdj" }
+midir = { version = "0.10.3", features = ["jack"] }
 
 [lints]
 workspace = true

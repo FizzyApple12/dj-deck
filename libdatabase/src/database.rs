@@ -1,33 +1,24 @@
 use std::{
     collections::HashMap,
-    fmt,
     fs::File,
     path::{Path, PathBuf},
 };
 
 use binrw::BinRead;
+use libdj::types::library::{
+    Album, Artist, Artwork, Beat, CueType, Genre, HotCue, Label, Library, MemoryCue, Playlist,
+    PlaylistFolder, PlaylistTreeNode, PreviewWaveformColumn, TinyPreviewWaveformColumn, Track,
+    WaveformColumn,
+};
 use rekordcrate::{
     anlz::ANLZ,
     pdb::{DatabaseType, Header},
 };
 use thiserror::Error;
 
-use crate::types::{
-    Album, AlbumID, Artist, ArtistID, Artwork, ArtworkID, Beat, CueType, Genre, GenreID, HotCue,
-    Label, LabelID, MemoryCue, Playlist, PlaylistFolder, PlaylistTreeNode, PlaylistTreeNodeID,
-    PreviewWaveformColumn, TinyPreviewWaveformColumn, Track, TrackID, WaveformColumn,
-};
-
+#[derive(Debug)]
 pub struct Database {
-    pub albums: HashMap<AlbumID, Album>,
-    pub artists: HashMap<ArtistID, Artist>,
-    pub artworks: HashMap<ArtworkID, Artwork>,
-    pub genres: HashMap<GenreID, Genre>,
-    pub labels: HashMap<LabelID, Label>,
-
-    pub tracks: HashMap<TrackID, Track>,
-
-    pub playlist_tree: HashMap<PlaylistTreeNodeID, PlaylistTreeNode>,
+    pub library: Library,
 
     _pdb_header: Header,
 }
@@ -211,8 +202,8 @@ impl Database {
                                                     rekordcrate::anlz::Content::BeatGrid(beat_grid) => {
                                                    		for beat in beat_grid.beats {
                                                     		beat_grid_cache.push(Beat {
-                                                     			beat_number: beat.beat_number,
-                                                       			tempo: beat.tempo,
+                                                     			beat_number: u32::from(beat.beat_number),
+                                                       			tempo: u32::from(beat.tempo),
                                                          		time: beat.time,
                                                       		});
                                                      	}
@@ -297,8 +288,9 @@ impl Database {
                                                 id: track.id.0,
                                                 title: track.offsets.title.to_string(),
 
-                                                tempo: track.tempo,
-                                                duration: track.duration,
+                                                #[allow(clippy::cast_precision_loss)]
+                                                tempo: track.tempo as f32,
+                                                duration: f32::from(track.duration),
 
                                                 composer_id: track.composer_id.0,
                                                 artist_id: track.artist_id.0,
@@ -337,15 +329,17 @@ impl Database {
         }
 
         Ok(Database {
-            albums: album_cache,
-            artists: artist_cache,
-            artworks: artwork_cache,
-            genres: genre_cache,
-            labels: label_cache,
+            library: Library {
+                albums: album_cache,
+                artists: artist_cache,
+                artworks: artwork_cache,
+                genres: genre_cache,
+                labels: label_cache,
 
-            tracks: track_cache,
+                tracks: track_cache,
 
-            playlist_tree: playlist_cache,
+                playlist_tree: playlist_cache,
+            },
 
             _pdb_header: pdb_header,
         })
@@ -358,48 +352,6 @@ impl Database {
 
     pub fn close(mut self: Database) {
         self.sync();
-    }
-}
-
-impl fmt::Debug for Database {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        #[derive(Debug)]
-        #[allow(dead_code)]
-        struct Database<'a> {
-            albums: &'a HashMap<AlbumID, Album>,
-            artists: &'a HashMap<ArtistID, Artist>,
-            artworks: &'a HashMap<ArtworkID, Artwork>,
-            genres: &'a HashMap<GenreID, Genre>,
-            labels: &'a HashMap<LabelID, Label>,
-
-            tracks: &'a HashMap<TrackID, Track>,
-
-            playlist_tree: &'a HashMap<PlaylistTreeNodeID, PlaylistTreeNode>,
-        }
-
-        let Self {
-            albums,
-            artists,
-            artworks,
-            genres,
-            labels,
-            tracks,
-            playlist_tree,
-            ..
-        } = self;
-
-        fmt::Debug::fmt(
-            &Database {
-                albums,
-                artists,
-                artworks,
-                genres,
-                labels,
-                tracks,
-                playlist_tree,
-            },
-            f,
-        )
     }
 }
 

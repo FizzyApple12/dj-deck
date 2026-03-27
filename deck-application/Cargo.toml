@@ -7,7 +7,9 @@ edition.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
+libdj = { path = "../libdj" }
 libdatabase = { path = "../libdatabase" }
+libui = { path = "../libui" }
 
 [lints]
 workspace = true
