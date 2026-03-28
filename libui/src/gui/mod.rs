@@ -1,9 +1,10 @@
 pub mod external_app;
+pub mod theme;
 pub mod ui_elements;
 
 use std::{sync::Arc, thread};
 
-use masonry::{core::DefaultProperties, theme::default_property_set};
+use masonry_winit::app::{AppDriver, MasonryState};
 use thiserror::Error;
 use tokio_stream::Stream;
 use winit::error::EventLoopError;
@@ -16,6 +17,7 @@ use xilem::{
 use crate::{
     gui::{
         external_app::ExternalApp,
+        theme::default_property_set,
         ui_elements::{small_players::players, waveforms},
         waveforms::waveforms,
     },
@@ -81,9 +83,14 @@ impl UI {
 
         let _ = thread::spawn(move || {
             let xilem = Xilem::new_simple(app_state, app_logic, WindowOptions::new("djui"))
-                .with_font(Blob::new(Arc::new(HELVETICA)));
+                .with_font(Blob::new(Arc::new(HELVETICA)))
+                .with_default_properties(default_property_set());
 
-            let event_loop = match EventLoop::with_user_event().with_any_thread(true).build() {
+            let event_loop = match EventLoop::with_user_event()
+                .with_any_thread(true)
+                .with_wayland()
+                .build()
+            {
                 Ok(event_loop) => event_loop,
                 Err(err) => {
                     let _ = error_sender.send(Err(StartUIError::EventLoopError(err)));
@@ -95,14 +102,12 @@ impl UI {
             let (driver, windows) = xilem
                 .into_driver_and_windows(move |event| proxy.send_event(event).map_err(|err| err.0));
 
-            let masonry_state = masonry_winit::app::MasonryState::new(
-                event_loop.create_proxy(),
-                windows,
-                default_property_set(),
-            );
-
             let mut app = ExternalApp {
-                masonry_state,
+                masonry_state: MasonryState::new(
+                    event_loop.create_proxy(),
+                    windows,
+                    default_property_set(),
+                ),
                 app_driver: Box::new(driver),
             };
 

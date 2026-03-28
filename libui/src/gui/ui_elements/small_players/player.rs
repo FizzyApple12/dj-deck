@@ -1,7 +1,4 @@
-use masonry::{
-    parley::{FontFamily, FontStack},
-    properties::types::AsUnit,
-};
+use masonry::parley::FontFamily;
 use xilem::{
     WidgetView,
     view::{Axis, flex, label},
@@ -14,6 +11,6 @@ pub fn player(data: &mut UIState) -> impl WidgetView<UIState> + use<> {
         Axis::Horizontal,
         label("BPM 124.3 TIME 02:35.000")
             .text_size(48.0)
-            .font("helvetica"),
+            .font(FontFamily::parse("Helvetica").unwrap()),
     )
 }

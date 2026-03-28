@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-winit = "0.30.12"
+winit = { version = "0.30.12", features = ["wayland"] }
 masonry = "0.4.0"
 masonry_winit = "0.4.0"
 xilem = "0.4.0"
