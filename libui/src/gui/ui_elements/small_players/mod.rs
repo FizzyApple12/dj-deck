@@ -11,8 +11,8 @@ pub fn players(data: &mut UIState) -> impl WidgetView<UIState> + use<> {
     flex(
         Axis::Horizontal,
         (
-            flex(Axis::Vertical, (player(data), player(data))),
-            flex(Axis::Vertical, (player(data), player(data))),
+            flex(Axis::Vertical, (player(data, 1), player(data, 2))),
+            flex(Axis::Vertical, (player(data, 3), player(data, 4))),
         ),
     )
     .main_axis_alignment(MainAxisAlignment::SpaceEvenly)
