@@ -1,0 +1,6 @@
+[gd_resource type="Theme" load_steps=2 format=3 uid="uid://d05qtmsvetwx2"]
+
+[ext_resource type="FontFile" uid="uid://dicg8euuigors" path="res://helvetica.ttf" id="1_e1x85"]
+
+[resource]
+default_font = ExtResource("1_e1x85")

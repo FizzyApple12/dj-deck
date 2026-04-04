@@ -1,4 +1,8 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::BTreeMap, path::PathBuf};
+
+use rkyv::{Archive, Deserialize, Serialize};
+
+use crate::PathBufAsString;
 
 pub type ArtistID = u32;
 pub type ArtworkID = u32;
@@ -8,51 +12,53 @@ pub type TrackID = u32;
 pub type GenreID = u32;
 pub type PlaylistTreeNodeID = u32;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Library {
-    pub albums: HashMap<AlbumID, Album>,
-    pub artists: HashMap<ArtistID, Artist>,
-    pub artworks: HashMap<ArtworkID, Artwork>,
-    pub genres: HashMap<GenreID, Genre>,
-    pub labels: HashMap<LabelID, Label>,
+    pub albums: BTreeMap<AlbumID, Album>,
+    pub artists: BTreeMap<ArtistID, Artist>,
+    pub artworks: BTreeMap<ArtworkID, Artwork>,
+    pub genres: BTreeMap<GenreID, Genre>,
+    pub labels: BTreeMap<LabelID, Label>,
 
-    pub tracks: HashMap<TrackID, Track>,
+    pub tracks: BTreeMap<TrackID, Track>,
 
-    pub playlist_tree: HashMap<PlaylistTreeNodeID, PlaylistTreeNode>,
+    pub playlist_tree: BTreeMap<PlaylistTreeNodeID, PlaylistTreeNode>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Album {
     pub id: AlbumID,
     pub artist_id: ArtistID,
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Artist {
     pub id: ArtistID,
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Artwork {
     pub id: ArtworkID,
+
+    #[rkyv(with = PathBufAsString)]
     pub path: PathBuf,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Genre {
     pub id: GenreID,
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Label {
     pub id: LabelID,
     pub name: String,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub enum ColorIndex {
     None,
     Pink,
@@ -65,27 +71,27 @@ pub enum ColorIndex {
     Purple,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub enum PlaylistTreeNode {
     Playlist(Playlist),
     PlaylistFolder(PlaylistFolder),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Playlist {
     pub id: PlaylistTreeNodeID,
     pub name: String,
     pub tracks: Vec<TrackID>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct PlaylistFolder {
     pub id: PlaylistTreeNodeID,
     pub name: String,
     pub children: Vec<PlaylistTreeNodeID>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Track {
     pub id: TrackID,
 
@@ -103,6 +109,7 @@ pub struct Track {
     pub genre_id: GenreID,
     pub artwork_id: ArtworkID,
 
+    #[rkyv(with = PathBufAsString)]
     pub audio_path: PathBuf,
 
     pub beat_grid: Vec<Beat>,
@@ -113,26 +120,26 @@ pub struct Track {
     pub detail_waveform: Vec<WaveformColumn>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub struct Beat {
     pub beat_number: u32,
     pub tempo: u32,
     pub time: u32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub enum CueType {
     Point,
     Loop(u32),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct MemoryCue {
     pub time: u32,
     pub comment: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct HotCue {
     pub cue_number: u32,
     pub cue_type: CueType,
@@ -142,19 +149,19 @@ pub struct HotCue {
     pub color_rgb: (u8, u8, u8),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub struct TinyPreviewWaveformColumn {
     pub height: u8,
     pub color_rgb: (u8, u8, u8),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub struct PreviewWaveformColumn {
     pub height: u8,
     pub color_rgb: (u8, u8, u8),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub struct WaveformColumn {
     pub height: u8,
     pub color_rgb: (u8, u8, u8),

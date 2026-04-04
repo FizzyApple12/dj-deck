@@ -1,12 +1,14 @@
+use rkyv::{Archive, Deserialize, Serialize};
+
 use crate::types::library::Track;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub enum TempoPercent {
     Zero,
     Percent(f32),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub enum TempoRange {
     SixPercent,
     TenPercent,
@@ -14,7 +16,7 @@ pub enum TempoRange {
     OneHundredPercent,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub enum PlayDirection {
     Stop,
     Forward,
@@ -24,7 +26,7 @@ pub enum PlayDirection {
     SlipJog,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct DeckState {
     pub players: [PlayerState; 4],
 
@@ -47,7 +49,7 @@ impl Default for DeckState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct PlayerState {
     pub current_track: Option<Track>,
 

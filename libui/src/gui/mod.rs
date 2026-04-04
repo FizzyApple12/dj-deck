@@ -1,38 +1,21 @@
-pub mod external_app;
-pub mod theme;
-pub mod ui_elements;
-
-use std::{sync::Arc, thread};
-
-use masonry_winit::app::{AppDriver, MasonryState};
+use base64::{Engine, prelude::BASE64_STANDARD};
+use interprocess::local_socket::{
+    GenericFilePath, ToFsName, tokio::Stream, traits::tokio::Stream as _,
+};
 use thiserror::Error;
-use tokio_stream::Stream;
-use winit::error::EventLoopError;
-use xilem::{
-    Blob, EventLoop, WidgetView, WindowOptions, Xilem,
-    view::{Axis, ChildAlignment, CrossAxisAlignment, MainAxisAlignment, ZStackExt, flex},
-    winit::platform::wayland::EventLoopBuilderExtWayland,
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    task::JoinHandle,
 };
 
-use crate::{
-    gui::{
-        external_app::ExternalApp,
-        theme::default_property_set,
-        ui_elements::{small_players::players, waveforms},
-        waveforms::waveforms,
-    },
-    types::ui::{UIEvent, UIMessage},
-};
-
-pub struct UIState {
-    ui_message_sender: tokio::sync::broadcast::Sender<UIMessage>,
-    ui_event_sender: tokio::sync::mpsc::Sender<UIEvent>,
-}
+use crate::types::ui::{ArchivedUIEvent, SOCKET_NAME, UIEvent, UIMessage};
 
 #[derive(Debug)]
 pub struct UI {
     ui_message_sender: tokio::sync::broadcast::Sender<UIMessage>,
     ui_event_receiver: tokio::sync::mpsc::Receiver<UIEvent>,
+
+    ipc_task: JoinHandle<()>,
 }
 
 #[derive(Error, Debug)]
@@ -41,7 +24,7 @@ pub enum UISendError {
     ChannelError(tokio::sync::broadcast::error::SendError<UIMessage>),
 }
 
-impl Stream for UI {
+impl tokio_stream::Stream for UI {
     type Item = UIEvent;
 
     fn poll_next(
@@ -52,74 +35,86 @@ impl Stream for UI {
     }
 }
 
-fn app_logic(data: &mut UIState) -> impl WidgetView<UIState> + use<> {
-    flex(Axis::Vertical, (waveforms(data), players(data)))
-        .main_axis_alignment(MainAxisAlignment::SpaceBetween)
-        .cross_axis_alignment(CrossAxisAlignment::Fill)
-}
-
 #[derive(Error, Debug)]
 pub enum StartUIError {
     #[error("Event Loop Error: {0}")]
     ChannelError(tokio::sync::oneshot::error::RecvError),
 
-    #[error("Event Loop Error: {0}")]
-    EventLoopError(EventLoopError),
+    #[error("Socket Name Error: {0}")]
+    SocketNameError(std::io::Error),
 }
-
-const HELVETICA: &[u8] = include_bytes!("../../assets/helvetica.ttf");
 
 impl UI {
     pub async fn start_ui() -> Result<UI, StartUIError> {
-        let (ui_message_sender, _) = tokio::sync::broadcast::channel(16);
+        let (ui_message_sender, mut ui_message_receiver) = tokio::sync::broadcast::channel(16);
         let (ui_event_sender, ui_event_receiver) = tokio::sync::mpsc::channel(16);
-
-        let app_state = UIState {
-            ui_message_sender: ui_message_sender.clone(),
-            ui_event_sender,
-        };
 
         let (error_sender, error_receiver) = tokio::sync::oneshot::channel();
 
-        let _ = thread::spawn(move || {
-            let xilem = Xilem::new_simple(app_state, app_logic, WindowOptions::new("djui"))
-                .with_font(Blob::new(Arc::new(HELVETICA)))
-                .with_default_properties(default_property_set());
-
-            let event_loop = match EventLoop::with_user_event()
-                .with_any_thread(true)
-                .with_wayland()
-                .build()
-            {
-                Ok(event_loop) => event_loop,
+        let ipc_task = tokio::task::spawn(async move {
+            let name = match SOCKET_NAME.to_fs_name::<GenericFilePath>() {
+                Ok(name) => name,
                 Err(err) => {
-                    let _ = error_sender.send(Err(StartUIError::EventLoopError(err)));
+                    let _ = error_sender.send(Err(StartUIError::SocketNameError(err)));
+
                     return;
                 }
             };
 
-            let proxy = event_loop.create_proxy();
-            let (driver, windows) = xilem
-                .into_driver_and_windows(move |event| proxy.send_event(event).map_err(|err| err.0));
-
-            let mut app = ExternalApp {
-                masonry_state: MasonryState::new(
-                    event_loop.create_proxy(),
-                    windows,
-                    default_property_set(),
-                ),
-                app_driver: Box::new(driver),
-            };
-
             let _ = error_sender.send(Ok(()));
 
-            let _ = event_loop.run_app(&mut app);
+            loop {
+                let Ok(connection) = Stream::connect(name.clone()).await else {
+                    continue;
+                };
+
+                let (receiver, mut sender) = connection.split();
+
+                let mut receiver = BufReader::new(receiver);
+
+                let mut received_message = Vec::new();
+
+                loop {
+                    tokio::select! {
+                        result = receiver.read_until(b'\n', &mut received_message) => {
+                            match result {
+                                Ok(_) => {
+                                    // remove the newline
+                                    received_message.remove(received_message.len() - 1);
+
+                                    if let Ok(serialized_message) = BASE64_STANDARD.decode(&received_message)
+                                        && let Ok(archived) = rkyv::access::<ArchivedUIEvent, rkyv::rancor::Error>(&serialized_message)
+                                        && let Ok(deserialized) = rkyv::deserialize::<UIEvent, rkyv::rancor::Error>(archived) {
+                                        let _ = ui_event_sender.send(deserialized).await;
+                                    }
+                                },
+                                Err(_) => {
+                                    break;
+                                },
+                             }
+                        }
+                        message = ui_message_receiver.recv() => {
+                            if let Ok(message) = message &&
+                                let Ok(serialized_message) = rkyv::to_bytes::<rkyv::rancor::Error>(&message) {
+                                match sender.write_all((BASE64_STANDARD.encode(serialized_message) + "\n").as_bytes()).await {
+                                    Ok(()) => {},
+                                    Err(_) => {
+                                        break;
+                                    },
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         match error_receiver.await {
             Ok(Ok(())) => Ok(UI {
                 ui_message_sender,
                 ui_event_receiver,
+
+                ipc_task,
             }),
             Ok(Err(err)) => Err(err),
             Err(err) => Err(StartUIError::ChannelError(err)),
@@ -131,5 +126,11 @@ impl UI {
             Ok(_) => Ok(()),
             Err(err) => Err(UISendError::ChannelError(err)),
         }
+    }
+}
+
+impl Drop for UI {
+    fn drop(&mut self) {
+        self.ipc_task.abort();
     }
 }

@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     fs::File,
     path::{Path, PathBuf},
 };
@@ -43,15 +43,15 @@ impl Database {
             return Err(OpenDatabaseError::PDBCorrupt);
         };
 
-        let mut album_cache = HashMap::new();
-        let mut artist_cache = HashMap::new();
-        let mut artwork_cache = HashMap::new();
-        let mut genre_cache = HashMap::new();
-        let mut label_cache = HashMap::new();
+        let mut album_cache = BTreeMap::new();
+        let mut artist_cache = BTreeMap::new();
+        let mut artwork_cache = BTreeMap::new();
+        let mut genre_cache = BTreeMap::new();
+        let mut label_cache = BTreeMap::new();
 
-        let mut track_cache = HashMap::new();
+        let mut track_cache = BTreeMap::new();
 
-        let mut playlist_cache = HashMap::new();
+        let mut playlist_cache = BTreeMap::new();
 
         for table in &pdb_header.tables {
             for page in pdb_header

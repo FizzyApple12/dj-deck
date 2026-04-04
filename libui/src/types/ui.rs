@@ -1,9 +1,12 @@
 use libdj::types::{
     deck::DeckState,
-    library::{ArtworkID, Library, PlaylistTreeNodeID, TrackID},
+    library::{Library, PlaylistTreeNodeID, TrackID},
 };
+use rkyv::{Archive, Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+pub const SOCKET_NAME: &str = "/tmp/lib_godot.sock";
+
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub enum UIMessage {
     DeviceConnected(u32),
     DeviceDisconnected(u32),
@@ -13,7 +16,7 @@ pub enum UIMessage {
     DeviceLibrary { device: u32, library: Library },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub enum UIEvent {
     LoadTrack {
         device: u32,
