@@ -1,12 +1,28 @@
-[gd_scene load_steps=4 format=3 uid="uid://c8nc6wpsppvjd"]
+[gd_scene load_steps=6 format=3 uid="uid://c8nc6wpsppvjd"]
 
 [ext_resource type="Theme" uid="uid://d05qtmsvetwx2" path="res://theme.tres" id="1_1q5r0"]
 [ext_resource type="Texture2D" uid="uid://dfmhduky8hp71" path="res://test-big-waveform.png" id="2_pjlna"]
 [ext_resource type="PackedScene" uid="uid://c6v24sohg60tp" path="res://player.tscn" id="2_w13nq"]
+[ext_resource type="Shader" uid="uid://cx0jx0ojg74tb" path="res://blur.gdshader" id="4_nh2gx"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fsqqd"]
+shader = ExtResource("4_nh2gx")
+shader_parameter/strength = 5.00000023424012
+shader_parameter/mix_percentage = 0.750000035625
 
 [node name="Node3D" type="Node3D"]
 
 [node name="IPC" type="IPC" parent="."]
+_import_path = NodePath("")
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+script = null
 
 [node name="Deck UI" type="VBoxContainer" parent="."]
 anchors_preset = 15
@@ -190,3 +206,59 @@ layout_mode = 2
 
 [node name="HBoxContainer4" parent="Deck UI/GridContainer" instance=ExtResource("2_w13nq")]
 layout_mode = 2
+
+[node name="Overlay Blur" type="ColorRect" parent="."]
+z_index = 10
+material = SubResource("ShaderMaterial_fsqqd")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Title Card" type="CenterContainer" parent="."]
+visible = false
+z_index = 20
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Title Card"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Title Card/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "Hazel Roeder (FizzyApple12)"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label2" type="Label" parent="Title Card/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 36
+text = "Software Engineer
+Hardware Engineer
+DJ"
+vertical_alignment = 1
+
+[node name="Title Card2" type="CenterContainer" parent="."]
+z_index = 20
+offset_left = 208.0
+offset_top = 236.0
+offset_right = 1071.0
+offset_bottom = 484.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Title Card2"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Title Card2/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "The History of DJing"
+horizontal_alignment = 1
+vertical_alignment = 1
