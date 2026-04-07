@@ -39,6 +39,7 @@ stretch_mode = 4
 
 [node name="Top Details" type="HBoxContainer" parent="Player"]
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 theme = ExtResource("1_onrkg")
 theme_override_constants/separation = 12
@@ -279,6 +280,8 @@ vertical_alignment = 2
 
 [node name="Waveform" type="PanelContainer" parent="Player"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxTexture_i3pqv")
 
 [node name="Loading" type="Label" parent="Player/Waveform"]

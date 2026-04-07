@@ -1,28 +1,2635 @@
-[gd_scene load_steps=6 format=3 uid="uid://c8nc6wpsppvjd"]
+[gd_scene load_steps=39 format=3 uid="uid://c8nc6wpsppvjd"]
 
 [ext_resource type="Theme" uid="uid://d05qtmsvetwx2" path="res://theme.tres" id="1_1q5r0"]
 [ext_resource type="Texture2D" uid="uid://dfmhduky8hp71" path="res://test-big-waveform.png" id="2_pjlna"]
 [ext_resource type="PackedScene" uid="uid://c6v24sohg60tp" path="res://player.tscn" id="2_w13nq"]
 [ext_resource type="Shader" uid="uid://cx0jx0ojg74tb" path="res://blur.gdshader" id="4_nh2gx"]
+[ext_resource type="PackedScene" uid="uid://nlrkhyn4mju7" path="res://cdj/cdj.fbx" id="5_fsqqd"]
+[ext_resource type="Texture2D" uid="uid://xbh1sq1hp2l5" path="res://rekordbox.jpg" id="5_ofw3a"]
+[ext_resource type="PackedScene" uid="uid://d23uq5sdsao6w" path="res://vinyl/turntable/turntable.fbx" id="6_q33ja"]
+[ext_resource type="PackedScene" uid="uid://bc6fqrd5fhd4d" path="res://vinyl/record/record.fbx" id="7_pw0fk"]
+[ext_resource type="Texture2D" uid="uid://dc4lpw1huyw7j" path="res://dft-and spectrogram/dft-graph-1.png" id="9_s7u4w"]
+[ext_resource type="Texture2D" uid="uid://cc4u6s6tgr3gs" path="res://dft-and spectrogram/dft-graph-2.png" id="10_uioqn"]
+[ext_resource type="Texture2D" uid="uid://n8lhn5o4uj3r" path="res://dft-and spectrogram/dft-graph-3.png" id="11_yr1eh"]
+[ext_resource type="Texture2D" uid="uid://1o6io0mueap7" path="res://dft-and spectrogram/dft-graph-4.png" id="12_yr1eh"]
+[ext_resource type="Texture2D" uid="uid://b65d3llfiivmm" path="res://dft-and spectrogram/spectrogram-graph.png" id="13_uqdsg"]
+[ext_resource type="Texture2D" uid="uid://bgew8pfrifhcy" path="res://dft-and spectrogram/sample-spectrogram.png" id="14_i31qc"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_fsqqd"]
 shader = ExtResource("4_nh2gx")
 shader_parameter/strength = 5.00000023424012
 shader_parameter/mix_percentage = 0.750000035625
 
+[sub_resource type="Animation" id="Animation_yr1eh"]
+length = 0.001
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-5.2054855e-07, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:x")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(2, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:y")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.055, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:z")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:x")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-0.78539824, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:y")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.7853982, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:z")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root/cdj camera:size")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.6, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_i31qc"]
+resource_name = "aligning"
+length = 10.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0),
+"points": PackedFloat32Array(-5.2054855e-07, 0, 0, 1, 0, -5.2054855e-07, 0, 0, 0.25, 0, 0, -0.25, 0, 0, 0, 0, 0, 0, 0.25, 0, -5.2054855e-07, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 4, 4.5, 5, 5.5)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, 0, 0, 0.25, 0, 0, -0.25, 0, 0, 0, 0, 0, 0, 0.25, 0, 0, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 4, 4.5, 5, 5.5)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, 0, 0, 0.25, 0, -3.1415927, -0.25, 0, 0, 0, -3.1415927, 0, 0, 0.25, 0, 0, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 4, 4.5, 5, 5.5)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:x")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(2.0784695, 0, 0, 1, 0, 2, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:y")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.055, 0, 0, 1, 0, 0.055, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:z")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-0.098251455, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:x")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-1.5707964, 0, 0, 1, 0, -0.78539824, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:y")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0.7853982, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:z")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root/cdj camera:size")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0),
+"points": PackedFloat32Array(0.15, 0, 0, 1, 0, 0.3, -1, 0, 0, 0, 0.3, 0, 0, 1, 0, 0.6, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 8, 10)
+}
+
+[sub_resource type="Animation" id="Animation_uqdsg"]
+resource_name = "positioning"
+length = 2.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-5.2054855e-07, 0, 0, 1, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:x")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1.996, 0, 0, 1, 0, 2.0784695, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:y")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.055, 0, 0, 1, 0, 0.055, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:z")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-0.165, 0, 0, 1, 0, -0.098251455, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:x")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-1.5707964, 0, 0, 1, 0, -1.5707964, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:y")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:z")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root/cdj camera:size")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.15, 0, 0, 1, 0, 0.15, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+
+[sub_resource type="Animation" id="Animation_uioqn"]
+resource_name = "reading"
+length = 2.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-5.2054855e-07, 0, 0, 1, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:x")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(2, 0, 0, 1, 0, 1.996, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:y")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.055, 0, 0, 1, 0, 0.055, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:position:z")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, -0.165, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:x")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-0.78539824, 0, 0, 1, 0, -1.5707964, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:y")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.7853982, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root:rotation:z")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root/cdj camera:size")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.6, 0, 0, 1, 0, 0.15, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_uqdsg"]
+_data = {
+&"RESET": SubResource("Animation_yr1eh"),
+&"aligning": SubResource("Animation_i31qc"),
+&"positioning": SubResource("Animation_uqdsg"),
+&"reading": SubResource("Animation_uioqn")
+}
+
+[sub_resource type="Animation" id="Animation_pw0fk"]
+length = 0.001
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(2),
+"points": PackedFloat32Array(-2, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(2),
+"points": PackedFloat32Array(0.10041365, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(2),
+"points": PackedFloat32Array(0, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:x")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-0.7853982, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:y")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.7853982, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:z")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root/turntable camera:size")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.6, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("record:rotation:x")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("record:rotation:y")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("record:rotation:z")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/10/type = "bezier"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:x")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/11/type = "bezier"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:y")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/12/type = "bezier"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:z")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.0005, 0, 0.0005, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_ofw3a"]
+resource_name = "aligning"
+length = 20.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("record:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("record:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-2.3212879, 0, 0, 1, 0, -71.436325, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("record:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:x")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:y")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-2.3212879, 0, 0, 1, 0, -71.436325, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:z")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:x")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-2.0459151, 0, 0, 1, 0, -2, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:y")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.09382731, 0, 0, 1, 0, 0.10041365, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:z")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-4.463643e-05, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:x")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-1.5707964, 0, 0, 1, 0, -0.7853982, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/10/type = "bezier"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:y")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0.7853982, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/11/type = "bezier"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:z")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/12/type = "bezier"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root/turntable camera:size")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.32, 0, 0, 1, 0, 0.6, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+
+[sub_resource type="Animation" id="Animation_s7u4w"]
+resource_name = "positioning"
+length = 9.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("record:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(7.0000005, 9)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("record:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, -2.3212879, -1, 0, 0, 0),
+"times": PackedFloat32Array(7.0000005, 9)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("record:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(7.0000005, 9)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:x")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(7.0000005, 9)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:y")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, -2.3212879, -1, 0, 0, 0),
+"times": PackedFloat32Array(7.0000005, 9)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:z")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(7.0000005, 9)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:x")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-1.9784505, 0, 0, 1, 0, -2.0459151, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:y")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.09382731, 0, 0, 1, 0, 0.09382731, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:z")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.12482401, 0, 0, 1, 0, -4.463643e-05, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:x")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-0.19198622, 0, 0, 1, 0, -1.5707964, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/10/type = "bezier"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:y")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-1.1239921, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/11/type = "bezier"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:z")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/12/type = "bezier"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root/turntable camera:size")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0.06, 0, 0, 1, 0, 0.32, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+
+[sub_resource type="Animation" id="Animation_dg30y"]
+resource_name = "reading"
+length = 20.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("record:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("record:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, -69.115036, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("record:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:x")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:y")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, -69.115036, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("turntable/SL1210/PlatterGRP/Platter:rotation:z")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 20)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:x")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(-2, 0, 0, 1, 0, -1.9784505, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:y")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(0.10041365, 0, 0, 1, 0, 0.09382731, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:position:z")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0.12482401, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:x")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(-0.7853982, 0, 0, 1, 0, -0.19198622, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/10/type = "bezier"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:y")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(0.7853982, 0, 0, 1, 0, -1.1239921, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/11/type = "bezier"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root:rotation:z")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(0, 0, 0, 1, 0, 0, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+tracks/12/type = "bezier"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("../History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root/turntable camera:size")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(0.6, 0, 0, 1, 0, 0.06, -1, 0, 0, 0),
+"times": PackedFloat32Array(0, 2)
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_ofw3a"]
+_data = {
+&"RESET": SubResource("Animation_pw0fk"),
+&"aligning": SubResource("Animation_ofw3a"),
+&"positioning": SubResource("Animation_s7u4w"),
+&"reading": SubResource("Animation_dg30y")
+}
+
+[sub_resource type="Animation" id="Animation_xi870"]
+length = 0.001
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("sine1:surface_material_override/0:albedo_color:r")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("sine1:surface_material_override/0:albedo_color:g")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("sine1:surface_material_override/0:albedo_color:b")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("sine1:surface_material_override/0:albedo_color:a")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("sine2:surface_material_override/0:albedo_color:r")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("sine2:surface_material_override/0:albedo_color:g")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("sine2:surface_material_override/0:albedo_color:b")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/10/type = "bezier"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("sine2:surface_material_override/0:albedo_color:a")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/11/type = "bezier"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("sine3:surface_material_override/0:albedo_color:r")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/12/type = "bezier"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("sine3:surface_material_override/0:albedo_color:g")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/13/type = "bezier"
+tracks/13/imported = false
+tracks/13/enabled = true
+tracks/13/path = NodePath("sine3:surface_material_override/0:albedo_color:b")
+tracks/13/interp = 1
+tracks/13/loop_wrap = true
+tracks/13/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/14/type = "bezier"
+tracks/14/imported = false
+tracks/14/enabled = true
+tracks/14/path = NodePath("sine3:surface_material_override/0:albedo_color:a")
+tracks/14/interp = 1
+tracks/14/loop_wrap = true
+tracks/14/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/15/type = "bezier"
+tracks/15/imported = false
+tracks/15/enabled = true
+tracks/15/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root/dft camera:size")
+tracks/15/interp = 1
+tracks/15/loop_wrap = true
+tracks/15/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/16/type = "bezier"
+tracks/16/imported = false
+tracks/16/enabled = true
+tracks/16/path = NodePath("spectrogram:surface_material_override/0:albedo_color:r")
+tracks/16/interp = 1
+tracks/16/loop_wrap = true
+tracks/16/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/17/type = "bezier"
+tracks/17/imported = false
+tracks/17/enabled = true
+tracks/17/path = NodePath("spectrogram:surface_material_override/0:albedo_color:g")
+tracks/17/interp = 1
+tracks/17/loop_wrap = true
+tracks/17/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/18/type = "bezier"
+tracks/18/imported = false
+tracks/18/enabled = true
+tracks/18/path = NodePath("spectrogram:surface_material_override/0:albedo_color:b")
+tracks/18/interp = 1
+tracks/18/loop_wrap = true
+tracks/18/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/19/type = "bezier"
+tracks/19/imported = false
+tracks/19/enabled = true
+tracks/19/path = NodePath("spectrogram:surface_material_override/0:albedo_color:a")
+tracks/19/interp = 1
+tracks/19/loop_wrap = true
+tracks/19/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/20/type = "bezier"
+tracks/20/imported = false
+tracks/20/enabled = true
+tracks/20/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:x")
+tracks/20/interp = 1
+tracks/20/loop_wrap = true
+tracks/20/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/21/type = "bezier"
+tracks/21/imported = false
+tracks/21/enabled = true
+tracks/21/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:y")
+tracks/21/interp = 1
+tracks/21/loop_wrap = true
+tracks/21/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/22/type = "bezier"
+tracks/22/imported = false
+tracks/22/enabled = true
+tracks/22/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:z")
+tracks/22/interp = 1
+tracks/22/loop_wrap = true
+tracks/22/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-4, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/23/type = "bezier"
+tracks/23/imported = false
+tracks/23/enabled = true
+tracks/23/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:r")
+tracks/23/interp = 1
+tracks/23/loop_wrap = true
+tracks/23/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/24/type = "bezier"
+tracks/24/imported = false
+tracks/24/enabled = true
+tracks/24/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:g")
+tracks/24/interp = 1
+tracks/24/loop_wrap = true
+tracks/24/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/25/type = "bezier"
+tracks/25/imported = false
+tracks/25/enabled = true
+tracks/25/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:b")
+tracks/25/interp = 1
+tracks/25/loop_wrap = true
+tracks/25/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/26/type = "bezier"
+tracks/26/imported = false
+tracks/26/enabled = true
+tracks/26/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:a")
+tracks/26/interp = 1
+tracks/26/loop_wrap = true
+tracks/26/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/27/type = "bezier"
+tracks/27/imported = false
+tracks/27/enabled = true
+tracks/27/path = NodePath("playhead:surface_material_override/0:albedo_color:r")
+tracks/27/interp = 1
+tracks/27/loop_wrap = true
+tracks/27/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/28/type = "bezier"
+tracks/28/imported = false
+tracks/28/enabled = true
+tracks/28/path = NodePath("playhead:surface_material_override/0:albedo_color:g")
+tracks/28/interp = 1
+tracks/28/loop_wrap = true
+tracks/28/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/29/type = "bezier"
+tracks/29/imported = false
+tracks/29/enabled = true
+tracks/29/path = NodePath("playhead:surface_material_override/0:albedo_color:b")
+tracks/29/interp = 1
+tracks/29/loop_wrap = true
+tracks/29/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/30/type = "bezier"
+tracks/30/imported = false
+tracks/30/enabled = true
+tracks/30/path = NodePath("playhead:surface_material_override/0:albedo_color:a")
+tracks/30/interp = 1
+tracks/30/loop_wrap = true
+tracks/30/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/31/type = "bezier"
+tracks/31/imported = false
+tracks/31/enabled = true
+tracks/31/path = NodePath("playhead:position:x")
+tracks/31/interp = 1
+tracks/31/loop_wrap = true
+tracks/31/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.73277164, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/32/type = "bezier"
+tracks/32/imported = false
+tracks/32/enabled = true
+tracks/32/path = NodePath("playhead:position:y")
+tracks/32/interp = 1
+tracks/32/loop_wrap = true
+tracks/32/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-0.79400015, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/33/type = "bezier"
+tracks/33/imported = false
+tracks/33/enabled = true
+tracks/33/path = NodePath("playhead:position:z")
+tracks/33/interp = 1
+tracks/33/loop_wrap = true
+tracks/33/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-0.01, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_eur0n"]
+resource_name = "dft"
+length = 4.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, 0, 0, 0, 1.5, 0, -0.65449846, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 3.9999998)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, 0, 0, 0, 1.5, 0, 0.65449846, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 3.9999998)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, 0, 0, 0, 1.5, 0, 0, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 3.9999998)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("sine1:surface_material_override/0:albedo_color:r")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("sine1:surface_material_override/0:albedo_color:g")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("sine1:surface_material_override/0:albedo_color:b")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("sine1:surface_material_override/0:albedo_color:a")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("sine2:surface_material_override/0:albedo_color:r")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("sine2:surface_material_override/0:albedo_color:g")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("sine2:surface_material_override/0:albedo_color:b")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/10/type = "bezier"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("sine2:surface_material_override/0:albedo_color:a")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/11/type = "bezier"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("sine3:surface_material_override/0:albedo_color:r")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/12/type = "bezier"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("sine3:surface_material_override/0:albedo_color:g")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/13/type = "bezier"
+tracks/13/imported = false
+tracks/13/enabled = true
+tracks/13/path = NodePath("sine3:surface_material_override/0:albedo_color:b")
+tracks/13/interp = 1
+tracks/13/loop_wrap = true
+tracks/13/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/14/type = "bezier"
+tracks/14/imported = false
+tracks/14/enabled = true
+tracks/14/path = NodePath("sine3:surface_material_override/0:albedo_color:a")
+tracks/14/interp = 1
+tracks/14/loop_wrap = true
+tracks/14/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/15/type = "bezier"
+tracks/15/imported = false
+tracks/15/enabled = true
+tracks/15/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root/dft camera:size")
+tracks/15/interp = 1
+tracks/15/loop_wrap = true
+tracks/15/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0, 1, 0, 0, 1.5, 0, 1.7, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 3.9999998)
+}
+tracks/16/type = "bezier"
+tracks/16/imported = false
+tracks/16/enabled = true
+tracks/16/path = NodePath("spectrogram:surface_material_override/0:albedo_color:r")
+tracks/16/interp = 1
+tracks/16/loop_wrap = true
+tracks/16/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/17/type = "bezier"
+tracks/17/imported = false
+tracks/17/enabled = true
+tracks/17/path = NodePath("spectrogram:surface_material_override/0:albedo_color:g")
+tracks/17/interp = 1
+tracks/17/loop_wrap = true
+tracks/17/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/18/type = "bezier"
+tracks/18/imported = false
+tracks/18/enabled = true
+tracks/18/path = NodePath("spectrogram:surface_material_override/0:albedo_color:b")
+tracks/18/interp = 1
+tracks/18/loop_wrap = true
+tracks/18/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/19/type = "bezier"
+tracks/19/imported = false
+tracks/19/enabled = true
+tracks/19/path = NodePath("spectrogram:surface_material_override/0:albedo_color:a")
+tracks/19/interp = 1
+tracks/19/loop_wrap = true
+tracks/19/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/20/type = "bezier"
+tracks/20/imported = false
+tracks/20/enabled = true
+tracks/20/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:x")
+tracks/20/interp = 1
+tracks/20/loop_wrap = true
+tracks/20/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/21/type = "bezier"
+tracks/21/imported = false
+tracks/21/enabled = true
+tracks/21/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:y")
+tracks/21/interp = 1
+tracks/21/loop_wrap = true
+tracks/21/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/22/type = "bezier"
+tracks/22/imported = false
+tracks/22/enabled = true
+tracks/22/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:z")
+tracks/22/interp = 1
+tracks/22/loop_wrap = true
+tracks/22/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-4, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/23/type = "bezier"
+tracks/23/imported = false
+tracks/23/enabled = true
+tracks/23/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:r")
+tracks/23/interp = 1
+tracks/23/loop_wrap = true
+tracks/23/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/24/type = "bezier"
+tracks/24/imported = false
+tracks/24/enabled = true
+tracks/24/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:g")
+tracks/24/interp = 1
+tracks/24/loop_wrap = true
+tracks/24/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/25/type = "bezier"
+tracks/25/imported = false
+tracks/25/enabled = true
+tracks/25/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:b")
+tracks/25/interp = 1
+tracks/25/loop_wrap = true
+tracks/25/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/26/type = "bezier"
+tracks/26/imported = false
+tracks/26/enabled = true
+tracks/26/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:a")
+tracks/26/interp = 1
+tracks/26/loop_wrap = true
+tracks/26/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/27/type = "bezier"
+tracks/27/imported = false
+tracks/27/enabled = true
+tracks/27/path = NodePath("playhead:surface_material_override/0:albedo_color:r")
+tracks/27/interp = 1
+tracks/27/loop_wrap = true
+tracks/27/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/28/type = "bezier"
+tracks/28/imported = false
+tracks/28/enabled = true
+tracks/28/path = NodePath("playhead:surface_material_override/0:albedo_color:g")
+tracks/28/interp = 1
+tracks/28/loop_wrap = true
+tracks/28/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/29/type = "bezier"
+tracks/29/imported = false
+tracks/29/enabled = true
+tracks/29/path = NodePath("playhead:surface_material_override/0:albedo_color:b")
+tracks/29/interp = 1
+tracks/29/loop_wrap = true
+tracks/29/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/30/type = "bezier"
+tracks/30/imported = false
+tracks/30/enabled = true
+tracks/30/path = NodePath("playhead:surface_material_override/0:albedo_color:a")
+tracks/30/interp = 1
+tracks/30/loop_wrap = true
+tracks/30/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_5sgud"]
+resource_name = "spectrogram"
+length = 4.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(-0.65449846, 0, 0, 0, 0, -0.65449846, 0, 0, 1.5, 0, -1.5707964, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 4)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0.65449846, 0, 0, 0, 0, 0.65449846, 0, 0, 1.5, 0, 0, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 4)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 1.5, 0, 0, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 4)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("sine1:surface_material_override/0:albedo_color:r")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("sine1:surface_material_override/0:albedo_color:g")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("sine1:surface_material_override/0:albedo_color:b")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("sine1:surface_material_override/0:albedo_color:a")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("sine2:surface_material_override/0:albedo_color:r")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("sine2:surface_material_override/0:albedo_color:g")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("sine2:surface_material_override/0:albedo_color:b")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/10/type = "bezier"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("sine2:surface_material_override/0:albedo_color:a")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/11/type = "bezier"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("sine3:surface_material_override/0:albedo_color:r")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/12/type = "bezier"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("sine3:surface_material_override/0:albedo_color:g")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/13/type = "bezier"
+tracks/13/imported = false
+tracks/13/enabled = true
+tracks/13/path = NodePath("sine3:surface_material_override/0:albedo_color:b")
+tracks/13/interp = 1
+tracks/13/loop_wrap = true
+tracks/13/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/14/type = "bezier"
+tracks/14/imported = false
+tracks/14/enabled = true
+tracks/14/path = NodePath("sine3:surface_material_override/0:albedo_color:a")
+tracks/14/interp = 1
+tracks/14/loop_wrap = true
+tracks/14/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/15/type = "bezier"
+tracks/15/imported = false
+tracks/15/enabled = true
+tracks/15/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root/dft camera:size")
+tracks/15/interp = 1
+tracks/15/loop_wrap = true
+tracks/15/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(1.7, -1.5, 0, 0, 0, 1.7, 0, 0, 1.5, 0, 3.333, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 4)
+}
+tracks/16/type = "bezier"
+tracks/16/imported = false
+tracks/16/enabled = true
+tracks/16/path = NodePath("spectrogram:surface_material_override/0:albedo_color:r")
+tracks/16/interp = 1
+tracks/16/loop_wrap = true
+tracks/16/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/17/type = "bezier"
+tracks/17/imported = false
+tracks/17/enabled = true
+tracks/17/path = NodePath("spectrogram:surface_material_override/0:albedo_color:g")
+tracks/17/interp = 1
+tracks/17/loop_wrap = true
+tracks/17/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/18/type = "bezier"
+tracks/18/imported = false
+tracks/18/enabled = true
+tracks/18/path = NodePath("spectrogram:surface_material_override/0:albedo_color:b")
+tracks/18/interp = 1
+tracks/18/loop_wrap = true
+tracks/18/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/19/type = "bezier"
+tracks/19/imported = false
+tracks/19/enabled = true
+tracks/19/path = NodePath("spectrogram:surface_material_override/0:albedo_color:a")
+tracks/19/interp = 1
+tracks/19/loop_wrap = true
+tracks/19/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/20/type = "bezier"
+tracks/20/imported = false
+tracks/20/enabled = true
+tracks/20/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:x")
+tracks/20/interp = 1
+tracks/20/loop_wrap = true
+tracks/20/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.25, 0, 0, 0, 0, 1.5, 0, 2.994, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 4)
+}
+tracks/21/type = "bezier"
+tracks/21/imported = false
+tracks/21/enabled = true
+tracks/21/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:y")
+tracks/21/interp = 1
+tracks/21/loop_wrap = true
+tracks/21/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.25, 0, 0, 0, 0, 1.5, 0, 0, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 4)
+}
+tracks/22/type = "bezier"
+tracks/22/imported = false
+tracks/22/enabled = true
+tracks/22/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:z")
+tracks/22/interp = 1
+tracks/22/loop_wrap = true
+tracks/22/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(-4, 0, 0, 0.25, 0, -4, 0, 0, 1.5, 0, -4.712, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 2, 4)
+}
+tracks/23/type = "bezier"
+tracks/23/imported = false
+tracks/23/enabled = true
+tracks/23/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:r")
+tracks/23/interp = 1
+tracks/23/loop_wrap = true
+tracks/23/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/24/type = "bezier"
+tracks/24/imported = false
+tracks/24/enabled = true
+tracks/24/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:g")
+tracks/24/interp = 1
+tracks/24/loop_wrap = true
+tracks/24/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/25/type = "bezier"
+tracks/25/imported = false
+tracks/25/enabled = true
+tracks/25/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:b")
+tracks/25/interp = 1
+tracks/25/loop_wrap = true
+tracks/25/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/26/type = "bezier"
+tracks/26/imported = false
+tracks/26/enabled = true
+tracks/26/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:a")
+tracks/26/interp = 1
+tracks/26/loop_wrap = true
+tracks/26/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.5, 0, 1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0, 1)
+}
+tracks/27/type = "bezier"
+tracks/27/imported = false
+tracks/27/enabled = true
+tracks/27/path = NodePath("playhead:surface_material_override/0:albedo_color:r")
+tracks/27/interp = 1
+tracks/27/loop_wrap = true
+tracks/27/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/28/type = "bezier"
+tracks/28/imported = false
+tracks/28/enabled = true
+tracks/28/path = NodePath("playhead:surface_material_override/0:albedo_color:g")
+tracks/28/interp = 1
+tracks/28/loop_wrap = true
+tracks/28/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/29/type = "bezier"
+tracks/29/imported = false
+tracks/29/enabled = true
+tracks/29/path = NodePath("playhead:surface_material_override/0:albedo_color:b")
+tracks/29/interp = 1
+tracks/29/loop_wrap = true
+tracks/29/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/30/type = "bezier"
+tracks/30/imported = false
+tracks/30/enabled = true
+tracks/30/path = NodePath("playhead:surface_material_override/0:albedo_color:a")
+tracks/30/interp = 1
+tracks/30/loop_wrap = true
+tracks/30/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_5fhjh"]
+resource_name = "spectrogram-playback"
+length = 20.0
+step = 0.016666668
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-1.5707964, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("sine1:surface_material_override/0:albedo_color:r")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("sine1:surface_material_override/0:albedo_color:g")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("sine1:surface_material_override/0:albedo_color:b")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("sine1:surface_material_override/0:albedo_color:a")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/7/type = "bezier"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("sine2:surface_material_override/0:albedo_color:r")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/8/type = "bezier"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("sine2:surface_material_override/0:albedo_color:g")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/9/type = "bezier"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("sine2:surface_material_override/0:albedo_color:b")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/10/type = "bezier"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("sine2:surface_material_override/0:albedo_color:a")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/11/type = "bezier"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("sine3:surface_material_override/0:albedo_color:r")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/12/type = "bezier"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("sine3:surface_material_override/0:albedo_color:g")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/13/type = "bezier"
+tracks/13/imported = false
+tracks/13/enabled = true
+tracks/13/path = NodePath("sine3:surface_material_override/0:albedo_color:b")
+tracks/13/interp = 1
+tracks/13/loop_wrap = true
+tracks/13/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/14/type = "bezier"
+tracks/14/imported = false
+tracks/14/enabled = true
+tracks/14/path = NodePath("sine3:surface_material_override/0:albedo_color:a")
+tracks/14/interp = 1
+tracks/14/loop_wrap = true
+tracks/14/keys = {
+"handle_modes": PackedInt32Array(),
+"points": PackedFloat32Array(),
+"times": PackedFloat32Array()
+}
+tracks/15/type = "bezier"
+tracks/15/imported = false
+tracks/15/enabled = true
+tracks/15/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root/dft camera:size")
+tracks/15/interp = 1
+tracks/15/loop_wrap = true
+tracks/15/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(3.333, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/16/type = "bezier"
+tracks/16/imported = false
+tracks/16/enabled = true
+tracks/16/path = NodePath("spectrogram:surface_material_override/0:albedo_color:r")
+tracks/16/interp = 1
+tracks/16/loop_wrap = true
+tracks/16/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/17/type = "bezier"
+tracks/17/imported = false
+tracks/17/enabled = true
+tracks/17/path = NodePath("spectrogram:surface_material_override/0:albedo_color:g")
+tracks/17/interp = 1
+tracks/17/loop_wrap = true
+tracks/17/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/18/type = "bezier"
+tracks/18/imported = false
+tracks/18/enabled = true
+tracks/18/path = NodePath("spectrogram:surface_material_override/0:albedo_color:b")
+tracks/18/interp = 1
+tracks/18/loop_wrap = true
+tracks/18/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/19/type = "bezier"
+tracks/19/imported = false
+tracks/19/enabled = true
+tracks/19/path = NodePath("spectrogram:surface_material_override/0:albedo_color:a")
+tracks/19/interp = 1
+tracks/19/loop_wrap = true
+tracks/19/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/20/type = "bezier"
+tracks/20/imported = false
+tracks/20/enabled = true
+tracks/20/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:x")
+tracks/20/interp = 1
+tracks/20/loop_wrap = true
+tracks/20/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(2.994, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/21/type = "bezier"
+tracks/21/imported = false
+tracks/21/enabled = true
+tracks/21/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:y")
+tracks/21/interp = 1
+tracks/21/loop_wrap = true
+tracks/21/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/22/type = "bezier"
+tracks/22/imported = false
+tracks/22/enabled = true
+tracks/22/path = NodePath("../DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root:position:z")
+tracks/22/interp = 1
+tracks/22/loop_wrap = true
+tracks/22/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-4.712, -1.5, 0, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/23/type = "bezier"
+tracks/23/imported = false
+tracks/23/enabled = true
+tracks/23/path = NodePath("playhead:surface_material_override/0:albedo_color:r")
+tracks/23/interp = 1
+tracks/23/loop_wrap = true
+tracks/23/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.25, 0, 0, 0, 0, -0.25, 0, 0, 0, 0, -0.25, 0, 0, 0, 0, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 0.26666668, 9.75, 10, 11.6, 11.85, 19.75, 20)
+}
+tracks/24/type = "bezier"
+tracks/24/imported = false
+tracks/24/enabled = true
+tracks/24/path = NodePath("playhead:surface_material_override/0:albedo_color:g")
+tracks/24/interp = 1
+tracks/24/loop_wrap = true
+tracks/24/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0, 0, 0, 0),
+"points": PackedFloat32Array(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -0.25, 0, 0, 0, 1, -0.25, 0, 0, 0, 1, -0.25, 0, 0, 0, 1, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 0.26666668, 9.75, 10, 11.6, 11.85, 19.75, 20)
+}
+tracks/25/type = "bezier"
+tracks/25/imported = false
+tracks/25/enabled = true
+tracks/25/path = NodePath("playhead:surface_material_override/0:albedo_color:b")
+tracks/25/interp = 1
+tracks/25/loop_wrap = true
+tracks/25/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.25, 0, 0, 0, 0, -0.25, 0, 0, 0, 0, -0.25, 0, 0, 0, 0, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 0.26666668, 9.75, 10, 11.6, 11.85, 19.75, 20)
+}
+tracks/26/type = "bezier"
+tracks/26/imported = false
+tracks/26/enabled = true
+tracks/26/path = NodePath("playhead:surface_material_override/0:albedo_color:a")
+tracks/26/interp = 1
+tracks/26/loop_wrap = true
+tracks/26/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.25, 0, 0, 0, 1, -0.25, 0, 0, 0, 1, -0.25, 0, 0, 0, 0, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 0.26666668, 9.75, 10, 11.6, 11.85, 19.75, 20)
+}
+tracks/27/type = "bezier"
+tracks/27/imported = false
+tracks/27/enabled = true
+tracks/27/path = NodePath("playhead:position:x")
+tracks/27/interp = 1
+tracks/27/loop_wrap = true
+tracks/27/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0),
+"points": PackedFloat32Array(0.73277164, 0, 0, 0, 0, 5.4935775, 0, 0, 0, 0, 0.733, -0.25, 0, 0, 0, 0.733, -0.25, 0, 0, 0, 5.494, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 10, 11, 11.6, 20)
+}
+tracks/28/type = "bezier"
+tracks/28/imported = false
+tracks/28/enabled = true
+tracks/28/path = NodePath("playhead:position:y")
+tracks/28/interp = 1
+tracks/28/loop_wrap = true
+tracks/28/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0),
+"points": PackedFloat32Array(-0.79400015, 0, 0, 0, 0, -0.79400015, 0, 0, 0, 0, -0.794, -0.25, 0, 0, 0, -0.794, -0.25, 0, 0, 0, -0.794, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 10, 11, 11.6, 20)
+}
+tracks/29/type = "bezier"
+tracks/29/imported = false
+tracks/29/enabled = true
+tracks/29/path = NodePath("playhead:position:z")
+tracks/29/interp = 1
+tracks/29/loop_wrap = true
+tracks/29/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0),
+"points": PackedFloat32Array(-0.01, 0, 0, 0, 0, -0.01, 0, 0, 0, 0, -0.01, -0.25, 0, 0, 0, -0.01, -0.25, 0, 0, 0, -0.01, -0.25, 0, 0, 0),
+"times": PackedFloat32Array(0, 10, 11, 11.6, 20)
+}
+tracks/30/type = "bezier"
+tracks/30/imported = false
+tracks/30/enabled = true
+tracks/30/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:r")
+tracks/30/interp = 1
+tracks/30/loop_wrap = true
+tracks/30/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/31/type = "bezier"
+tracks/31/imported = false
+tracks/31/enabled = true
+tracks/31/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:g")
+tracks/31/interp = 1
+tracks/31/loop_wrap = true
+tracks/31/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/32/type = "bezier"
+tracks/32/imported = false
+tracks/32/enabled = true
+tracks/32/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:b")
+tracks/32/interp = 1
+tracks/32/loop_wrap = true
+tracks/32/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/33/type = "bezier"
+tracks/33/imported = false
+tracks/33/enabled = true
+tracks/33/path = NodePath("sample-spectrogram:surface_material_override/0:albedo_color:a")
+tracks/33/interp = 1
+tracks/33/loop_wrap = true
+tracks/33/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_xi870"]
+_data = {
+&"RESET": SubResource("Animation_xi870"),
+&"dft": SubResource("Animation_eur0n"),
+&"spectrogram": SubResource("Animation_5sgud"),
+&"spectrogram-playback": SubResource("Animation_5fhjh")
+}
+
+[sub_resource type="QuadMesh" id="QuadMesh_dg30y"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uioqn"]
+transparency = 1
+shading_mode = 0
+specular_mode = 2
+disable_ambient_light = true
+disable_fog = true
+disable_specular_occlusion = true
+albedo_texture = ExtResource("9_s7u4w")
+texture_filter = 5
+disable_receive_shadows = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uqdsg"]
+transparency = 1
+shading_mode = 0
+specular_mode = 2
+disable_ambient_light = true
+disable_fog = true
+disable_specular_occlusion = true
+albedo_color = Color(1, 1, 1, 0)
+albedo_texture = ExtResource("10_uioqn")
+texture_filter = 5
+disable_receive_shadows = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i31qc"]
+transparency = 1
+shading_mode = 0
+specular_mode = 2
+disable_ambient_light = true
+disable_fog = true
+disable_specular_occlusion = true
+albedo_color = Color(1, 1, 1, 0)
+albedo_texture = ExtResource("11_yr1eh")
+texture_filter = 5
+disable_receive_shadows = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eur0n"]
+transparency = 1
+shading_mode = 0
+specular_mode = 2
+disable_ambient_light = true
+disable_fog = true
+disable_specular_occlusion = true
+albedo_color = Color(1, 1, 1, 0)
+albedo_texture = ExtResource("12_yr1eh")
+texture_filter = 5
+disable_receive_shadows = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xi870"]
+transparency = 1
+shading_mode = 0
+specular_mode = 2
+disable_ambient_light = true
+disable_fog = true
+disable_specular_occlusion = true
+albedo_color = Color(1, 1, 1, 0)
+albedo_texture = ExtResource("13_uqdsg")
+texture_filter = 5
+disable_receive_shadows = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5sgud"]
+transparency = 1
+shading_mode = 0
+specular_mode = 2
+disable_ambient_light = true
+disable_fog = true
+disable_specular_occlusion = true
+albedo_color = Color(1, 1, 1, 0)
+albedo_texture = ExtResource("14_i31qc")
+texture_filter = 5
+disable_receive_shadows = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5fhjh"]
+transparency = 1
+shading_mode = 0
+specular_mode = 2
+disable_ambient_light = true
+disable_fog = true
+disable_specular_occlusion = true
+albedo_color = Color(0, 1, 0, 0)
+texture_filter = 5
+disable_receive_shadows = true
+
 [node name="Node3D" type="Node3D"]
 
 [node name="IPC" type="IPC" parent="."]
-_import_path = NodePath("")
-unique_name_in_owner = false
-process_mode = 0
-process_priority = 0
-process_physics_priority = 0
-process_thread_group = 0
-physics_interpolation_mode = 0
-auto_translate_mode = 0
-editor_description = ""
-script = null
 
 [node name="Deck UI" type="VBoxContainer" parent="."]
 anchors_preset = 15
@@ -30,6 +2637,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+pivot_offset = Vector2(960, 540)
 theme = ExtResource("1_1q5r0")
 theme_override_constants/separation = 12
 
@@ -208,6 +2816,7 @@ layout_mode = 2
 layout_mode = 2
 
 [node name="Overlay Blur" type="ColorRect" parent="."]
+visible = false
 z_index = 10
 material = SubResource("ShaderMaterial_fsqqd")
 anchors_preset = 15
@@ -230,7 +2839,7 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="Title Card/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 64
+theme_override_font_sizes/font_size = 120
 text = "Hazel Roeder (FizzyApple12)"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -238,27 +2847,226 @@ vertical_alignment = 1
 [node name="Label2" type="Label" parent="Title Card/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 84
 text = "Software Engineer
 Hardware Engineer
 DJ"
 vertical_alignment = 1
 
-[node name="Title Card2" type="CenterContainer" parent="."]
+[node name="History of DJing" type="CenterContainer" parent="."]
+visible = false
 z_index = 20
-offset_left = 208.0
-offset_top = 236.0
-offset_right = 1071.0
-offset_bottom = 484.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Title Card2"]
+[node name="VBoxContainer" type="VBoxContainer" parent="History of DJing"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Title Card2/VBoxContainer"]
+[node name="Label" type="Label" parent="History of DJing/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 64
-text = "The History of DJing"
+theme_override_font_sizes/font_size = 84
+text = "Some History"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="History of DJing/VBoxContainer"]
+layout_mode = 2
+
+[node name="SubViewportContainer2" type="SubViewportContainer" parent="History of DJing/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(800, 800)
+layout_mode = 2
+size_flags_horizontal = 3
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(800, 800)
+render_target_update_mode = 0
+
+[node name="turntable camera root" type="Node3D" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport"]
+transform = Transform3D(0.70710653, -0.49999976, 0.49999973, 0, 0.7071065, 0.7071064, -0.70710653, -0.49999976, 0.49999973, -2, 0.10041365, 0)
+
+[node name="turntable camera" type="Camera3D" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
+projection = 1
+size = 0.6
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="History of DJing/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(800, 800)
+layout_mode = 2
+size_flags_horizontal = 3
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(800, 800)
+render_target_update_mode = 0
+
+[node name="cdj camera root" type="Node3D" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport"]
+transform = Transform3D(0.7071067, -0.49999985, 0.49999988, 0, 0.7071065, 0.70710677, -0.7071067, -0.49999985, 0.49999988, 2, 0.055, 0)
+
+[node name="cdj camera" type="Camera3D" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
+projection = 1
+size = 0.6
+
+[node name="rekordbox" type="CenterContainer" parent="."]
+visible = false
+z_index = 20
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="rekordbox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="rekordbox/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 84
+text = "rekordbox"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="rekordbox/VBoxContainer"]
+custom_minimum_size = Vector2(1920, 800)
+layout_mode = 2
+size_flags_vertical = 3
+texture = ExtResource("5_ofw3a")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="DFT and Spectrogram" type="CenterContainer" parent="."]
+visible = false
+z_index = 20
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="DFT and Spectrogram"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DFT and Spectrogram/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 84
+text = "Fourier Transforms and Spectrograms"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="DFT and Spectrogram/VBoxContainer"]
+custom_minimum_size = Vector2(1200, 800)
+layout_mode = 2
+size_flags_horizontal = 3
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="DFT and Spectrogram/VBoxContainer/SubViewportContainer"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1542, 800)
+render_target_update_mode = 0
+
+[node name="dft camera root" type="Node3D" parent="DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport"]
+transform = Transform3D(0.9999995, 0, 0, 0, 0.9999995, 0, 0, 0, 0.9999993, 0, 0, -4)
+
+[node name="dft camera" type="Camera3D" parent="DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport/dft camera root"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+projection = 1
+fov = 48.0
+
+[node name="cdj visualization" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
+
+[node name="cdj animation" type="AnimationPlayer" parent="cdj visualization"]
+libraries = {
+&"": SubResource("AnimationLibrary_uqdsg")
+}
+blend_times = [&"aligning", &"aligning", 1.0, &"aligning", &"positioning", 1.0, &"aligning", &"reading", 1.0, &"positioning", &"aligning", 1.0, &"positioning", &"positioning", 1.0, &"positioning", &"reading", 1.0, &"reading", &"aligning", 1.0, &"reading", &"positioning", 1.0, &"reading", &"reading", 1.0]
+
+[node name="cdj" parent="cdj visualization" instance=ExtResource("5_fsqqd")]
+
+[node name="glass_disk" parent="cdj visualization/cdj/DJ_55_Digital_player_Pioneer_CDJ_850_Black/jogwheel" index="0"]
+extra_cull_margin = 1.0
+
+[node name="turntable visualization" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
+
+[node name="turntable animation" type="AnimationPlayer" parent="turntable visualization"]
+libraries = {
+&"": SubResource("AnimationLibrary_ofw3a")
+}
+blend_times = [&"aligning", &"aligning", 1.0, &"aligning", &"positioning", 1.0, &"aligning", &"reading", 1.0, &"positioning", &"aligning", 1.0, &"positioning", &"positioning", 1.0, &"positioning", &"reading", 1.0, &"reading", &"aligning", 1.0, &"reading", &"positioning", 1.0, &"reading", &"reading", 1.0]
+
+[node name="turntable light" type="SpotLight3D" parent="turntable visualization"]
+transform = Transform3D(0.88212687, -0.09551522, 0.4612256, 0, 0.97922283, 0.2027873, -0.47101188, -0.17888412, 0.8637988, 0.03012085, 0.101006, 0.1496163)
+light_energy = 0.01
+light_size = 0.112
+shadow_enabled = true
+distance_fade_begin = 0.0
+distance_fade_shadow = 0.0
+
+[node name="turntable" parent="turntable visualization" instance=ExtResource("6_q33ja")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0, 0, 0)
+
+[node name="record" parent="turntable visualization" instance=ExtResource("7_pw0fk")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, -0.046000242, 0.099, -0.00087791635)
+
+[node name="dft visualization" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, -4)
+
+[node name="dft animation" type="AnimationPlayer" parent="dft visualization"]
+libraries = {
+&"": SubResource("AnimationLibrary_xi870")
+}
+blend_times = [&"dft", &"dft", 1.0, &"dft", &"spectrogram", 1.0, &"dft", &"spectrogram-playback", 1.0, &"spectrogram", &"dft", 1.0, &"spectrogram", &"spectrogram", 1.0, &"spectrogram", &"spectrogram-playback", 1.0, &"spectrogram-playback", &"dft", 1.0, &"spectrogram-playback", &"spectrogram", 1.0, &"spectrogram-playback", &"spectrogram-playback", 1.0]
+
+[node name="main" type="MeshInstance3D" parent="dft visualization"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0.75, 0)
+mesh = SubResource("QuadMesh_dg30y")
+surface_material_override/0 = SubResource("StandardMaterial3D_uioqn")
+
+[node name="sine1" type="MeshInstance3D" parent="dft visualization"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0.25, 0)
+mesh = SubResource("QuadMesh_dg30y")
+skeleton = NodePath("../main")
+surface_material_override/0 = SubResource("StandardMaterial3D_uqdsg")
+
+[node name="sine2" type="MeshInstance3D" parent="dft visualization"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, -0.25, 0)
+mesh = SubResource("QuadMesh_dg30y")
+skeleton = NodePath("../main")
+surface_material_override/0 = SubResource("StandardMaterial3D_i31qc")
+
+[node name="sine3" type="MeshInstance3D" parent="dft visualization"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, -0.75, 0)
+mesh = SubResource("QuadMesh_dg30y")
+skeleton = NodePath("../main")
+surface_material_override/0 = SubResource("StandardMaterial3D_eur0n")
+
+[node name="spectrogram" type="MeshInstance3D" parent="dft visualization"]
+transform = Transform3D(5, 0, 0, 0, -3.333, -5.03269e-07, 0, 5.03269e-07, -3.333, 2.994, -0.712, 0)
+mesh = SubResource("QuadMesh_dg30y")
+skeleton = NodePath("../main")
+surface_material_override/0 = SubResource("StandardMaterial3D_xi870")
+
+[node name="sample-spectrogram" type="MeshInstance3D" parent="dft visualization"]
+transform = Transform3D(4.76, 0, 0, 0, -3.08, 3.3551265e-07, 0, -4.6506705e-07, -2.222, 3.108, -0.7942395, 0.009999999)
+mesh = SubResource("QuadMesh_dg30y")
+skeleton = NodePath("../main")
+surface_material_override/0 = SubResource("StandardMaterial3D_5sgud")
+
+[node name="playhead" type="MeshInstance3D" parent="dft visualization"]
+transform = Transform3D(0.015, 0, 0, 0, -4, 3.3551265e-07, 0, -6.039832e-07, -2.222, 0.73277164, -0.79400015, -0.01)
+mesh = SubResource("QuadMesh_dg30y")
+skeleton = NodePath("../main")
+surface_material_override/0 = SubResource("StandardMaterial3D_5fhjh")
+
+[editable path="cdj visualization/cdj"]
+[editable path="turntable visualization/turntable"]

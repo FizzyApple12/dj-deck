@@ -26,31 +26,70 @@ pub enum PlayDirection {
     SlipJog,
 }
 
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+pub enum CrossfaderSide {
+    A,
+    B,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+pub enum FilterEffect {
+    None,
+    Space,
+    DubEcho,
+    Bitcrush,
+    Pitch,
+    Noise,
+    Filter,
+}
+
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct DeckState {
-    pub players: [PlayerState; 4],
+    pub channels: [ChannelState; 4],
 
-    pub master_player: Option<usize>,
+    pub filter_effect: FilterEffect,
+
+    pub master_channel: Option<usize>,
+
+    pub effects: Effects,
+
+    pub crossfade: f32,
 
     pub quanitze: bool,
     pub slip: bool,
+
+    pub master_cue: bool,
+    pub master_gain: f32, // decibels
+    pub booth_gain: f32,  // decibels
 }
 
 impl Default for DeckState {
     fn default() -> Self {
         Self {
-            players: Default::default(),
+            channels: Default::default(),
 
-            master_player: None,
+            filter_effect: FilterEffect::None,
+
+            effects: Effects::default(),
+
+            crossfade: 0.5,
+
+            master_channel: None,
 
             quanitze: true,
             slip: false,
+
+            master_cue: false,
+            master_gain: 0.0,
+            booth_gain: 0.0,
         }
     }
 }
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
-pub struct PlayerState {
+pub struct ChannelState {
     pub current_track: Option<Track>,
 
     pub beat_sync: bool,
@@ -72,9 +111,17 @@ pub struct PlayerState {
     pub master_tempo: bool,
 
     pub keyshift: i8, // semitones
+
+    pub gain: f32, // decibels
+    pub eq: (f32, f32, f32),
+    pub filter: f32,
+
+    pub crossfader_side: CrossfaderSide,
+
+    pub cue: bool,
 }
 
-impl Default for PlayerState {
+impl Default for ChannelState {
     fn default() -> Self {
         Self {
             current_track: None,
@@ -97,6 +144,63 @@ impl Default for PlayerState {
             master_tempo: true,
 
             keyshift: 0,
+
+            gain: 0.0,
+            eq: (0.0, 0.0, 0.0),
+            filter: 0.0,
+
+            crossfader_side: CrossfaderSide::None,
+
+            cue: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+pub enum EffectsChannel {
+    Channel(usize),
+    Master,
+}
+
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+pub enum EffectsChannelEffect {
+    LowCutEcho { length: f32 },
+    Echo { length: f32 },
+    Delay { length: f32 },
+    Spiral { length: f32 },
+    Reverb { percent: f32 },
+    Transgate { length: f32 },
+    EnigmaJet { length: f32 },
+    Flanger { length: f32 },
+    Phaser { length: f32 },
+    Stretch { length: f32 },
+    SlipRoll { length: f32 },
+    Roll { length: f32 },
+}
+
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
+pub struct Effects {
+    pub channel: EffectsChannel,
+
+    pub effect: EffectsChannelEffect,
+
+    pub enabled: bool,
+
+    pub depth: f32,
+    pub bpm: f32,
+}
+
+impl Default for Effects {
+    fn default() -> Self {
+        Self {
+            channel: EffectsChannel::Master,
+
+            effect: EffectsChannelEffect::Reverb { percent: 0.5 },
+
+            enabled: false,
+
+            depth: 0.0,
+            bpm: 120.0,
         }
     }
 }

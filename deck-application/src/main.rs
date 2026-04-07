@@ -74,7 +74,7 @@ async fn main() {
                 if let Some(ui_event) = ui_event {
                     match ui_event {
                         UIEvent::LoadTrack { device, id, playlist: _, deck } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck)
+                            if let Some(deck) = temp_deck_state.channels.get_mut(deck)
                                 && let Ok(locked_device_database) = device_manager.devices.lock()
                                 && let Some(device) = locked_device_database.get(&device)
                                    && let Some(track) = device.database.library.tracks.get(&id){
@@ -96,7 +96,7 @@ async fn main() {
                             }
                         },
                         UIEvent::Eject(deck) => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
+                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
                                deck.current_track = None;
 
                                deck.time = 0.0;
@@ -122,23 +122,23 @@ async fn main() {
                             }
                         },
                         UIEvent::NeedleSearch { needle_time, deck } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
+                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
                                deck.needle_time = needle_time;
                             }
                         },
                         UIEvent::BeatJump { beats, deck } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
+                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
                                 deck.time += beats * (1. / deck.bpm) * 60.;
                             }
                         },
                         UIEvent::SetBeatLoop { beats, deck } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
+                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
                                 deck.beat_loop_start = Some(deck.time);
                                 deck.beat_loop_end = Some(deck.time + (beats * (1. / deck.bpm) * 60.));
                             }
                         },
                         UIEvent::DoubleBeatLoop(deck) => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck)
+                            if let Some(deck) = temp_deck_state.channels.get_mut(deck)
                                && let Some(beat_loop_start) = deck.beat_loop_start
                                && let Some(beat_loop_end) = deck.beat_loop_end {
                                 deck.beat_loop_start = Some(deck.time);
@@ -146,7 +146,7 @@ async fn main() {
                             }
                         },
                         UIEvent::HalveBeatLoop(deck) => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck)
+                            if let Some(deck) = temp_deck_state.channels.get_mut(deck)
                                && let Some(beat_loop_start) = deck.beat_loop_start
                                && let Some(beat_loop_end) = deck.beat_loop_end {
                                 deck.beat_loop_start = Some(deck.time);
@@ -154,7 +154,7 @@ async fn main() {
                             }
                         },
                         UIEvent::SetKeyShift { deck, semitones } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
+                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
                                 deck.keyshift = semitones;
                             }
                         },
@@ -171,7 +171,7 @@ async fn main() {
             }
             _ = deck_update_interval.tick() => {
                 #[allow(clippy::explicit_iter_loop)] // i think this is more readable
-                for deck in temp_deck_state.players.iter_mut() {
+                for deck in temp_deck_state.channels.iter_mut() {
                     let tempo_percent = match deck.tempo_percent {
                         TempoPercent::Zero => 0.0,
                         TempoPercent::Percent(percent) => percent,

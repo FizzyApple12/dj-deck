@@ -1,0 +1,62 @@
+[remap]
+
+importer="scene"
+importer_version=1
+type="PackedScene"
+uid="uid://bc6fqrd5fhd4d"
+path="res://.godot/imported/record.fbx-7bdd2aefe05b739b527ee27621428c4e.scn"
+
+[deps]
+
+source_file="res://vinyl/record/record.fbx"
+dest_files=["res://.godot/imported/record.fbx-7bdd2aefe05b739b527ee27621428c4e.scn"]
+
+[params]
+
+nodes/root_type=""
+nodes/root_name=""
+nodes/root_script=null
+nodes/apply_root_scale=true
+nodes/root_scale=1.0
+nodes/import_as_skeleton_bones=false
+nodes/use_name_suffixes=true
+nodes/use_node_type_suffixes=true
+meshes/ensure_tangents=true
+meshes/generate_lods=false
+meshes/create_shadow_meshes=true
+meshes/light_baking=1
+meshes/lightmap_texel_size=0.2
+meshes/force_disable_compression=false
+skins/use_named_skins=true
+animation/import=true
+animation/fps=30
+animation/trimming=true
+animation/remove_immutable_tracks=true
+animation/import_rest_as_RESET=false
+import_script/path=""
+materials/extract=0
+materials/extract_format=0
+materials/extract_path=""
+_subresources={
+"materials": {
+"Cue Tape": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://vinyl/record/CueTape.material",
+"use_external/path": "uid://3ivjw41avqp1"
+},
+"Label": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://vinyl/record/RecordLabel.material",
+"use_external/path": "uid://co1fe67f1hsdy"
+},
+"Record": {
+"use_external/enabled": true,
+"use_external/fallback_path": "res://vinyl/record/Record.material",
+"use_external/path": "uid://csvao1bbf3473"
+}
+}
+}
+fbx/importer=0
+fbx/allow_geometry_helper_nodes=false
+fbx/embedded_image_handling=0
+fbx/naming_version=2
