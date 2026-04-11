@@ -1,0 +1,153 @@
+{
+  "id": "default",
+  "name": "Product Showcase",
+  "cards": [
+    {
+      "id": "card-1775940202947",
+      "size": "large",
+      "x": 6,
+      "y": 0,
+      "text": "Phase Vocoder",
+      "textColor": "#ffffff",
+      "textAlignment": "center",
+      "textOrientation": "horizontal",
+      "fontSize": 47,
+      "backgroundImage": "https://via.placeholder.com/400x300?text=Your+Image+Here",
+      "verticalAlignment": "center"
+    },
+    {
+      "id": "card-1775940252322",
+      "size": "wide",
+      "x": 4,
+      "y": 4,
+      "text": "Track Analysis",
+      "textColor": "#ffffff",
+      "textAlignment": "center",
+      "textOrientation": "horizontal",
+      "fontSize": 47,
+      "backgroundImage": "https://via.placeholder.com/400x300?text=Your+Image+Here",
+      "verticalAlignment": "center"
+    },
+    {
+      "id": "card-1775940412806",
+      "size": "large",
+      "x": 0,
+      "y": 2,
+      "text": "Fourier Transform",
+      "textColor": "#ffffff",
+      "textAlignment": "center",
+      "textOrientation": "horizontal",
+      "fontSize": 47,
+      "backgroundImage": "https://via.placeholder.com/400x300?text=Your+Image+Here",
+      "verticalAlignment": "center"
+    },
+    {
+      "id": "card-1775940549009",
+      "size": "wide",
+      "x": 0,
+      "y": 0,
+      "text": "Waveforms",
+      "textColor": "#000000",
+      "textAlignment": "center",
+      "textOrientation": "horizontal",
+      "fontSize": 47,
+      "verticalAlignment": "center",
+      "backgroundStyle": "gradient",
+      "gradient": {
+        "mode": "softBezier",
+        "warpShape": "fbmNoise",
+        "warpStrength": 1,
+        "warpScale": 600,
+        "noiseAmount": 0.12,
+        "seed": 5474,
+        "colors": [
+          "#837aff",
+          "#ffdc5c",
+          "#ffffff"
+        ]
+      }
+    },
+    {
+      "id": "card-1775940622148",
+      "size": "portrait",
+      "x": 4,
+      "y": 0,
+      "backgroundColor": "#f3f4f6",
+      "text": "Equalizers ",
+      "textColor": "#000000",
+      "textAlignment": "center",
+      "textOrientation": "vertical",
+      "fontSize": 47,
+      "backgroundStyle": "gradient",
+      "gradient": {
+        "mode": "softBezier",
+        "warpShape": "fbmNoise",
+        "warpStrength": 1,
+        "warpScale": 600,
+        "noiseAmount": 0.12,
+        "seed": 44202,
+        "colors": [
+          "#ccb3ea",
+          "#7d6cf9"
+        ]
+      },
+      "verticalAlignment": "center"
+    },
+    {
+      "id": "card-1775940828103",
+      "size": "wide",
+      "x": 8,
+      "y": 4,
+      "backgroundColor": "#f3f4f6",
+      "text": "Phase and Offset",
+      "textColor": "#1f2937",
+      "textAlignment": "center",
+      "textOrientation": "horizontal",
+      "fontSize": 47,
+      "subtitle": "",
+      "verticalAlignment": "center",
+      "backgroundStyle": "gradient",
+      "gradient": {
+        "mode": "softBezier",
+        "warpShape": "fbmNoise",
+        "warpStrength": 1,
+        "warpScale": 600,
+        "noiseAmount": 0.12,
+        "seed": 59299,
+        "colors": [
+          "#999999",
+          "#ffffff"
+        ]
+      }
+    },
+    {
+      "id": "card-1775940914995",
+      "size": "portrait",
+      "x": 10,
+      "y": 0,
+      "backgroundColor": "#f3f4f6",
+      "text": "Beat Sync",
+      "textColor": "#1f2937",
+      "textAlignment": "center",
+      "textOrientation": "vertical",
+      "fontSize": 47,
+      "verticalAlignment": "center",
+      "backgroundStyle": "gradient",
+      "gradient": {
+        "mode": "softBezier",
+        "warpShape": "fbmNoise",
+        "warpStrength": 1,
+        "warpScale": 600,
+        "noiseAmount": 0.12,
+        "seed": 46567,
+        "colors": [
+          "#ff8080",
+          "#C5DE7F"
+        ]
+      }
+    }
+  ],
+  "createdAt": 1775941064273,
+  "updatedAt": 1775941064273,
+  "version": 2
+}
