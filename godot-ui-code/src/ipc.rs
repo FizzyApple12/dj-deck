@@ -1,18 +1,19 @@
 use std::{
-    io::Write,
-    sync::{Arc, Mutex},
+    collections::{BTreeMap, VecDeque},
+    io::{BufRead, BufReader, Write},
 };
 
 use base64::{Engine, prelude::BASE64_STANDARD};
 use godot::{
-    classes::{FileAccess, INode, Node, file_access::ModeFlags},
+    classes::{INode, Node},
     prelude::*,
 };
 use interprocess::local_socket::{
-    GenericFilePath, Listener, ListenerNonblockingMode, ListenerOptions, Stream, prelude::*,
+    GenericFilePath, Listener, ListenerNonblockingMode, ListenerOptions, RecvHalf, SendHalf,
+    prelude::*,
 };
-use libui::types::ui::{SOCKET_NAME, UIEvent};
-use thiserror::Error;
+use libdj::types::{deck::DeckState, library::Library};
+use libui::types::ui::{ArchivedUIMessage, InternalUIEvent, SOCKET_NAME, UIMessage};
 
 #[derive(GodotClass)]
 #[class(base=Node)]
@@ -21,9 +22,15 @@ pub struct IPC {
 
     listener: Listener,
 
-    streams: Vec<Stream>,
+    streams: Vec<(SendHalf, BufReader<RecvHalf>, Vec<u8>)>,
 
-    event_queue: Vec<UIEvent>,
+    event_queue: VecDeque<InternalUIEvent>,
+
+    pub devices: BTreeMap<u32, (String, Option<Library>)>,
+
+    pub deck_state: DeckState,
+
+    pub devices_changed: bool,
 }
 
 impl IPC {}
@@ -43,47 +50,95 @@ impl INode for IPC {
 
         Self {
             base,
+
             listener,
+
             streams: Vec::new(),
-            event_queue: Vec::new(),
+
+            event_queue: VecDeque::new(),
+
+            devices: BTreeMap::new(),
+
+            deck_state: DeckState::default(),
+
+            devices_changed: false,
         }
     }
 
     fn process(&mut self, _delta: f64) {
-        while let Ok(stream) = self.listener.accept() {
-            self.streams.push(stream);
+        self.devices_changed = false;
+
+        while let Ok(connection) = self.listener.accept() {
+            let (receiver, sender) = connection.split();
+
+            let receiver = BufReader::new(receiver);
+
+            self.streams.push((sender, receiver, Vec::new()));
         }
 
-        for stream in &self.streams {
-            // stream.read
-        }
+        for (_, reader, read_buffer) in &mut self.streams {
+            let Ok(_) = reader.read_until(b'\n', read_buffer) else {
+                continue;
+            };
+            read_buffer.remove(read_buffer.len() - 1);
 
-        // process events
+            if let Ok(serialized_message) = BASE64_STANDARD.decode(&read_buffer)
+                && let Ok(archived) =
+                    rkyv::access::<ArchivedUIMessage, rkyv::rancor::Error>(&serialized_message)
+                && let Ok(deserialized) =
+                    rkyv::deserialize::<UIMessage, rkyv::rancor::Error>(archived)
+            {
+                match deserialized {
+                    UIMessage::DeviceConnected(device, name) => {
+                        let _ = self.devices.insert(device, (name, None));
 
-        while let Some(event) = self.event_queue.pop() {
-            if let Ok(serialized_event) = rkyv::to_bytes::<rkyv::rancor::Error>(&event) {
-                let mut dead_streams: Vec<usize> = self
-                    .streams
-                    .iter()
-                    .enumerate()
-                    .map(|(i, mut stream)| {
-                        match stream.write_all(
-                            (BASE64_STANDARD.encode(serialized_event.clone()) + "\n").as_bytes(),
-                        ) {
-                            Ok(()) => (i, true),
-                            Err(_) => (i, false),
+                        godot_print!("device connected");
+
+                        self.event_queue
+                            .push_back(InternalUIEvent::GetLibrary(device));
+
+                        self.devices_changed = true;
+                    }
+                    UIMessage::DeviceDisconnected(device) => {
+                        let _ = self.devices.remove(&device);
+
+                        self.devices_changed = true;
+
+                        godot_print!("device disconnected");
+                    }
+                    UIMessage::UpdateDeckState(deck_state) => {
+                        self.deck_state = deck_state;
+                    }
+                    UIMessage::DeviceLibrary { device, library } => {
+                        if let Some(device) = self.devices.get_mut(&device) {
+                            device.1 = Some(library);
                         }
-                    })
-                    .filter_map(|(i, success)| if success { None } else { Some(i) })
-                    .collect();
 
-                dead_streams.sort_by(|a, b| b.cmp(a));
+                        self.devices_changed = true;
 
-                for index in dead_streams {
-                    let _ = self.streams.try_remove(index);
+                        godot_print!("device library");
+                    }
+                }
+            }
+
+            read_buffer.clear();
+        }
+
+        while let Some(event) = self.event_queue.pop_front() {
+            if let Ok(serialized_event) = rkyv::to_bytes::<rkyv::rancor::Error>(&event) {
+                for (stream, _, _) in &mut self.streams {
+                    let _ = stream.write_all(
+                        (BASE64_STANDARD.encode(serialized_event.clone()) + "\n").as_bytes(),
+                    );
                 }
             }
         }
+    }
+}
+
+impl IPC {
+    pub fn send_event(&mut self, ui_event: InternalUIEvent) {
+        self.event_queue.push_back(ui_event);
     }
 }
 

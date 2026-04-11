@@ -1,12 +1,8 @@
 use rkyv::{Archive, Deserialize, Serialize};
 
-use crate::types::library::Track;
+use crate::{MIXER_CHANNELS, types::library::Track};
 
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub enum TempoPercent {
-    Zero,
-    Percent(f32),
-}
+pub type DeckUpdate = Box<dyn FnOnce(&mut DeckState) + Send>;
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub enum TempoRange {
@@ -17,17 +13,35 @@ pub enum TempoRange {
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub enum PlayDirection {
+pub enum PlayState {
     Stop,
-    Forward,
-    Reverse,
-    SlipReverse,
-    Jog,
-    SlipJog,
+    Play,
+    Cue,
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub enum CrossfaderSide {
+pub enum BeatSyncMode {
+    Off,
+    BPMSync,
+    BeatSync,
+}
+
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+pub enum JogState {
+    Released,
+    PitchBend(f32),
+    Jog(f32),
+}
+
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+pub enum BeatLoopAdjustMode {
+    None,
+    In,
+    Out,
+}
+
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+pub enum CrossFaderSide {
     A,
     B,
     None,
@@ -46,7 +60,7 @@ pub enum FilterEffect {
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct DeckState {
-    pub channels: [ChannelState; 4],
+    pub mixer_channels: [ChannelState; MIXER_CHANNELS],
 
     pub filter_effect: FilterEffect,
 
@@ -56,9 +70,6 @@ pub struct DeckState {
 
     pub crossfade: f32,
 
-    pub quanitze: bool,
-    pub slip: bool,
-
     pub master_cue: bool,
     pub master_gain: f32, // decibels
     pub booth_gain: f32,  // decibels
@@ -67,7 +78,7 @@ pub struct DeckState {
 impl Default for DeckState {
     fn default() -> Self {
         Self {
-            channels: Default::default(),
+            mixer_channels: Default::default(),
 
             filter_effect: FilterEffect::None,
 
@@ -76,9 +87,6 @@ impl Default for DeckState {
             crossfade: 0.5,
 
             master_channel: None,
-
-            quanitze: true,
-            slip: false,
 
             master_cue: false,
             master_gain: 0.0,
@@ -90,68 +98,107 @@ impl Default for DeckState {
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct ChannelState {
-    pub current_track: Option<Track>,
+    pub player: PlayerState,
 
-    pub beat_sync: bool,
-    pub key_sync: bool,
+    pub fade: f32, // percent
 
-    pub play_direction: PlayDirection,
-    pub time: f32,
-    pub slip_time: f32,
-    pub cue_time: Option<f32>,
-    pub needle_time: Option<f32>,
+    pub gain: f32,           // decibels
+    pub eq: (f32, f32, f32), // decibels
+    pub filter: f32,         // percent
 
-    pub beat_loop_start: Option<f32>,
-    pub beat_loop_end: Option<f32>,
+    pub cross_fader_side: CrossFaderSide,
 
-    // todo: remove this and do time-based interpolation + on the fly bpm calculation
-    pub bpm: f32,
-    pub tempo_range: TempoRange,
-    pub tempo_percent: TempoPercent,
-    pub master_tempo: bool,
-
-    pub keyshift: i8, // semitones
-
-    pub gain: f32, // decibels
-    pub eq: (f32, f32, f32),
-    pub filter: f32,
-
-    pub crossfader_side: CrossfaderSide,
-
-    pub cue: bool,
+    pub cue: bool, // cue enabled
 }
 
 impl Default for ChannelState {
     fn default() -> Self {
         Self {
-            current_track: None,
+            player: PlayerState::default(),
 
-            beat_sync: false,
-            key_sync: false,
-
-            play_direction: PlayDirection::Stop,
-            time: 0.0,
-            slip_time: 0.0,
-            cue_time: None,
-            needle_time: None,
-
-            beat_loop_start: None,
-            beat_loop_end: None,
-
-            bpm: 0.0,
-            tempo_range: TempoRange::TenPercent,
-            tempo_percent: TempoPercent::Percent(0.0),
-            master_tempo: true,
-
-            keyshift: 0,
+            fade: 1.0,
 
             gain: 0.0,
             eq: (0.0, 0.0, 0.0),
             filter: 0.0,
 
-            crossfader_side: CrossfaderSide::None,
+            cross_fader_side: CrossFaderSide::None,
 
             cue: false,
+        }
+    }
+}
+
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
+pub struct PlayerState {
+    pub current_track: Option<(u32, Track)>,
+    pub is_loading: bool,
+
+    pub beat_sync: BeatSyncMode,
+    pub key_sync: bool,
+
+    pub quanitze: bool,
+
+    pub jog_state: JogState,
+    pub play_state: PlayState,
+    pub time: f32,                   // seconds
+    pub cue_time: Option<f32>,       // seconds/cue not set
+    pub touch_cue_time: Option<f32>, // seconds/touch cue not active
+    pub reverse_enabled: bool,
+
+    pub tempo_range: TempoRange,
+    pub tempo_reset: bool,  // tempo reset enabled
+    pub tempo_percent: f32, // tempo percent
+    pub tempo_slider_is_accurate: bool,
+    pub master_tempo: bool, // master tempo enabled
+
+    pub slip: bool,         // slip enabled
+    pub slip_playing: bool, // slip playing
+    pub slip_time: f32,     // seconds
+
+    pub beat_loop_start: Option<f32>,       // seconds/start not set
+    pub beat_loop_end: Option<f32>,         // seconds/end not set
+    pub last_beat_loop: Option<(f32, f32)>, // (start seconds, end seconds)/no previous loop
+    pub beat_loop_adjust_mode: BeatLoopAdjustMode,
+
+    pub keyshift: f32, // semitones
+}
+
+impl Default for PlayerState {
+    fn default() -> Self {
+        Self {
+            current_track: None,
+            is_loading: false,
+
+            beat_sync: BeatSyncMode::Off,
+            key_sync: false,
+
+            quanitze: true,
+
+            jog_state: JogState::Released,
+            play_state: PlayState::Stop,
+            time: 0.0,
+            cue_time: None,
+            touch_cue_time: None,
+            reverse_enabled: false,
+
+            tempo_range: TempoRange::TenPercent,
+            tempo_reset: false,
+            tempo_percent: 0.0,
+            tempo_slider_is_accurate: true,
+            master_tempo: true,
+
+            slip: false,
+            slip_playing: false,
+            slip_time: 0.0,
+
+            beat_loop_start: None,
+            beat_loop_end: None,
+            last_beat_loop: None,
+            beat_loop_adjust_mode: BeatLoopAdjustMode::None,
+
+            keyshift: 0.0,
         }
     }
 }

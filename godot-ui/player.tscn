@@ -16,7 +16,29 @@ bg_color = Color(1, 0.50822866, 0.054931685, 1)
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_i3pqv"]
 texture = ExtResource("3_i3pqv")
 
-[node name="PanelContainer" type="PanelContainer"]
+[node name="PanelContainer" type="PlayerContainer" node_paths=PackedStringArray("player_data", "not_loaded", "loading", "player_number_label", "album_art", "track_detail_title", "track_detail_time", "track_detail_bpm", "track_detail_key", "time_remain_label", "time_time_label", "track_time", "track_time_fractional", "tempo_sign", "tempo_percent", "tempo_percent_fractional", "tempo_range", "bpm", "bpm_fractional", "bpm_master", "key", "master_tempo")]
+player_data = NodePath("Player")
+not_loaded = NodePath("Not Loaded")
+loading = NodePath("Loading")
+player_number_label = NodePath("Player/Deck Number/Number")
+album_art = NodePath("Player/Album Art")
+track_detail_title = NodePath("Player/Top Details/Details/Title")
+track_detail_time = NodePath("Player/Top Details/Details/HBoxContainer/Time")
+track_detail_bpm = NodePath("Player/Top Details/Details/HBoxContainer/BPM")
+track_detail_key = NodePath("Player/Top Details/Details/HBoxContainer/Key")
+time_remain_label = NodePath("Player/Top Details/Time/Label Container/Remain")
+time_time_label = NodePath("Player/Top Details/Time/Label Container/Time")
+track_time = NodePath("Player/Top Details/Time/Time Number/Number")
+track_time_fractional = NodePath("Player/Top Details/Time/Time Number/Fraction")
+tempo_sign = NodePath("Player/Top Details/Tempo/Tempo Number/Sign")
+tempo_percent = NodePath("Player/Top Details/Tempo/Tempo Number/Number")
+tempo_percent_fractional = NodePath("Player/Top Details/Tempo/Tempo Number/Fraction")
+tempo_range = NodePath("Player/Top Details/Tempo/Label Container/Panel/Tempo Range")
+bpm = NodePath("Player/BPM/BPM Number/Whole")
+bpm_fractional = NodePath("Player/BPM/BPM Number/Fraction")
+bpm_master = NodePath("Player/BPM/Label Container/Panel")
+key = NodePath("Player/Key/Key")
+master_tempo = NodePath("Player/Key/Label Container/Master Tempo")
 offset_top = 126.0
 offset_right = 619.0
 offset_bottom = 248.0
@@ -50,6 +72,7 @@ custom_minimum_size = Vector2(1, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("1_onrkg")
+alignment = 1
 
 [node name="Title" type="Label" parent="Player/Top Details/Details"]
 custom_minimum_size = Vector2(1, 0)
@@ -96,7 +119,6 @@ layout_mode = 2
 [node name="Remain" type="Label" parent="Player/Top Details/Time/Label Container"]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
-theme_override_colors/font_color = Color(0.3137255, 0.3137255, 0.3137255, 1)
 theme_override_font_sizes/font_size = 12
 text = "REMAIN"
 vertical_alignment = 2
@@ -115,10 +137,10 @@ theme_override_font_sizes/font_size = 12
 text = "TIME"
 vertical_alignment = 2
 
-[node name="Tempo Number" type="HBoxContainer" parent="Player/Top Details/Time"]
+[node name="Time Number" type="HBoxContainer" parent="Player/Top Details/Time"]
 layout_mode = 2
 
-[node name="Number" type="Label" parent="Player/Top Details/Time/Tempo Number"]
+[node name="Number" type="Label" parent="Player/Top Details/Time/Time Number"]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 32
@@ -126,7 +148,7 @@ text = "02:35"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Fraction" type="Label" parent="Player/Top Details/Time/Tempo Number"]
+[node name="Fraction" type="Label" parent="Player/Top Details/Time/Time Number"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme = ExtResource("1_onrkg")
@@ -159,7 +181,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_i3pqv")
 
-[node name="Master Tempo" type="Label" parent="Player/Top Details/Tempo/Label Container/Panel"]
+[node name="Tempo Range" type="Label" parent="Player/Top Details/Tempo/Label Container/Panel"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -284,17 +306,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxTexture_i3pqv")
 
-[node name="Loading" type="Label" parent="Player/Waveform"]
-z_index = 1
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 0
-theme = ExtResource("1_onrkg")
-theme_override_font_sizes/font_size = 12
-text = "LOADING..."
-horizontal_alignment = 1
-vertical_alignment = 2
-
 [node name="Cues" type="Control" parent="Player/Waveform"]
 layout_mode = 2
 size_flags_vertical = 0
@@ -332,3 +343,20 @@ theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 32
 text = "Cm"
 vertical_alignment = 2
+
+[node name="Not Loaded" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="Not Loaded" type="Label" parent="Not Loaded"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.3254902, 0.25882354, 1)
+theme_override_font_sizes/font_size = 32
+text = "NOT LOADED"
+
+[node name="Loading" type="CenterContainer" parent="."]
+layout_mode = 2
+
+[node name="Loading" type="Label" parent="Loading"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "LOADING..."

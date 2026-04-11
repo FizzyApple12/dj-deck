@@ -54,7 +54,7 @@ impl Device {
             return Err(OpenDeviceError::NoBlockDevice);
         };
 
-        let (mount_point, device_number) = match mount_disk(&disk).await {
+        let (mount_point, device_number, device_name) = match mount_disk(&disk).await {
             Ok(pair) => pair,
             Err(err) => {
                 return Err(OpenDeviceError::MountFailed(err));
@@ -72,6 +72,8 @@ impl Device {
             }
         };
 
+        println!("name: {device_name}");
+
         Ok(Device {
             number: device_number,
 
@@ -79,7 +81,7 @@ impl Device {
 
             mount_point,
 
-            name: String::new(),
+            name: device_name,
 
             database,
         })
@@ -191,8 +193,8 @@ pub enum DiskMountError {
     NoMatchingFilesystem,
 }
 
-async fn mount_disk(disk: &str) -> Result<(PathBuf, u32), DiskMountError> {
-    let device_name = match find_first_partition(disk).await {
+async fn mount_disk(disk: &str) -> Result<(PathBuf, u32, String), DiskMountError> {
+    let (partition_name, device_path) = match find_first_partition(disk).await {
         Ok(pair) => pair,
         Err(err) => {
             return Err(DiskMountError::NoPartitions(err));
@@ -216,13 +218,13 @@ async fn mount_disk(disk: &str) -> Result<(PathBuf, u32), DiskMountError> {
 
     for filesystem in filesystems {
         if let Ok(()) = mount(
-            Some(device_name.as_path()),
+            Some(device_path.as_path()),
             mount_point.as_path(),
             Some(filesystem),
             MsFlags::MS_RELATIME,
             None::<&str>,
         ) {
-            return Ok((mount_point, device_number));
+            return Ok((mount_point, device_number, partition_name));
         }
     }
 
@@ -235,9 +237,12 @@ async fn mount_disk(disk: &str) -> Result<(PathBuf, u32), DiskMountError> {
 pub enum FindPartitionError {
     #[error("No Free Mount Points Available: {0}")]
     BlockReadError(tokio::io::Error),
+
+    #[error("No Partitions Found on Device")]
+    NoAvailablePartitions,
 }
 
-async fn find_first_partition(disk: &str) -> Result<PathBuf, FindPartitionError> {
+async fn find_first_partition(disk: &str) -> Result<(String, PathBuf), FindPartitionError> {
     let block = Path::new("/sys/class/block");
 
     let mut entries = match fs::read_dir(block).await {
@@ -261,15 +266,48 @@ async fn find_first_partition(disk: &str) -> Result<PathBuf, FindPartitionError>
     }
 
     if partitions.is_empty() {
-        return Ok(PathBuf::from(format!("/dev/{disk}")));
+        let partition_name = get_partition_name(disk).await.unwrap_or(disk.to_string());
+
+        return Ok((partition_name, PathBuf::from(format!("/dev/{disk}"))));
     }
 
     partitions.sort();
 
-    Ok(PathBuf::from(format!(
-        "/dev/{}",
-        partitions.first().expect("partitions is not empty")
-    )))
+    let Some(partition) = partitions.first() else {
+        return Err(FindPartitionError::NoAvailablePartitions);
+    };
+
+    let partition_name = get_partition_name(&format!("{disk}/{partition}"))
+        .await
+        .unwrap_or(partition.clone());
+
+    Ok((partition_name, PathBuf::from(format!("/dev/{partition}"))))
+}
+
+async fn get_partition_name(block_device: &str) -> Option<String> {
+    let Ok(udev_device) =
+        fs::read_to_string(Path::new(&format!("/sys/class/block/{block_device}/dev"))).await
+    else {
+        return None;
+    };
+
+    let udev_device = udev_device.replace('\n', "");
+
+    let Ok(udev_device_info) =
+        fs::read_to_string(Path::new(&format!("/run/udev/data/b{udev_device}"))).await
+    else {
+        return None;
+    };
+
+    for line in udev_device_info.lines() {
+        if (line.contains("ID_FS_LABEL") || line.contains("ID_FS_LABEL_ENC"))
+            && let Some(name) = line.split('=').next_back()
+        {
+            return Some(name.to_string());
+        }
+    }
+
+    None
 }
 
 #[derive(Error, Debug)]

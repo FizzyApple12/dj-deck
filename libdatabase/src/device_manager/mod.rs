@@ -5,7 +5,7 @@ use std::{
 };
 
 use nix::mount::{MntFlags, umount2};
-use nusb::hotplug::HotplugEvent;
+use nusb::{DeviceId, hotplug::HotplugEvent};
 use thiserror::Error;
 use tokio::{fs, task::JoinHandle};
 use tokio_stream::{Stream, StreamExt};
@@ -17,8 +17,11 @@ pub mod device;
 pub struct DeviceManager {
     pub devices: Arc<Mutex<HashMap<u32, Device>>>,
 
+    id_to_number_map: Arc<Mutex<HashMap<DeviceId, u32>>>,
+
     task_handle: JoinHandle<()>,
 
+    event_sender: tokio::sync::mpsc::Sender<DeviceManagerEvent>,
     event_receiver: tokio::sync::mpsc::Receiver<DeviceManagerEvent>,
 }
 
@@ -35,8 +38,10 @@ pub enum DeviceManagerEvent {
 }
 
 impl DeviceManager {
+    #[allow(clippy::too_many_lines)]
     pub fn start() -> Result<DeviceManager, StartDeviceManagerError> {
         let device_list = Arc::new(Mutex::new(HashMap::new()));
+        let id_to_number_map = Arc::new(Mutex::new(HashMap::new()));
 
         let (event_sender, event_receiver) = tokio::sync::mpsc::channel(16);
 
@@ -48,10 +53,13 @@ impl DeviceManager {
         };
 
         let cloned_device_list = device_list.clone();
+        let cloned_event_sender = event_sender.clone();
+        let cloned_id_to_number_map = id_to_number_map.clone();
 
         let task_handle = tokio::task::spawn(async move {
             let device_list = cloned_device_list;
-            let id_to_number_map = Arc::new(Mutex::new(HashMap::new()));
+            let event_sender = cloned_event_sender;
+            let id_to_number_map = cloned_id_to_number_map;
 
             if let Ok(devices) = nusb::list_devices().await {
                 for device in devices {
@@ -153,10 +161,36 @@ impl DeviceManager {
         Ok(DeviceManager {
             devices: device_list,
 
+            id_to_number_map,
+
             task_handle,
 
+            event_sender,
             event_receiver,
         })
+    }
+
+    // for some reason clippy doesn't recognise that this is fixed
+    #[allow(clippy::await_holding_lock)]
+    pub async fn eject(&mut self, id: u32) {
+        if let Ok(mut locked_device_database) = self.devices.lock()
+            && let Ok(mut locked_id_to_number_map) = self.id_to_number_map.lock()
+            && let Some(device) = locked_device_database.remove(&id)
+        {
+            locked_id_to_number_map.retain(|_, value| *value != id);
+
+            drop(locked_device_database);
+            drop(locked_id_to_number_map);
+
+            device.eject().await;
+
+            unmount_stale_mounts().await;
+
+            let _ = self
+                .event_sender
+                .send(DeviceManagerEvent::DeviceDisconnected(id))
+                .await;
+        }
     }
 
     #[allow(clippy::await_holding_lock)] // we need to hold the lock until the drain is complete

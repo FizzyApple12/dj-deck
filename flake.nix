@@ -59,8 +59,11 @@
             pkgs.wayland
             pkgs.wayland-protocols
             pkgs.wayland-scanner
+
             pkgs.alsa-lib
             pkgs.libjack2
+            pkgs.pipewire
+            pkgs.pipewire.jack
           ];
           buildInputs = [
             pkgs.clang

@@ -1,6 +1,7 @@
-#![feature(vec_try_remove)]
-
+pub mod browser;
 pub mod ipc;
+pub mod menu;
+pub mod player;
 pub mod types;
 
 use godot::prelude::*;

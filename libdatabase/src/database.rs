@@ -6,7 +6,7 @@ use std::{
 
 use binrw::BinRead;
 use libdj::types::library::{
-    Album, Artist, Artwork, Beat, CueType, Genre, HotCue, Label, Library, MemoryCue, Playlist,
+    Album, Artist, Artwork, Beat, CueType, Genre, HotCue, Key, Label, Library, MemoryCue, Playlist,
     PlaylistFolder, PlaylistTreeNode, PreviewWaveformColumn, TinyPreviewWaveformColumn, Track,
     WaveformColumn,
 };
@@ -32,7 +32,7 @@ pub enum OpenDatabaseError {
 }
 
 impl Database {
-    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines, clippy::cast_precision_loss)]
     pub fn open(device_root: &Path) -> Result<Database, OpenDatabaseError> {
         let pdb_path = device_root.join(Path::new("PIONEER/rekordbox/export.pdb"));
 
@@ -48,6 +48,7 @@ impl Database {
         let mut artwork_cache = BTreeMap::new();
         let mut genre_cache = BTreeMap::new();
         let mut label_cache = BTreeMap::new();
+        let mut key_cache = BTreeMap::new();
 
         let mut track_cache = BTreeMap::new();
 
@@ -74,6 +75,15 @@ impl Database {
                                                 id: album.id.0,
                                                 artist_id: album.artist_id.0,
                                                 name: album.offsets.name.to_string(),
+                                            },
+                                        );
+                                    }
+                                    rekordcrate::pdb::PlainRow::Key(key) => {
+                                        key_cache.insert(
+                                            key.id.0,
+                                            Key {
+                                                id: key.id.0,
+                                                name: key.name.to_string(),
                                             },
                                         );
                                     }
@@ -202,9 +212,9 @@ impl Database {
                                                     rekordcrate::anlz::Content::BeatGrid(beat_grid) => {
                                                    		for beat in beat_grid.beats {
                                                     		beat_grid_cache.push(Beat {
-                                                     			beat_number: u32::from(beat.beat_number),
-                                                       			tempo: u32::from(beat.tempo),
-                                                         		time: beat.time,
+                                                     			beat_number: f32::from(beat.beat_number),
+                                                       			bpm: f32::from(beat.tempo) * 100.0,
+                                                         		time: beat.time as f32 / 1000.0,
                                                       		});
                                                      	}
                                                     },
@@ -212,7 +222,7 @@ impl Database {
                                                   		for cue in cue_list.cues {
                                                  			if cue.hot_cue == 0 {
                                                  				memory_cues_cache.push(MemoryCue {
-                                                        			time: cue.time,
+                                                        			time: cue.time as f32 / 1000.0,
                                                         			comment: String::new(),
                                                      			});
                                                     		} else {
@@ -220,9 +230,9 @@ impl Database {
                                                         			cue_number: cue.hot_cue,
                                                         			cue_type: match cue.cue_type {
                                                             			rekordcrate::anlz::CueType::Point => CueType::Point,
-                                                            			rekordcrate::anlz::CueType::Loop => CueType::Loop(cue.loop_time),
+                                                            			rekordcrate::anlz::CueType::Loop => CueType::Loop(cue.loop_time as f32 / 1000.0),
                                                            			},
-                                                        			time: cue.time,
+                                                        			time: cue.time as f32 / 1000.0,
                                                         			comment: String::new(),
                                                         			color_index: 0,
                                                         			color_rgb: (255, 255, 255),
@@ -234,7 +244,7 @@ impl Database {
                                                   		for cue in extended_cue_list.cues {
                                                  			if cue.hot_cue == 0 {
                                                  				memory_cues_cache.push(MemoryCue {
-                                                        			time: cue.time,
+                                                        			time: cue.time as f32 / 1000.0,
                                                         			comment: cue.comment.to_string(),
                                                      			});
                                                     		} else {
@@ -242,9 +252,9 @@ impl Database {
                                                         			cue_number: cue.hot_cue,
                                                         			cue_type: match cue.cue_type {
                                                             			rekordcrate::anlz::CueType::Point => CueType::Point,
-                                                            			rekordcrate::anlz::CueType::Loop => CueType::Loop(cue.loop_time),
+                                                            			rekordcrate::anlz::CueType::Loop => CueType::Loop(cue.loop_time as f32 / 1000.0),
                                                            			},
-                                                        			time: cue.time,
+                                                        			time: cue.time as f32 / 1000.0,
                                                         			comment: cue.comment.to_string(),
                                                         			color_index: cue.hot_cue_color_index,
                                                         			color_rgb: cue.hot_cue_color_rgb,
@@ -289,7 +299,7 @@ impl Database {
                                                 title: track.offsets.title.to_string(),
 
                                                 #[allow(clippy::cast_precision_loss)]
-                                                tempo: track.tempo as f32,
+                                                bpm: track.tempo as f32 / 100.0,
                                                 duration: f32::from(track.duration),
 
                                                 composer_id: track.composer_id.0,
@@ -300,6 +310,7 @@ impl Database {
                                                 album_id: track.album_id.0,
                                                 genre_id: track.genre_id.0,
                                                 artwork_id: track.artwork_id.0,
+                                                key_id: track.key_id.0,
 
                                                 audio_path: device_root.join(PathBuf::from(
                                                     relativeify_path_string(
@@ -335,6 +346,7 @@ impl Database {
                 artworks: artwork_cache,
                 genres: genre_cache,
                 labels: label_cache,
+                keys: key_cache,
 
                 tracks: track_cache,
 

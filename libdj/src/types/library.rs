@@ -10,6 +10,7 @@ pub type LabelID = u32;
 pub type AlbumID = u32;
 pub type TrackID = u32;
 pub type GenreID = u32;
+pub type KeyID = u32;
 pub type PlaylistTreeNodeID = u32;
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
@@ -19,6 +20,7 @@ pub struct Library {
     pub artworks: BTreeMap<ArtworkID, Artwork>,
     pub genres: BTreeMap<GenreID, Genre>,
     pub labels: BTreeMap<LabelID, Label>,
+    pub keys: BTreeMap<KeyID, Key>,
 
     pub tracks: BTreeMap<TrackID, Track>,
 
@@ -49,6 +51,12 @@ pub struct Artwork {
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Genre {
     pub id: GenreID,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
+pub struct Key {
+    pub id: KeyID,
     pub name: String,
 }
 
@@ -97,7 +105,7 @@ pub struct Track {
 
     pub title: String,
 
-    pub tempo: f32,
+    pub bpm: f32,
     pub duration: f32,
 
     pub composer_id: ArtistID,
@@ -108,6 +116,7 @@ pub struct Track {
     pub album_id: AlbumID,
     pub genre_id: GenreID,
     pub artwork_id: ArtworkID,
+    pub key_id: KeyID,
 
     #[rkyv(with = PathBufAsString)]
     pub audio_path: PathBuf,
@@ -122,20 +131,20 @@ pub struct Track {
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub struct Beat {
-    pub beat_number: u32,
-    pub tempo: u32,
-    pub time: u32,
+    pub beat_number: f32,
+    pub bpm: f32,
+    pub time: f32,
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub enum CueType {
     Point,
-    Loop(u32),
+    Loop(f32),
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct MemoryCue {
-    pub time: u32,
+    pub time: f32,
     pub comment: String,
 }
 
@@ -143,7 +152,7 @@ pub struct MemoryCue {
 pub struct HotCue {
     pub cue_number: u32,
     pub cue_type: CueType,
-    pub time: u32,
+    pub time: f32,
     pub comment: String,
     pub color_index: u8,
     pub color_rgb: (u8, u8, u8),

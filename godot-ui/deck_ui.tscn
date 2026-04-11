@@ -1,8 +1,10 @@
-[gd_scene load_steps=39 format=3 uid="uid://c8nc6wpsppvjd"]
+[gd_scene load_steps=41 format=3 uid="uid://c8nc6wpsppvjd"]
 
 [ext_resource type="Theme" uid="uid://d05qtmsvetwx2" path="res://theme.tres" id="1_1q5r0"]
+[ext_resource type="PackedScene" uid="uid://csjsh2y5oe0ii" path="res://device_list_entry.tscn" id="1_eur0n"]
 [ext_resource type="Texture2D" uid="uid://dfmhduky8hp71" path="res://test-big-waveform.png" id="2_pjlna"]
 [ext_resource type="PackedScene" uid="uid://c6v24sohg60tp" path="res://player.tscn" id="2_w13nq"]
+[ext_resource type="PackedScene" uid="uid://bgfjac34nmsfb" path="res://track_list_entry.tscn" id="2_xi870"]
 [ext_resource type="Shader" uid="uid://cx0jx0ojg74tb" path="res://blur.gdshader" id="4_nh2gx"]
 [ext_resource type="PackedScene" uid="uid://nlrkhyn4mju7" path="res://cdj/cdj.fbx" id="5_fsqqd"]
 [ext_resource type="Texture2D" uid="uid://xbh1sq1hp2l5" path="res://rekordbox.jpg" id="5_ofw3a"]
@@ -2631,6 +2633,17 @@ disable_receive_shadows = true
 
 [node name="IPC" type="IPC" parent="."]
 
+[node name="Menu" type="Menu" parent="." node_paths=PackedStringArray("ipc", "players", "browser", "browser_devices", "browser_playlist", "browser_tracks")]
+ipc = NodePath("../IPC")
+players = NodePath("../Deck UI/VBoxContainer/Players")
+browser = NodePath("../Deck UI/VBoxContainer/Browser")
+browser_devices = NodePath("../Deck UI/VBoxContainer/Browser/Views/Devices")
+browser_playlist = NodePath("../Deck UI/VBoxContainer/Browser/Views/Playlist")
+browser_tracks = NodePath("../Deck UI/VBoxContainer/Browser/Views/Tracks")
+browser_device_list_entry = ExtResource("1_eur0n")
+browser_playlist_entry = ExtResource("1_eur0n")
+browser_track_entry = ExtResource("2_xi870")
+
 [node name="Deck UI" type="VBoxContainer" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
@@ -2641,29 +2654,52 @@ pivot_offset = Vector2(960, 540)
 theme = ExtResource("1_1q5r0")
 theme_override_constants/separation = 12
 
+[node name="HBoxContainer" type="HBoxContainer" parent="Deck UI"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+
+[node name="Source Button" type="Button" parent="Deck UI/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SOURCE"
+
+[node name="Browse Button" type="Button" parent="Deck UI/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "BROWSE"
+
+[node name="Playlist Button" type="Button" parent="Deck UI/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "PLAYLIST"
+
 [node name="VBoxContainer" type="VBoxContainer" parent="Deck UI"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="External" type="HBoxContainer" parent="Deck UI/VBoxContainer"]
+[node name="Players" type="VBoxContainer" parent="Deck UI/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="External" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players"]
 layout_mode = 2
 
-[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/External"]
+[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/External"]
 custom_minimum_size = Vector2(48, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme = ExtResource("1_1q5r0")
 theme_override_constants/separation = -8
 
-[node name="Label" type="Label" parent="Deck UI/VBoxContainer/External/Deck Number"]
+[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Players/External/Deck Number"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 12
-text = "EXT"
+text = "MST"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="External" type="TextureRect" parent="Deck UI/VBoxContainer/External"]
+[node name="External" type="TextureRect" parent="Deck UI/VBoxContainer/Players/External"]
 custom_minimum_size = Vector2(0, 82)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -2671,18 +2707,18 @@ theme = ExtResource("1_1q5r0")
 texture = ExtResource("2_pjlna")
 expand_mode = 2
 
-[node name="Left Deck" type="HBoxContainer" parent="Deck UI/VBoxContainer"]
+[node name="Left Deck" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Left Deck"]
+[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Left Deck"]
 custom_minimum_size = Vector2(48, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme = ExtResource("1_1q5r0")
 theme_override_constants/separation = -8
 
-[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Left Deck/Deck Number"]
+[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Players/Left Deck/Deck Number"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 12
@@ -2690,7 +2726,7 @@ text = "PLAYER"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Left Deck/Deck Number"]
+[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Players/Left Deck/Deck Number"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 32
@@ -2698,13 +2734,13 @@ text = "1"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="Waveform" type="VBoxContainer" parent="Deck UI/VBoxContainer/Left Deck"]
+[node name="Waveform" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Left Deck"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = -24
 
-[node name="Bars" type="HBoxContainer" parent="Deck UI/VBoxContainer/Left Deck/Waveform"]
+[node name="Bars" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players/Left Deck/Waveform"]
 z_index = 1
 custom_minimum_size = Vector2(98, 0)
 layout_mode = 2
@@ -2712,7 +2748,7 @@ size_flags_horizontal = 4
 theme_override_constants/separation = 8
 alignment = 2
 
-[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Left Deck/Waveform/Bars"]
+[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Players/Left Deck/Waveform/Bars"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 16
@@ -2720,14 +2756,14 @@ text = "42.4"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Units" type="Label" parent="Deck UI/VBoxContainer/Left Deck/Waveform/Bars"]
+[node name="Units" type="Label" parent="Deck UI/VBoxContainer/Players/Left Deck/Waveform/Bars"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 16
 text = "BARS"
 vertical_alignment = 2
 
-[node name="Waveform" type="TextureRect" parent="Deck UI/VBoxContainer/Left Deck/Waveform"]
+[node name="Waveform" type="TextureRect" parent="Deck UI/VBoxContainer/Players/Left Deck/Waveform"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -2735,18 +2771,18 @@ theme = ExtResource("1_1q5r0")
 texture = ExtResource("2_pjlna")
 expand_mode = 2
 
-[node name="Right Deck" type="HBoxContainer" parent="Deck UI/VBoxContainer"]
+[node name="Right Deck" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Right Deck"]
+[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Right Deck"]
 custom_minimum_size = Vector2(48, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme = ExtResource("1_1q5r0")
 theme_override_constants/separation = -8
 
-[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Right Deck/Deck Number"]
+[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Players/Right Deck/Deck Number"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 12
@@ -2754,7 +2790,7 @@ text = "PLAYER"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Right Deck/Deck Number"]
+[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Players/Right Deck/Deck Number"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 32
@@ -2762,13 +2798,13 @@ text = "1"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="Waveform" type="VBoxContainer" parent="Deck UI/VBoxContainer/Right Deck"]
+[node name="Waveform" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Right Deck"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = -24
 
-[node name="Bars" type="HBoxContainer" parent="Deck UI/VBoxContainer/Right Deck/Waveform"]
+[node name="Bars" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players/Right Deck/Waveform"]
 z_index = 1
 custom_minimum_size = Vector2(98, 0)
 layout_mode = 2
@@ -2776,7 +2812,7 @@ size_flags_horizontal = 4
 theme_override_constants/separation = 8
 alignment = 2
 
-[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Right Deck/Waveform/Bars"]
+[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Players/Right Deck/Waveform/Bars"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 16
@@ -2784,35 +2820,69 @@ text = "42.4"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Units" type="Label" parent="Deck UI/VBoxContainer/Right Deck/Waveform/Bars"]
+[node name="Units" type="Label" parent="Deck UI/VBoxContainer/Players/Right Deck/Waveform/Bars"]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 16
 text = "BARS"
 vertical_alignment = 2
 
-[node name="Waveform" type="TextureRect" parent="Deck UI/VBoxContainer/Right Deck/Waveform"]
+[node name="Waveform" type="TextureRect" parent="Deck UI/VBoxContainer/Players/Right Deck/Waveform"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme = ExtResource("1_1q5r0")
 texture = ExtResource("2_pjlna")
 expand_mode = 2
+
+[node name="Browser" type="ScrollContainer" parent="Deck UI/VBoxContainer"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Views" type="HBoxContainer" parent="Deck UI/VBoxContainer/Browser"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("1_1q5r0")
+theme_override_constants/separation = 12
+
+[node name="Devices" type="VBoxContainer" parent="Deck UI/VBoxContainer/Browser/Views"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Playlist" type="VBoxContainer" parent="Deck UI/VBoxContainer/Browser/Views"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Tracks" type="VBoxContainer" parent="Deck UI/VBoxContainer/Browser/Views"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="GridContainer" type="GridContainer" parent="Deck UI"]
 layout_mode = 2
 columns = 2
 
-[node name="HBoxContainer" parent="Deck UI/GridContainer" instance=ExtResource("2_w13nq")]
+[node name="Player 1" parent="Deck UI/GridContainer" node_paths=PackedStringArray("ipc") instance=ExtResource("2_w13nq")]
+ipc = NodePath("../../../IPC")
 layout_mode = 2
 
-[node name="HBoxContainer2" parent="Deck UI/GridContainer" instance=ExtResource("2_w13nq")]
+[node name="Player 2" parent="Deck UI/GridContainer" node_paths=PackedStringArray("ipc") instance=ExtResource("2_w13nq")]
+player_number = 1
+ipc = NodePath("../../../IPC")
 layout_mode = 2
 
-[node name="HBoxContainer3" parent="Deck UI/GridContainer" instance=ExtResource("2_w13nq")]
+[node name="Player 3" parent="Deck UI/GridContainer" node_paths=PackedStringArray("ipc") instance=ExtResource("2_w13nq")]
+player_number = 2
+ipc = NodePath("../../../IPC")
 layout_mode = 2
 
-[node name="HBoxContainer4" parent="Deck UI/GridContainer" instance=ExtResource("2_w13nq")]
+[node name="Player 4" parent="Deck UI/GridContainer" node_paths=PackedStringArray("ipc") instance=ExtResource("2_w13nq")]
+player_number = 3
+ipc = NodePath("../../../IPC")
 layout_mode = 2
 
 [node name="Overlay Blur" type="ColorRect" parent="."]
@@ -2888,7 +2958,7 @@ size = Vector2i(800, 800)
 render_target_update_mode = 0
 
 [node name="turntable camera root" type="Node3D" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport"]
-transform = Transform3D(0.70710653, -0.49999976, 0.49999973, 0, 0.7071065, 0.7071064, -0.70710653, -0.49999976, 0.49999973, -2, 0.10041365, 0)
+transform = Transform3D(0.70710653, -0.49999964, 0.49999958, 0, 0.7071063, 0.70710623, -0.70710653, -0.49999964, 0.49999958, -2, 0.10041365, 0)
 
 [node name="turntable camera" type="Camera3D" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer2/SubViewport/turntable camera root"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
@@ -2908,7 +2978,7 @@ size = Vector2i(800, 800)
 render_target_update_mode = 0
 
 [node name="cdj camera root" type="Node3D" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport"]
-transform = Transform3D(0.7071067, -0.49999985, 0.49999988, 0, 0.7071065, 0.70710677, -0.7071067, -0.49999985, 0.49999988, 2, 0.055, 0)
+transform = Transform3D(0.7071067, -0.49999973, 0.49999976, 0, 0.70710635, 0.7071066, -0.7071067, -0.49999973, 0.49999976, 2, 0.055, 0)
 
 [node name="cdj camera" type="Camera3D" parent="History of DJing/VBoxContainer/HBoxContainer/SubViewportContainer/SubViewport/cdj camera root"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
@@ -2970,7 +3040,7 @@ stretch = true
 [node name="SubViewport" type="SubViewport" parent="DFT and Spectrogram/VBoxContainer/SubViewportContainer"]
 transparent_bg = true
 handle_input_locally = false
-size = Vector2i(1542, 800)
+size = Vector2i(1200, 800)
 render_target_update_mode = 0
 
 [node name="dft camera root" type="Node3D" parent="DFT and Spectrogram/VBoxContainer/SubViewportContainer/SubViewport"]
@@ -3067,6 +3137,10 @@ transform = Transform3D(0.015, 0, 0, 0, -4, 3.3551265e-07, 0, -6.039832e-07, -2.
 mesh = SubResource("QuadMesh_dg30y")
 skeleton = NodePath("../main")
 surface_material_override/0 = SubResource("StandardMaterial3D_5fhjh")
+
+[connection signal="pressed" from="Deck UI/HBoxContainer/Source Button" to="Menu" method="source_pressed"]
+[connection signal="pressed" from="Deck UI/HBoxContainer/Browse Button" to="Menu" method="browse_pressed"]
+[connection signal="pressed" from="Deck UI/HBoxContainer/Playlist Button" to="Menu" method="playlist_pressed"]
 
 [editable path="cdj visualization/cdj"]
 [editable path="turntable visualization/turntable"]

@@ -1,0 +1,363 @@
+use godot::{
+    classes::{CanvasItem, IPanelContainer, Label, PanelContainer, TextureRect},
+    prelude::*,
+};
+use libdj::types::deck::TempoRange;
+
+use crate::ipc::IPC;
+
+#[derive(GodotClass)]
+#[class(base=PanelContainer)]
+pub struct PlayerContainer {
+    base: Base<PanelContainer>,
+
+    #[export]
+    player_number: i32,
+
+    #[export]
+    ipc: OnEditor<Gd<IPC>>,
+
+    #[export]
+    player_data: OnEditor<Gd<CanvasItem>>,
+
+    #[export]
+    not_loaded: OnEditor<Gd<CanvasItem>>,
+
+    #[export]
+    loading: OnEditor<Gd<CanvasItem>>,
+
+    #[export]
+    player_number_label: OnEditor<Gd<Label>>,
+
+    #[export]
+    album_art: OnEditor<Gd<TextureRect>>,
+
+    #[export]
+    track_detail_title: OnEditor<Gd<Label>>,
+    #[export]
+    track_detail_time: OnEditor<Gd<Label>>,
+    #[export]
+    track_detail_bpm: OnEditor<Gd<Label>>,
+    #[export]
+    track_detail_key: OnEditor<Gd<Label>>,
+
+    #[export]
+    time_remain_label: OnEditor<Gd<Label>>,
+    #[export]
+    time_time_label: OnEditor<Gd<Label>>,
+    #[export]
+    track_time: OnEditor<Gd<Label>>,
+    #[export]
+    track_time_fractional: OnEditor<Gd<Label>>,
+
+    #[export]
+    tempo_sign: OnEditor<Gd<Label>>,
+    #[export]
+    tempo_percent: OnEditor<Gd<Label>>,
+    #[export]
+    tempo_percent_fractional: OnEditor<Gd<Label>>,
+    #[export]
+    tempo_range: OnEditor<Gd<Label>>,
+
+    #[export]
+    bpm: OnEditor<Gd<Label>>,
+    #[export]
+    bpm_fractional: OnEditor<Gd<Label>>,
+    #[export]
+    bpm_master: OnEditor<Gd<CanvasItem>>,
+
+    #[export]
+    key: OnEditor<Gd<Label>>,
+    #[export]
+    master_tempo: OnEditor<Gd<CanvasItem>>,
+
+    display_remain: bool,
+}
+
+impl PlayerContainer {}
+
+#[godot_api]
+impl IPanelContainer for PlayerContainer {
+    fn init(base: Base<PanelContainer>) -> Self {
+        Self {
+            base,
+
+            player_number: 0,
+
+            ipc: OnEditor::default(),
+
+            player_data: OnEditor::default(),
+
+            not_loaded: OnEditor::default(),
+
+            loading: OnEditor::default(),
+
+            player_number_label: OnEditor::default(),
+
+            album_art: OnEditor::default(),
+
+            track_detail_title: OnEditor::default(),
+            track_detail_time: OnEditor::default(),
+            track_detail_bpm: OnEditor::default(),
+            track_detail_key: OnEditor::default(),
+
+            time_remain_label: OnEditor::default(),
+            time_time_label: OnEditor::default(),
+            track_time: OnEditor::default(),
+            track_time_fractional: OnEditor::default(),
+
+            tempo_sign: OnEditor::default(),
+            tempo_percent: OnEditor::default(),
+            tempo_percent_fractional: OnEditor::default(),
+            tempo_range: OnEditor::default(),
+
+            bpm: OnEditor::default(),
+            bpm_fractional: OnEditor::default(),
+            bpm_master: OnEditor::default(),
+
+            key: OnEditor::default(),
+            master_tempo: OnEditor::default(),
+
+            display_remain: true,
+        }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn process(&mut self, _delta: f64) {
+        let ipc = self.ipc.bind();
+
+        #[allow(clippy::cast_sign_loss)]
+        let Some(channel_data) = ipc
+            .deck_state
+            .mixer_channels
+            .get(self.player_number as usize)
+        else {
+            return;
+        };
+
+        self.player_number_label
+            .set_text(&format!("{}", self.player_number + 1));
+
+        if channel_data.player.is_loading {
+            self.player_data.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.0,
+            });
+            self.not_loaded.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.0,
+            });
+            self.loading.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 1.0,
+            });
+
+            return;
+        }
+
+        let Some((device, track)) = &channel_data.player.current_track else {
+            self.player_data.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.0,
+            });
+            self.not_loaded.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 1.0,
+            });
+            self.loading.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.0,
+            });
+
+            return;
+        };
+
+        let Some((_device_name, Some(device_library))) = &ipc.devices.get(device) else {
+            self.player_data.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.0,
+            });
+            self.not_loaded.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 1.0,
+            });
+            self.loading.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.0,
+            });
+
+            return;
+        };
+
+        self.player_data.set_modulate(Color {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        self.not_loaded.set_modulate(Color {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 0.0,
+        });
+        self.loading.set_modulate(Color {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: 0.0,
+        });
+
+        self.track_detail_title.set_text(&track.title);
+        self.track_detail_time.set_text(&format!(
+            "{:.0}:{:02.0}",
+            (track.duration / 60.0).floor(),
+            (track.duration % 60.0).floor(),
+        ));
+        self.track_detail_bpm.set_text(&format!("{:.1}", track.bpm));
+        self.track_detail_key.set_text(
+            device_library
+                .keys
+                .get(&track.key_id)
+                .map_or(&String::new(), |key| &key.name),
+        );
+
+        self.time_remain_label.set_modulate(if self.display_remain {
+            Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 1.0,
+            }
+        } else {
+            Color {
+                r: 0.31,
+                g: 0.31,
+                b: 0.31,
+                a: 1.0,
+            }
+        });
+        self.time_time_label.set_modulate(if self.display_remain {
+            Color {
+                r: 0.31,
+                g: 0.31,
+                b: 0.31,
+                a: 1.0,
+            }
+        } else {
+            Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 1.0,
+            }
+        });
+        self.track_time.set_text(&if self.display_remain {
+            format!(
+                "{:.0}:{:02.0}",
+                ((track.duration - channel_data.player.time).abs() / 60.0).floor(),
+                ((track.duration - channel_data.player.time) % 60.0).floor(),
+            )
+        } else {
+            format!(
+                "{:.0}:{:02.0}",
+                (channel_data.player.time / 60.0).floor(),
+                (channel_data.player.time % 60.0).floor(),
+            )
+        });
+        self.track_time_fractional
+            .set_text(&if self.display_remain {
+                format!(
+                    ".{:03.0}",
+                    ((track.duration - channel_data.player.time).fract() * 1000.0).floor(),
+                )
+            } else {
+                format!(
+                    ".{:03.0}",
+                    (channel_data.player.time.fract() * 1000.0).floor()
+                )
+            });
+
+        self.tempo_sign
+            .set_text(if channel_data.player.tempo_percent < -f32::EPSILON {
+                "-"
+            } else {
+                "+"
+            });
+        self.tempo_percent
+            .set_text(&format!("{:.0}", channel_data.player.tempo_percent.floor()));
+        self.tempo_percent_fractional.set_text(&format!(
+            ".{:02.0}",
+            (channel_data.player.tempo_percent.fract() * 100.0).floor()
+        ));
+        self.tempo_range
+            .set_text(match channel_data.player.tempo_range {
+                TempoRange::SixPercent => "± 6",
+                TempoRange::TenPercent => "± 10",
+                TempoRange::SixteenPercent => "± 16",
+                TempoRange::OneHundredPercent => "WIDE",
+            });
+
+        self.bpm.set_text(&format!(
+            "{:.0}",
+            channel_data.player.get_current_bpm().unwrap_or(0.0).floor()
+        ));
+        self.bpm_fractional.set_text(&format!(
+            ".{:01.0}",
+            (channel_data.player.get_current_bpm().unwrap_or(0.0).fract() * 10.0).floor()
+        ));
+        #[allow(clippy::cast_sign_loss)]
+        self.bpm_master.set_modulate(Color {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: if let Some(master) = ipc.deck_state.master_channel
+                && master == self.player_number as usize
+            {
+                1.0
+            } else {
+                0.0
+            },
+        });
+
+        self.key.set_text(
+            device_library
+                .keys
+                .get(&track.key_id)
+                .map_or(&String::new(), |key| &key.name),
+        );
+
+        self.master_tempo.set_modulate(Color {
+            r: 1.0,
+            g: 1.0,
+            b: 1.0,
+            a: if channel_data.player.master_tempo {
+                1.0
+            } else {
+                0.0
+            },
+        });
+    }
+}
+
+impl Drop for PlayerContainer {
+    fn drop(&mut self) {}
+}

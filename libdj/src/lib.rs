@@ -8,7 +8,22 @@ use rkyv::{
     with::{ArchiveWith, DeserializeWith, SerializeWith},
 };
 
+pub mod audio_system;
+pub mod math;
+pub mod playback;
 pub mod types;
+
+pub const PLAYBACK_SAMPLE_RATE: usize = 44100;
+pub const MAX_BUFFER_SIZE: usize = 128;
+
+pub const MIXER_CHANNELS: usize = 4;
+pub const AUDIO_CHANNELS: usize = 2;
+
+pub const MIXER_MIN_FREQUENCY: f32 = 0.0;
+pub const MIXER_MAX_FREQUENCY: f32 = 22000.0;
+
+pub const MIXER_EQ_LOW_CUTOFF: f32 = 880.0;
+pub const MIXER_EQ_HIGH_CUTOFF: f32 = 5000.0;
 
 pub struct PathBufAsString;
 

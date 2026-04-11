@@ -1,42 +1,82 @@
-use std::time::Duration;
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
 
 use libdatabase::device_manager::{DeviceManager, DeviceManagerEvent, device::OpenDeviceError};
-use libdj::types::deck::{DeckState, PlayDirection, TempoPercent};
-use libui::{
-    gui::UI,
-    types::ui::{UIEvent, UIMessage},
+use libdj::{
+    audio_system::{AudioManager, audio_loader::TrackAudioData},
+    types::{
+        deck::{DeckState, DeckUpdate},
+        library::Track,
+    },
 };
-use tokio::signal;
+use libui::{
+    controller::Controller,
+    gui::UI,
+    types::{
+        controller::ControllerMessage,
+        ui::{UIEvent, UIMessage},
+    },
+};
 use tokio_stream::StreamExt;
 
+#[allow(clippy::too_many_lines)]
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
-async fn main() {
-    let mut device_manager = match DeviceManager::start() {
-        Ok(device_manager) => device_manager,
-        Err(err) => {
-            println!("failed to start device manager: {err:#?}");
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let (deck_state_sender, deck_state_receiver) =
+        tokio::sync::watch::channel(DeckState::default());
+    let (deck_update_sender, deck_update_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-            return;
-        }
-    };
-
-    let mut ui = match UI::start_ui().await {
-        Ok(ui) => ui,
-        Err(err) => {
-            println!("failed to start ui: {err:#?}");
-
-            device_manager.stop().await;
-
-            return;
-        }
-    };
-
-    let mut temp_deck_state = DeckState::default();
+    // let mut deck_state = DeckState::default();
+    // let mut deck_update_interval =
+    // tokio::time::interval(Duration::from_millis(10));
+    // let mut last_process_instant = Instant::now();
 
     // todo: vsync?
-    let mut ui_deck_update_interval = tokio::time::interval(Duration::from_millis(5));
+    let mut ui_deck_update_interval = tokio::time::interval(Duration::from_millis(10));
 
-    let mut deck_update_interval = tokio::time::interval(Duration::from_millis(1));
+    let (loaded_track_sender, loaded_track_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    println!("Starting Audio Manager...");
+
+    let mut audio_manager = AudioManager::new()?;
+
+    println!("Finding DJ Deck Audio...");
+
+    let dj_deck_node = audio_manager.find_node_by_name_substring("DDJ-FLX10")?;
+
+    println!("Creating Full Audio Pipeline...");
+
+    audio_manager.create_full_audio_pipeline(
+        deck_update_receiver,
+        deck_state_sender,
+        loaded_track_receiver,
+        dj_deck_node,
+    )?;
+
+    println!("Creating Midi IO...");
+
+    let midi_receiver = audio_manager.create_midi_input()?;
+    let midi_sender = audio_manager.create_midi_output()?;
+
+    println!("Starting Audio...");
+
+    audio_manager.start();
+
+    println!("Starting Device Manager...");
+
+    let mut device_manager = DeviceManager::start()?;
+
+    println!("Starting PUI...");
+
+    let controller = Controller::start_ui(midi_sender, midi_receiver, deck_update_sender.clone());
+
+    println!("Starting GUI...");
+
+    let mut ui = UI::start_ui(deck_update_sender.clone()).await?;
+
+    println!("Ready");
 
     loop {
         tokio::select! {
@@ -45,12 +85,9 @@ async fn main() {
                     Some(DeviceManagerEvent::DeviceConnected(Ok(id))) => {
                         println!("Device {id} Connected Successfully");
 
-                        let _ = ui.send(UIMessage::DeviceConnected(id));
+                        let name = device_manager.devices.lock().unwrap().get(&id).unwrap().name.clone();
 
-                        // if let Ok(locked_device_database) = device_manager.devices.lock()
-                        //     && let Some(device) = locked_device_database.get(&id) {
-                        //     println!("Device Database: {:#?}", device.database.library);
-                        // }
+                        let _ = ui.send(UIMessage::DeviceConnected(id, name));
                     }
                     Some(DeviceManagerEvent::DeviceConnected(Err(err))) => {
                         if let OpenDeviceError::InvalidDeviceType = err {
@@ -72,45 +109,54 @@ async fn main() {
             }
             ui_event = ui.next() => {
                 if let Some(ui_event) = ui_event {
+                    println!("UI Event: {ui_event:#?}");
+
                     match ui_event {
-                        UIEvent::LoadTrack { device, id, playlist: _, deck } => {
-                            if let Some(deck) = temp_deck_state.channels.get_mut(deck)
-                                && let Ok(locked_device_database) = device_manager.devices.lock()
-                                && let Some(device) = locked_device_database.get(&device)
-                                   && let Some(track) = device.database.library.tracks.get(&id){
+                        UIEvent::LoadTrack { device, id, player } => {
+                            if let Ok(locked_device_database) = device_manager.devices.lock()
+                                && let Some(qualified_device) = locked_device_database.get(&device)
+                                && let Some(track) = qualified_device.database.library.tracks.get(&id) {
+                                let _ = loaded_track_sender.send((player, None));
 
-                                deck.current_track = Some(track.clone());
+                                let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+                                    if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
+                                        mixer_channel.player.current_track = None;
+                                        mixer_channel.player.is_loading = true;
 
-                                deck.time = 0.0;
-                                deck.slip_time = 0.0;
-                                deck.cue_time = None;
-                                deck.needle_time = None;
+                                        mixer_channel.player.time = 0.0;
+                                        mixer_channel.player.slip_time = 0.0;
+                                        mixer_channel.player.cue_time = None;
+                                        mixer_channel.player.touch_cue_time = None;
 
-                                deck.beat_loop_start = None;
-                                deck.beat_loop_end = None;
+                                        mixer_channel.player.beat_loop_start = None;
+                                        mixer_channel.player.beat_loop_end = None;
 
-                                // node: this is bad, switch this when moving to libdj
-                                deck.bpm = track.tempo;
+                                        mixer_channel.player.keyshift = 0.0;
+                                    }
+                                }));
 
-                                deck.keyshift = 0;
+                                start_load_task(player, device, track.clone(), deck_update_sender.clone(), loaded_track_sender.clone());
                             }
                         },
-                        UIEvent::Eject(deck) => {
-                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
-                               deck.current_track = None;
+                        UIEvent::Eject(player) => {
+                            let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+                                if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
+                                    mixer_channel.player.current_track = None;
+                                    mixer_channel.player.is_loading = false;
 
-                               deck.time = 0.0;
-                               deck.slip_time = 0.0;
-                               deck.cue_time = None;
-                               deck.needle_time = None;
+                                    mixer_channel.player.time = 0.0;
+                                    mixer_channel.player.slip_time = 0.0;
+                                    mixer_channel.player.cue_time = None;
+                                    mixer_channel.player.touch_cue_time = None;
 
-                               deck.beat_loop_start = None;
-                               deck.beat_loop_end = None;
+                                    mixer_channel.player.beat_loop_start = None;
+                                    mixer_channel.player.beat_loop_end = None;
 
-                               deck.bpm = 0.0;
+                                    mixer_channel.player.keyshift = 0.0;
+                                }
+                            }));
 
-                               deck.keyshift = 0;
-                            }
+                            let _ = loaded_track_sender.send((player, None));
                         }
                         UIEvent::GetLibrary(id) => {
                             if let Ok(locked_device_database) = device_manager.devices.lock()
@@ -121,96 +167,65 @@ async fn main() {
                                 });
                             }
                         },
-                        UIEvent::NeedleSearch { needle_time, deck } => {
-                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
-                               deck.needle_time = needle_time;
-                            }
-                        },
-                        UIEvent::BeatJump { beats, deck } => {
-                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
-                                deck.time += beats * (1. / deck.bpm) * 60.;
-                            }
-                        },
-                        UIEvent::SetBeatLoop { beats, deck } => {
-                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
-                                deck.beat_loop_start = Some(deck.time);
-                                deck.beat_loop_end = Some(deck.time + (beats * (1. / deck.bpm) * 60.));
-                            }
-                        },
-                        UIEvent::DoubleBeatLoop(deck) => {
-                            if let Some(deck) = temp_deck_state.channels.get_mut(deck)
-                               && let Some(beat_loop_start) = deck.beat_loop_start
-                               && let Some(beat_loop_end) = deck.beat_loop_end {
-                                deck.beat_loop_start = Some(deck.time);
-                                deck.beat_loop_end = Some(beat_loop_end + (beat_loop_end - beat_loop_start));
-                            }
-                        },
-                        UIEvent::HalveBeatLoop(deck) => {
-                            if let Some(deck) = temp_deck_state.channels.get_mut(deck)
-                               && let Some(beat_loop_start) = deck.beat_loop_start
-                               && let Some(beat_loop_end) = deck.beat_loop_end {
-                                deck.beat_loop_start = Some(deck.time);
-                                deck.beat_loop_end = Some(beat_loop_end - ((beat_loop_end - beat_loop_start) / 2.));
-                            }
-                        },
-                        UIEvent::SetKeyShift { deck, semitones } => {
-                            if let Some(deck) = temp_deck_state.channels.get_mut(deck) {
-                                deck.keyshift = semitones;
-                            }
+                        UIEvent::EjectDevice(id) => {
+                            device_manager.eject(id).await;
                         },
                     }
-
-                    println!("UI Event: {ui_event:#?}");
                 } else {
                     println!("UI Hung Up");
                     break;
                 }
             }
             _ = ui_deck_update_interval.tick() => {
-                let _ = ui.send(UIMessage::UpdateDeckState(temp_deck_state.clone()));
-            }
-            _ = deck_update_interval.tick() => {
-                #[allow(clippy::explicit_iter_loop)] // i think this is more readable
-                for deck in temp_deck_state.channels.iter_mut() {
-                    let tempo_percent = match deck.tempo_percent {
-                        TempoPercent::Zero => 0.0,
-                        TempoPercent::Percent(percent) => percent,
-                    };
+                let deck_state = deck_state_receiver.borrow();
 
-                    match deck.play_direction {
-                        PlayDirection::Stop => {},
-                        PlayDirection::Forward => {
-                            deck.time += 0.001 * tempo_percent;
-                            deck.slip_time += 0.001 * tempo_percent;
-                        },
-                        PlayDirection::Reverse => {
-                            deck.time -= 0.001 * tempo_percent;
-                            deck.slip_time -= 0.001 * tempo_percent;
-                        },
-                        PlayDirection::SlipReverse => {
-                            deck.time -= 0.001 * tempo_percent;
-                            deck.slip_time += 0.001 * tempo_percent;
-                        },
-                        PlayDirection::Jog => {
-                            deck.slip_time = deck.time;
-                        },
-                        PlayDirection::SlipJog => {
-                            deck.slip_time += 0.001 * tempo_percent;
-                        },
-                    }
+                let _ = controller.send(ControllerMessage::UpdateDeckState(deck_state.clone()));
+                let _ = controller.send(ControllerMessage::UpdateCurrentSamples([0.0, 0.0, 0.0, 0.0]));
 
-                    if let Some(beat_loop_start) = deck.beat_loop_start
-                        && let Some(beat_loop_end) = deck.beat_loop_end {
-                        if deck.time < beat_loop_start {
-                            deck.time += beat_loop_end - beat_loop_start;
-                        } else if deck.time > beat_loop_end {
-                            deck.time -= beat_loop_end - beat_loop_start;
-                        }
-                    }
-                }
+                let _ = ui.send(UIMessage::UpdateDeckState(deck_state.clone()));
             }
         }
     }
 
+    drop(ui);
+    drop(controller);
+
     device_manager.stop().await;
+
+    Ok(())
+}
+
+pub fn start_load_task(
+    player: usize,
+    device: u32,
+    track: Track,
+    deck_update_sender: tokio::sync::mpsc::UnboundedSender<DeckUpdate>,
+    loaded_track_sender: tokio::sync::mpsc::UnboundedSender<(usize, Option<Box<TrackAudioData>>)>,
+) {
+    thread::spawn(move || {
+        let audio_data = match TrackAudioData::load_from_file(&track) {
+            Ok(audio_data) => audio_data,
+            Err(err) => {
+                // todo: build a way to propagate errors to the ui
+                println!("TRACK LOAD ERROR: {err:?}");
+
+                let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+                    if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
+                        mixer_channel.player.is_loading = false;
+                    }
+                }));
+
+                return;
+            }
+        };
+
+        let _ = loaded_track_sender.send((player, Some(Box::new(audio_data))));
+
+        let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+            if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
+                mixer_channel.player.current_track = Some((device, track));
+                mixer_channel.player.is_loading = false;
+            }
+        }));
+    });
 }

@@ -1,0 +1,35 @@
+[gd_scene load_steps=2 format=3 uid="uid://csjsh2y5oe0ii"]
+
+[ext_resource type="Texture2D" uid="uid://004wsuy0x5uf" path="res://eject.png" id="1_gd735"]
+
+[node name="Device List Entry" type="DeviceListEntry" node_paths=PackedStringArray("device_name_label")]
+device_name_label = NodePath("Device Name")
+offset_right = 450.0
+offset_bottom = 56.0
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Eject Button" type="Button" parent="."]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+icon = ExtResource("1_gd735")
+icon_alignment = 1
+
+[node name="Device Name" type="Label" parent="."]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "DEVICE NAME"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Browse Button" type="Button" parent="."]
+custom_minimum_size = Vector2(200, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "BROWSE"
+icon_alignment = 1
+
+[connection signal="pressed" from="Eject Button" to="." method="eject"]
+[connection signal="pressed" from="Browse Button" to="." method="browse"]

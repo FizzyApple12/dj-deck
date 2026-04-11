@@ -1,6 +1,6 @@
 use libdj::types::{
     deck::DeckState,
-    library::{Library, PlaylistTreeNodeID, TrackID},
+    library::{Library, TrackID},
 };
 use rkyv::{Archive, Deserialize, Serialize};
 
@@ -8,7 +8,7 @@ pub const SOCKET_NAME: &str = "/tmp/lib_godot.sock";
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub enum UIMessage {
-    DeviceConnected(u32),
+    DeviceConnected(u32, String),
     DeviceDisconnected(u32),
 
     UpdateDeckState(DeckState),
@@ -21,29 +21,42 @@ pub enum UIEvent {
     LoadTrack {
         device: u32,
         id: TrackID,
-        playlist: Option<PlaylistTreeNodeID>,
-        deck: usize,
+        player: usize,
     },
     Eject(usize),
 
     GetLibrary(u32),
+    EjectDevice(u32),
+}
 
-    NeedleSearch {
-        needle_time: Option<f32>,
-        deck: usize,
+#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
+pub enum InternalUIEvent {
+    LoadTrack {
+        device: u32,
+        id: TrackID,
+        player: usize,
+    },
+    Eject(usize),
+
+    GetLibrary(u32),
+    EjectDevice(u32),
+
+    TouchCue {
+        cue_time: Option<f32>,
+        player: usize,
     },
     BeatJump {
         beats: f32,
-        deck: usize,
+        player: usize,
     },
     SetBeatLoop {
         beats: f32,
-        deck: usize,
+        player: usize,
     },
     DoubleBeatLoop(usize),
     HalveBeatLoop(usize),
     SetKeyShift {
-        deck: usize,
-        semitones: i8,
+        player: usize,
+        semitones: f32,
     },
 }
