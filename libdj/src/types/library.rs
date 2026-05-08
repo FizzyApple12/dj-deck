@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use rkyv::{Archive, Deserialize, Serialize};
 
-use crate::PathBufAsString;
+use crate::{PathBufAsString, types::timecode::Timecode};
 
 pub type ArtistID = u32;
 pub type ArtworkID = u32;
@@ -106,7 +106,7 @@ pub struct Track {
     pub title: String,
 
     pub bpm: f32,
-    pub duration: f32,
+    pub duration: u32,
 
     pub composer_id: ArtistID,
     pub artist_id: ArtistID,
@@ -131,20 +131,20 @@ pub struct Track {
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub struct Beat {
-    pub beat_number: f32,
+    pub beat_number: u32,
     pub bpm: f32,
-    pub time: f32,
+    pub time: Timecode,
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub enum CueType {
     Point,
-    Loop(f32),
+    Loop(Timecode),
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct MemoryCue {
-    pub time: f32,
+    pub time: Timecode,
     pub comment: String,
 }
 
@@ -152,7 +152,7 @@ pub struct MemoryCue {
 pub struct HotCue {
     pub cue_number: u32,
     pub cue_type: CueType,
-    pub time: f32,
+    pub time: Timecode,
     pub comment: String,
     pub color_index: u8,
     pub color_rgb: (u8, u8, u8),

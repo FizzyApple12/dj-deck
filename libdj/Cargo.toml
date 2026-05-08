@@ -7,13 +7,14 @@ edition.workspace = true
 rkyv.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-pipewire = "0.9.2"
-pipewire-sys = "0.9.2"
-libspa-sys = "0.9.2"
-cute-dsp = "0.0.40"
-symphonia = { version = "0.5.5", features = ["opt-simd","all-codecs","all-formats"] }
+cpal = { git = "https://github.com/RustAudio/cpal.git", features = [ "pipewire" ] }
+midir = { version = "0.11.0", features = [ ] }
+symphonia = { version = "0.5.5", features = [ "opt-simd", "all-codecs", "all-formats" ] }
 symphonia-core = "0.5.5"
-midir = "0.10.3"
+libdsp = { path = "../libdsp" }
+
+alsa-sys.version = "0.4.0"
+alsa.version = "0.11"
 
 [lints]
 workspace = true

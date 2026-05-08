@@ -1,0 +1,10 @@
+[package]
+name = "libdsp"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+num = "0.4.3"
+
+[lints]
+workspace = true

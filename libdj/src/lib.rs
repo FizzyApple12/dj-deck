@@ -13,8 +13,8 @@ pub mod math;
 pub mod playback;
 pub mod types;
 
-pub const PLAYBACK_SAMPLE_RATE: usize = 44100;
-pub const MAX_BUFFER_SIZE: usize = 128;
+// pub const PLAYBACK_SAMPLE_RATE: usize = 44100;
+// pub const MAX_BUFFER_SIZE: usize = 128;
 
 pub const MIXER_CHANNELS: usize = 4;
 pub const AUDIO_CHANNELS: usize = 2;

@@ -1,6 +1,9 @@
 use rkyv::{Archive, Deserialize, Serialize};
 
-use crate::{MIXER_CHANNELS, types::library::Track};
+use crate::{
+    MIXER_CHANNELS,
+    types::{library::Track, timecode::Timecode},
+};
 
 pub type DeckUpdate = Box<dyn FnOnce(&mut DeckState) + Send>;
 
@@ -142,10 +145,11 @@ pub struct PlayerState {
 
     pub jog_state: JogState,
     pub play_state: PlayState,
-    pub time: f32,                   // seconds
-    pub cue_time: Option<f32>,       // seconds/cue not set
-    pub touch_cue_time: Option<f32>, // seconds/touch cue not active
+    pub time: Timecode,
+    pub cue_time: Option<Timecode>,       // timecode/cue not set
+    pub touch_cue_time: Option<Timecode>, // timecode/touch cue not active
     pub reverse_enabled: bool,
+    pub effective_direction: isize,
 
     pub tempo_range: TempoRange,
     pub tempo_reset: bool,  // tempo reset enabled
@@ -155,11 +159,12 @@ pub struct PlayerState {
 
     pub slip: bool,         // slip enabled
     pub slip_playing: bool, // slip playing
-    pub slip_time: f32,     // seconds
+    pub slip_time: Timecode,
 
-    pub beat_loop_start: Option<f32>,       // seconds/start not set
-    pub beat_loop_end: Option<f32>,         // seconds/end not set
-    pub last_beat_loop: Option<(f32, f32)>, // (start seconds, end seconds)/no previous loop
+    pub beat_loop_start: Option<Timecode>, // timecode/start not set
+    pub beat_loop_end: Option<Timecode>,   // timecode/end not set
+    pub last_beat_loop: Option<(Timecode, Timecode)>, /* (start timecode, end timecode)/no
+                                            * previous loop */
     pub beat_loop_adjust_mode: BeatLoopAdjustMode,
 
     pub keyshift: f32, // semitones
@@ -178,10 +183,11 @@ impl Default for PlayerState {
 
             jog_state: JogState::Released,
             play_state: PlayState::Stop,
-            time: 0.0,
+            time: Timecode::zero(),
             cue_time: None,
             touch_cue_time: None,
             reverse_enabled: false,
+            effective_direction: 0,
 
             tempo_range: TempoRange::TenPercent,
             tempo_reset: false,
@@ -191,7 +197,7 @@ impl Default for PlayerState {
 
             slip: false,
             slip_playing: false,
-            slip_time: 0.0,
+            slip_time: Timecode::zero(),
 
             beat_loop_start: None,
             beat_loop_end: None,

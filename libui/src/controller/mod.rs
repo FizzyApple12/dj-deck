@@ -30,7 +30,7 @@ pub enum ControllerSendError {
 
 impl Controller {
     #[allow(clippy::too_many_lines)]
-    pub fn start_ui(
+    pub fn start_hmi(
         midi_sender: tokio::sync::mpsc::UnboundedSender<MidiMessage>,
         mut midi_receiver: tokio::sync::mpsc::UnboundedReceiver<MidiMessage>,
         deck_update_sender: tokio::sync::mpsc::UnboundedSender<DeckUpdate>,
@@ -140,6 +140,7 @@ const fn midi_to_addr_value(midi: [u8; 3]) -> (u16, u8) {
     (((midi[0] as u16) << 8) + (midi[1] as u16), midi[2])
 }
 
+#[allow(clippy::too_many_lines)]
 fn process_midi_command(
     address: u16,
     value: u8,
@@ -427,7 +428,7 @@ fn set_deck_leds(
                 }
                 PlayState::Stop => {
                     if let Some(cue_time) = player_state.cue_time {
-                        if f32::abs(player_state.time - cue_time) < f32::EPSILON {
+                        if player_state.time == cue_time {
                             let _ = midi_output.send(addr_channel_value_to_midi(
                                 0x900C,
                                 channel as u16,

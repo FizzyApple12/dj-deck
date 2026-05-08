@@ -38,7 +38,7 @@ pub struct Menu {
 
     #[export]
     browser_playlist: OnEditor<Gd<CanvasItem>>,
-    browser_playlist_list: Vec<Gd<VBoxContainer>>,
+    _browser_playlist_list: Vec<Gd<VBoxContainer>>,
 
     #[export]
     browser_tracks: OnEditor<Gd<CanvasItem>>,
@@ -51,10 +51,10 @@ pub struct Menu {
     #[export]
     browser_track_entry: OnEditor<Gd<PackedScene>>,
 
-    menu_state: MenuState,
+    state: MenuState,
 
     current_device: Option<u32>,
-    current_playlist: Option<PlaylistTreeNodeID>,
+    _current_playlist: Option<PlaylistTreeNodeID>,
 }
 
 impl Menu {}
@@ -75,7 +75,7 @@ impl INode for Menu {
             browser_devices_list: Vec::new(),
 
             browser_playlist: OnEditor::default(),
-            browser_playlist_list: Vec::new(),
+            _browser_playlist_list: Vec::new(),
 
             browser_tracks: OnEditor::default(),
             browser_tracks_list: Vec::new(),
@@ -84,10 +84,10 @@ impl INode for Menu {
             browser_playlist_entry: OnEditor::default(),
             browser_track_entry: OnEditor::default(),
 
-            menu_state: MenuState::Players,
+            state: MenuState::Players,
 
             current_device: None,
-            current_playlist: None,
+            _current_playlist: None,
         }
     }
 
@@ -106,7 +106,7 @@ impl INode for Menu {
             drop(ipc);
         }
 
-        match self.menu_state {
+        match self.state {
             MenuState::Players => {
                 self.players.set_visible(true);
 
@@ -174,14 +174,14 @@ impl Menu {
         self.current_device = Some(device);
 
         self.refresh_tracks_list();
-        self.menu_state = MenuState::BrowseTracks;
+        self.state = MenuState::BrowseTracks;
     }
 
     pub fn go_to_players(&mut self) {
-        self.menu_state = MenuState::Players;
+        self.state = MenuState::Players;
     }
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation, clippy::unused_self)]
     fn refresh_playlist_list(&mut self) {}
 
     #[allow(clippy::cast_possible_truncation)]
@@ -210,7 +210,7 @@ impl Menu {
                 self.browser_tracks_list.push(new_track_entry);
             }
         } else {
-            self.menu_state = MenuState::BrowseDevices;
+            self.state = MenuState::BrowseDevices;
         }
     }
 }
@@ -219,52 +219,52 @@ impl Menu {
 impl Menu {
     #[func]
     fn source_pressed(&mut self) {
-        if let MenuState::BrowseDevices = self.menu_state {
-            self.menu_state = MenuState::Players;
+        if let MenuState::BrowseDevices = self.state {
+            self.state = MenuState::Players;
 
             return;
         }
 
         self.refresh_device_list();
-        self.menu_state = MenuState::BrowseDevices;
+        self.state = MenuState::BrowseDevices;
     }
 
     #[func]
     fn browse_pressed(&mut self) {
-        if let MenuState::BrowseTracks = self.menu_state {
-            self.menu_state = MenuState::Players;
+        if let MenuState::BrowseTracks = self.state {
+            self.state = MenuState::Players;
 
             return;
         }
 
         if self.current_device.is_none() {
             self.refresh_device_list();
-            self.menu_state = MenuState::BrowseDevices;
+            self.state = MenuState::BrowseDevices;
 
             return;
         }
 
         self.refresh_tracks_list();
-        self.menu_state = MenuState::BrowseTracks;
+        self.state = MenuState::BrowseTracks;
     }
 
     #[func]
     fn playlist_pressed(&mut self) {
-        if let MenuState::BrowsePlaylist = self.menu_state {
-            self.menu_state = MenuState::Players;
+        if let MenuState::BrowsePlaylist = self.state {
+            self.state = MenuState::Players;
 
             return;
         }
 
         if self.current_device.is_none() {
             self.refresh_device_list();
-            self.menu_state = MenuState::BrowseDevices;
+            self.state = MenuState::BrowseDevices;
 
             return;
         }
 
         self.refresh_playlist_list();
-        self.menu_state = MenuState::BrowsePlaylist;
+        self.state = MenuState::BrowsePlaylist;
     }
 }
 

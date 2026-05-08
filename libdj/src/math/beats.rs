@@ -1,6 +1,4 @@
-use std::time::Duration;
-
-use crate::types::{deck::PlayerState, library::Beat};
+use crate::types::{deck::PlayerState, library::Beat, timecode::Duration};
 
 impl PlayerState {
     pub fn get_current_beat(&self) -> Option<&Beat> {
@@ -18,7 +16,7 @@ impl PlayerState {
             let mid = low + (high - low) / 2;
 
             #[allow(clippy::indexing_slicing)]
-            match current_track.beat_grid[mid].time.total_cmp(&self.time) {
+            match current_track.beat_grid[mid].time.cmp(&self.time) {
                 std::cmp::Ordering::Equal => return Some(&current_track.beat_grid[mid]),
                 std::cmp::Ordering::Less => {
                     result = Some(&current_track.beat_grid[mid]);
@@ -63,17 +61,21 @@ impl PlayerState {
     }
 
     pub fn get_current_bpm(&self) -> Option<f32> {
-        self.get_current_source_bpm()
-            .map(|bpm| bpm * (self.tempo_percent + 1.0).max(0.0))
+        self.get_current_source_bpm().map(|bpm| {
+            if self.tempo_reset {
+                bpm
+            } else {
+                bpm * (self.tempo_percent + 1.0).max(0.0)
+            }
+        })
     }
 
-    pub fn calculate_track_time_delta(&self, delta_time: Duration) -> f32 {
-        delta_time.as_secs_f32()
-            * if self.tempo_reset {
-                1.0
-            } else {
-                (self.tempo_percent + 1.0).max(0.0)
-            }
+    pub fn calculate_track_time_delta(&self, delta_time: Duration) -> Duration {
+        if self.tempo_reset {
+            delta_time
+        } else {
+            delta_time * (self.tempo_percent + 1.0).max(0.0)
+        }
     }
 }
 

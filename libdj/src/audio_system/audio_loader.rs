@@ -8,7 +8,11 @@ use symphonia::core::{
 use symphonia_core::{audio::AudioBufferRef, conv::FromSample};
 use thiserror::Error;
 
-use crate::{AUDIO_CHANNELS, types::library::Track};
+use crate::{
+    AUDIO_CHANNELS,
+    math::sampling::nanoseconds_to_samples,
+    types::{library::Track, timecode::Timecode},
+};
 
 #[derive(Error, Debug)]
 pub enum TrackLoadError {
@@ -79,8 +83,6 @@ impl TrackAudioData {
             sample_rate: track.codec_params.sample_rate.unwrap_or(48000),
         };
 
-        let mut sine_time: f32 = 0.0;
-
         loop {
             let packet = match format.next_packet() {
                 Ok(packet) => packet,
@@ -105,10 +107,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -121,10 +120,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -137,10 +133,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -153,10 +146,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -169,10 +159,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -185,10 +172,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -201,10 +185,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -217,10 +198,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -233,10 +211,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -249,10 +224,7 @@ impl TrackAudioData {
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
                                 for sample in *sample_plane {
-                                    // destination_plane.push(f32::from_sample(*
-                                    // sample));
-                                    sine_time += 0.01;
-                                    destination_plane.push(sine_time.sin() * 0.25);
+                                    destination_plane.push(f32::from_sample(*sample));
                                 }
                             }
                         }
@@ -265,83 +237,142 @@ impl TrackAudioData {
         Ok(new_track_audio_data)
     }
 
-    // todo: allow bidirectional reading
     #[allow(
         clippy::indexing_slicing,
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        clippy::cast_precision_loss,
         clippy::cast_possible_wrap,
-        clippy::needless_range_loop
+        clippy::needless_range_loop,
+        clippy::too_many_lines
     )]
     pub fn read_samples(
         &self,
-        start_time_seconds: f32,
-        samples_needed: usize,
+        start: Timecode,
+        end: Timecode,
+        wrap: Option<(Timecode, Timecode)>,
         output_buffers: &mut [Vec<f32>; AUDIO_CHANNELS],
-    ) {
-        let start_sample: i64 = ((start_time_seconds - self.first_sample_time)
-            * self.sample_rate as f32)
-            .round() as i64;
+    ) -> usize {
+        match (start, end, wrap) {
+            (start, end, None) => {
+                let start = nanoseconds_to_samples(start.to_nanoseconds(), self.sample_rate);
+                let end = nanoseconds_to_samples(end.to_nanoseconds(), self.sample_rate);
 
-        let end_sample: i64 = start_sample + samples_needed as i64;
+                let total_samples = if start < end {
+                    (end - start) as usize
+                } else {
+                    (start - end) as usize
+                };
 
-        for (channel_index, channel_samples) in self.samples.iter().enumerate() {
-            let channel_sample_count = channel_samples.len();
-
-            if end_sample <= 0
-                || start_sample >= channel_sample_count as i64
-                || channel_samples.is_empty()
-            {
-                if channel_sample_count < samples_needed {
-                    output_buffers[channel_index].resize(samples_needed, 0.0);
+                for buffer in output_buffers.iter_mut() {
+                    if buffer.len() < total_samples {
+                        buffer.resize(total_samples, 0.0);
+                    }
                 }
 
-                for sample_index in 0..samples_needed {
-                    output_buffers[channel_index][sample_index] = 0.0;
+                let max_sample_index = self.samples.len() as i64;
+
+                if start < end {
+                    for buffer_index in 0..AUDIO_CHANNELS {
+                        for (target_index, source_index) in (start..end).enumerate() {
+                            output_buffers[buffer_index][target_index] =
+                                if source_index >= 0 || source_index < max_sample_index {
+                                    self.samples[buffer_index][source_index as usize]
+                                } else {
+                                    0.0
+                                };
+                        }
+                    }
+                } else {
+                    for buffer_index in 0..AUDIO_CHANNELS {
+                        for (target_index, source_index) in (end..start).rev().enumerate() {
+                            output_buffers[buffer_index][target_index] =
+                                if source_index >= 0 || source_index < max_sample_index {
+                                    self.samples[buffer_index][source_index as usize]
+                                } else {
+                                    0.0
+                                };
+                        }
+                    }
                 }
 
-                return;
+                total_samples
             }
 
-            let leading_zeros = if start_sample < 0 {
-                (-start_sample) as usize
-            } else {
-                0
-            };
+            (start, end, Some((wrap_start, wrap_end))) => {
+                let start = nanoseconds_to_samples(start.to_nanoseconds(), self.sample_rate);
+                let wrap_start =
+                    nanoseconds_to_samples(wrap_start.to_nanoseconds(), self.sample_rate);
+                let wrap_end = nanoseconds_to_samples(wrap_end.to_nanoseconds(), self.sample_rate);
+                let end = nanoseconds_to_samples(end.to_nanoseconds(), self.sample_rate);
 
-            let trailing_zeros = if end_sample >= channel_sample_count as i64 {
-                (end_sample - channel_sample_count as i64) as usize
-            } else {
-                0
-            };
+                let total_prewrap_samples = if start < wrap_start {
+                    (wrap_start - start) as usize
+                } else {
+                    (start - wrap_start) as usize
+                };
+                let total_postwrap_samples = if wrap_end < end {
+                    (end - wrap_end) as usize
+                } else {
+                    (wrap_end - end) as usize
+                };
 
-            let valid_start = leading_zeros;
-            let valid_end = samples_needed - trailing_zeros;
+                for buffer in output_buffers.iter_mut() {
+                    if buffer.len() < total_prewrap_samples + total_postwrap_samples {
+                        buffer.resize(total_prewrap_samples + total_postwrap_samples, 0.0);
+                    }
+                }
 
-            let source_frame_offset = if start_sample < 0 {
-                0
-            } else {
-                start_sample as usize
-            };
+                let max_sample_index = self.samples.len() as i64;
 
-            if channel_sample_count < samples_needed {
-                output_buffers[channel_index].resize(samples_needed, 0.0);
-            }
+                if start < wrap_start {
+                    for buffer_index in 0..AUDIO_CHANNELS {
+                        for (target_index, source_index) in (start..wrap_start).enumerate() {
+                            output_buffers[buffer_index][target_index] =
+                                if source_index >= 0 || source_index < max_sample_index {
+                                    self.samples[buffer_index][source_index as usize]
+                                } else {
+                                    0.0
+                                };
+                        }
+                    }
+                } else {
+                    for buffer_index in 0..AUDIO_CHANNELS {
+                        for (target_index, source_index) in (wrap_start..start).rev().enumerate() {
+                            output_buffers[buffer_index][target_index] =
+                                if source_index >= 0 || source_index < max_sample_index {
+                                    self.samples[buffer_index][source_index as usize]
+                                } else {
+                                    0.0
+                                };
+                        }
+                    }
+                }
 
-            for sample_index in 0..valid_start {
-                output_buffers[channel_index][sample_index] = 0.0;
-            }
+                if wrap_end < end {
+                    for buffer_index in 0..AUDIO_CHANNELS {
+                        for (target_index, source_index) in (wrap_end..end).enumerate() {
+                            output_buffers[buffer_index][target_index + total_prewrap_samples] =
+                                if source_index >= 0 || source_index < max_sample_index {
+                                    self.samples[buffer_index][source_index as usize]
+                                } else {
+                                    0.0
+                                };
+                        }
+                    }
+                } else {
+                    for buffer_index in 0..AUDIO_CHANNELS {
+                        for (target_index, source_index) in (end..wrap_end).rev().enumerate() {
+                            output_buffers[buffer_index][target_index + total_prewrap_samples] =
+                                if source_index >= 0 || source_index < max_sample_index {
+                                    self.samples[buffer_index][source_index as usize]
+                                } else {
+                                    0.0
+                                };
+                        }
+                    }
+                }
 
-            for sample_index in valid_start..valid_end {
-                let source_frame_index = source_frame_offset + (sample_index - valid_start);
-
-                output_buffers[channel_index][sample_index] =
-                    self.samples[channel_index][source_frame_index];
-            }
-
-            for sample_index in valid_end..samples_needed {
-                output_buffers[channel_index][sample_index] = 0.0;
+                total_prewrap_samples + total_postwrap_samples
             }
         }
     }

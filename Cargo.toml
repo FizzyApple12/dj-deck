@@ -1,9 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "deck-application", "godot-ui-code",
+    "deck-application",
+    "godot-ui-code",
     "libdatabase",
     "libdj",
+    "libdsp",
     "libui"
 ]
 

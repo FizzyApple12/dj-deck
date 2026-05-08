@@ -5,10 +5,13 @@ use std::{
 };
 
 use binrw::BinRead;
-use libdj::types::library::{
-    Album, Artist, Artwork, Beat, CueType, Genre, HotCue, Key, Label, Library, MemoryCue, Playlist,
-    PlaylistFolder, PlaylistTreeNode, PreviewWaveformColumn, TinyPreviewWaveformColumn, Track,
-    WaveformColumn,
+use libdj::types::{
+    library::{
+        Album, Artist, Artwork, Beat, CueType, Genre, HotCue, Key, Label, Library, MemoryCue,
+        Playlist, PlaylistFolder, PlaylistTreeNode, PreviewWaveformColumn,
+        TinyPreviewWaveformColumn, Track, WaveformColumn,
+    },
+    timecode::Timecode,
 };
 use rekordcrate::{
     anlz::ANLZ,
@@ -212,9 +215,9 @@ impl Database {
                                                     rekordcrate::anlz::Content::BeatGrid(beat_grid) => {
                                                    		for beat in beat_grid.beats {
                                                     		beat_grid_cache.push(Beat {
-                                                     			beat_number: f32::from(beat.beat_number),
-                                                       			bpm: f32::from(beat.tempo) * 100.0,
-                                                         		time: beat.time as f32 / 1000.0,
+                                                     			beat_number: u32::from(beat.beat_number),
+                                                       			bpm: f32::from(beat.tempo) / 100.0,
+                                                         		time: Timecode::from_milliseconds(i64::from(beat.time)),
                                                       		});
                                                      	}
                                                     },
@@ -222,7 +225,7 @@ impl Database {
                                                   		for cue in cue_list.cues {
                                                  			if cue.hot_cue == 0 {
                                                  				memory_cues_cache.push(MemoryCue {
-                                                        			time: cue.time as f32 / 1000.0,
+                                                        			time: Timecode::from_milliseconds(i64::from(cue.time)),
                                                         			comment: String::new(),
                                                      			});
                                                     		} else {
@@ -230,9 +233,9 @@ impl Database {
                                                         			cue_number: cue.hot_cue,
                                                         			cue_type: match cue.cue_type {
                                                             			rekordcrate::anlz::CueType::Point => CueType::Point,
-                                                            			rekordcrate::anlz::CueType::Loop => CueType::Loop(cue.loop_time as f32 / 1000.0),
+                                                            			rekordcrate::anlz::CueType::Loop => CueType::Loop(Timecode::from_milliseconds(i64::from(cue.loop_time))),
                                                            			},
-                                                        			time: cue.time as f32 / 1000.0,
+                                                        			time: Timecode::from_milliseconds(i64::from(cue.time)),
                                                         			comment: String::new(),
                                                         			color_index: 0,
                                                         			color_rgb: (255, 255, 255),
@@ -244,7 +247,7 @@ impl Database {
                                                   		for cue in extended_cue_list.cues {
                                                  			if cue.hot_cue == 0 {
                                                  				memory_cues_cache.push(MemoryCue {
-                                                        			time: cue.time as f32 / 1000.0,
+                                                        			time: Timecode::from_milliseconds(i64::from(cue.time)),
                                                         			comment: cue.comment.to_string(),
                                                      			});
                                                     		} else {
@@ -252,9 +255,9 @@ impl Database {
                                                         			cue_number: cue.hot_cue,
                                                         			cue_type: match cue.cue_type {
                                                             			rekordcrate::anlz::CueType::Point => CueType::Point,
-                                                            			rekordcrate::anlz::CueType::Loop => CueType::Loop(cue.loop_time as f32 / 1000.0),
+                                                            			rekordcrate::anlz::CueType::Loop => CueType::Loop(Timecode::from_milliseconds(i64::from(cue.loop_time))),
                                                            			},
-                                                        			time: cue.time as f32 / 1000.0,
+                                                        			time: Timecode::from_milliseconds(i64::from(cue.time)),
                                                         			comment: cue.comment.to_string(),
                                                         			color_index: cue.hot_cue_color_index,
                                                         			color_rgb: cue.hot_cue_color_rgb,
@@ -300,7 +303,7 @@ impl Database {
 
                                                 #[allow(clippy::cast_precision_loss)]
                                                 bpm: track.tempo as f32 / 100.0,
-                                                duration: f32::from(track.duration),
+                                                duration: u32::from(track.duration),
 
                                                 composer_id: track.composer_id.0,
                                                 artist_id: track.artist_id.0,

@@ -2,7 +2,7 @@ use godot::{
     classes::{CanvasItem, IPanelContainer, Label, PanelContainer, TextureRect},
     prelude::*,
 };
-use libdj::types::deck::TempoRange;
+use libdj::types::{deck::TempoRange, timecode::Timecode};
 
 use crate::ipc::IPC;
 
@@ -229,8 +229,8 @@ impl IPanelContainer for PlayerContainer {
         self.track_detail_title.set_text(&track.title);
         self.track_detail_time.set_text(&format!(
             "{:.0}:{:02.0}",
-            (track.duration / 60.0).floor(),
-            (track.duration % 60.0).floor(),
+            track.duration / 60,
+            track.duration % 60,
         ));
         self.track_detail_bpm.set_text(&format!("{:.1}", track.bpm));
         self.track_detail_key.set_text(
@@ -271,29 +271,37 @@ impl IPanelContainer for PlayerContainer {
             }
         });
         self.track_time.set_text(&if self.display_remain {
+            let track_remaining_seconds = (Timecode::from_seconds(i64::from(track.duration))
+                - channel_data.player.time)
+                .to_nanoseconds()
+                / 1_000_000_000;
+
             format!(
                 "{:.0}:{:02.0}",
-                ((track.duration - channel_data.player.time).abs() / 60.0).floor(),
-                ((track.duration - channel_data.player.time) % 60.0).floor(),
+                track_remaining_seconds / 60,
+                (track_remaining_seconds % 60).abs(),
             )
         } else {
+            let track_time_seconds = channel_data.player.time.to_nanoseconds() / 1_000_000_000;
+
             format!(
                 "{:.0}:{:02.0}",
-                (channel_data.player.time / 60.0).floor(),
-                (channel_data.player.time % 60.0).floor(),
+                track_time_seconds / 60,
+                (track_time_seconds % 60).abs(),
             )
         });
         self.track_time_fractional
             .set_text(&if self.display_remain {
-                format!(
-                    ".{:03.0}",
-                    ((track.duration - channel_data.player.time).fract() * 1000.0).floor(),
-                )
+                let track_remaining_milliseconds =
+                    (Timecode::from_seconds(i64::from(track.duration)) - channel_data.player.time)
+                        .to_nanoseconds()
+                        / 1_000_000;
+
+                format!(".{:03.0}", (track_remaining_milliseconds % 1000).abs())
             } else {
-                format!(
-                    ".{:03.0}",
-                    (channel_data.player.time.fract() * 1000.0).floor()
-                )
+                let track_time_milliseconds = channel_data.player.time.to_nanoseconds() / 1_000_000;
+
+                format!(".{:03.0}", (track_time_milliseconds % 1000).abs())
             });
 
         self.tempo_sign
@@ -316,14 +324,11 @@ impl IPanelContainer for PlayerContainer {
                 TempoRange::OneHundredPercent => "WIDE",
             });
 
-        self.bpm.set_text(&format!(
-            "{:.0}",
-            channel_data.player.get_current_bpm().unwrap_or(0.0).floor()
-        ));
-        self.bpm_fractional.set_text(&format!(
-            ".{:01.0}",
-            (channel_data.player.get_current_bpm().unwrap_or(0.0).fract() * 10.0).floor()
-        ));
+        let current_bpm = channel_data.player.get_current_bpm().unwrap_or(0.0);
+
+        self.bpm.set_text(&format!("{:.0}", current_bpm.floor()));
+        self.bpm_fractional
+            .set_text(&format!(".{:01.0}", (current_bpm.fract() * 10.0).floor()));
         #[allow(clippy::cast_sign_loss)]
         self.bpm_master.set_modulate(Color {
             r: 1.0,

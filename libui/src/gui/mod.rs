@@ -2,7 +2,10 @@ use base64::{Engine, prelude::BASE64_STANDARD};
 use interprocess::local_socket::{
     GenericFilePath, ToFsName, tokio::Stream, traits::tokio::Stream as _,
 };
-use libdj::types::deck::{DeckState, DeckUpdate};
+use libdj::types::{
+    deck::{DeckState, DeckUpdate},
+    timecode::Duration,
+};
 use thiserror::Error;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -140,6 +143,7 @@ impl Drop for UI {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 async fn process_internal_ui_event(
     event: InternalUIEvent,
     ui_event_sender: &tokio::sync::mpsc::Sender<UIEvent>,
@@ -172,7 +176,8 @@ async fn process_internal_ui_event(
                 if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player)
                     && let Some(bpm) = mixer_channel.player.get_current_bpm()
                 {
-                    mixer_channel.player.time += beats * (1. / bpm) * 60.;
+                    mixer_channel.player.time +=
+                        Duration::from_nanoseconds(((1.0 / bpm) * beats * 60_000_000_000.0) as i64);
                 }
             }));
         }
@@ -182,8 +187,12 @@ async fn process_internal_ui_event(
                     && let Some(bpm) = mixer_channel.player.get_current_bpm()
                 {
                     mixer_channel.player.beat_loop_start = Some(mixer_channel.player.time);
-                    mixer_channel.player.beat_loop_end =
-                        Some(mixer_channel.player.time + (beats * (1. / bpm) * 60.));
+                    mixer_channel.player.beat_loop_end = Some(
+                        mixer_channel.player.time
+                            + Duration::from_nanoseconds(
+                                ((1.0 / bpm) * beats * 60_000_000_000.0) as i64,
+                            ),
+                    );
                 }
             }));
         }

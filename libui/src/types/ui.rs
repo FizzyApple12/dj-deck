@@ -1,6 +1,7 @@
 use libdj::types::{
     deck::DeckState,
     library::{Library, TrackID},
+    timecode::Timecode,
 };
 use rkyv::{Archive, Deserialize, Serialize};
 
@@ -42,7 +43,7 @@ pub enum InternalUIEvent {
     EjectDevice(u32),
 
     TouchCue {
-        cue_time: Option<f32>,
+        cue_time: Option<Timecode>,
         player: usize,
     },
     BeatJump {

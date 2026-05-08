@@ -1,7 +1,4 @@
-use std::{
-    thread,
-    time::{Duration, Instant},
-};
+use std::{thread, time::Duration};
 
 use libdatabase::device_manager::{DeviceManager, DeviceManagerEvent, device::OpenDeviceError};
 use libdj::{
@@ -9,6 +6,7 @@ use libdj::{
     types::{
         deck::{DeckState, DeckUpdate},
         library::Track,
+        timecode::Timecode,
     },
 };
 use libui::{
@@ -24,6 +22,9 @@ use tokio_stream::StreamExt;
 #[allow(clippy::too_many_lines)]
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut line = String::new();
+    let _ = std::io::stdin().read_line(&mut line);
+
     let (deck_state_sender, deck_state_receiver) =
         tokio::sync::watch::channel(DeckState::default());
     let (deck_update_sender, deck_update_receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -44,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Finding DJ Deck Audio...");
 
-    let dj_deck_node = audio_manager.find_node_by_name_substring("DDJ-FLX10")?;
+    let dj_deck_device = audio_manager.find_output_device_by_name_substring("DDJ-FLX10")?;
 
     println!("Creating Full Audio Pipeline...");
 
@@ -52,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         deck_update_receiver,
         deck_state_sender,
         loaded_track_receiver,
-        dj_deck_node,
+        dj_deck_device,
     )?;
 
     println!("Creating Midi IO...");
@@ -68,9 +69,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut device_manager = DeviceManager::start()?;
 
-    println!("Starting PUI...");
+    println!("Starting HMI...");
 
-    let controller = Controller::start_ui(midi_sender, midi_receiver, deck_update_sender.clone());
+    let controller = Controller::start_hmi(midi_sender, midi_receiver, deck_update_sender.clone());
 
     println!("Starting GUI...");
 
@@ -123,8 +124,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         mixer_channel.player.current_track = None;
                                         mixer_channel.player.is_loading = true;
 
-                                        mixer_channel.player.time = 0.0;
-                                        mixer_channel.player.slip_time = 0.0;
+                                        mixer_channel.player.time = Timecode::zero();
+                                        mixer_channel.player.slip_time = Timecode::zero();
                                         mixer_channel.player.cue_time = None;
                                         mixer_channel.player.touch_cue_time = None;
 
@@ -144,8 +145,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     mixer_channel.player.current_track = None;
                                     mixer_channel.player.is_loading = false;
 
-                                    mixer_channel.player.time = 0.0;
-                                    mixer_channel.player.slip_time = 0.0;
+                                    mixer_channel.player.time = Timecode::zero();
+                                    mixer_channel.player.slip_time = Timecode::zero();
                                     mixer_channel.player.cue_time = None;
                                     mixer_channel.player.touch_cue_time = None;
 

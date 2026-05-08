@@ -1,17 +1,40 @@
-use std::time::Duration;
-
 use crate::{
+    MIXER_CHANNELS,
     math::{beats::closest_bpm_multiple, jog::JogRPM},
-    types::deck::{BeatLoopAdjustMode, BeatSyncMode, DeckState, DeckUpdate, JogState, PlayState},
+    types::{
+        deck::{
+            BeatLoopAdjustMode, BeatSyncMode, ChannelState, DeckState, DeckUpdate, JogState,
+            PlayState, PlayerState,
+        },
+        timecode::{Duration, Timecode},
+    },
 };
+
+pub struct DeckUpdateResults {
+    pub channels: [ChannelUpdateResults; MIXER_CHANNELS],
+}
+
+pub struct ChannelUpdateResults {
+    pub player: PlayerUpdateResults,
+}
+
+pub struct PlayerUpdateResults {
+    pub playback_frame_start_time: Timecode,
+    pub playback_frame_end_time: Timecode,
+
+    pub playback_wrap_times: Option<(Timecode, Timecode)>,
+
+    pub touch_cue_playback_times: Option<(Timecode, Timecode)>,
+}
 
 impl DeckState {
     #[allow(clippy::too_many_lines)]
     pub fn update(
         &mut self,
         update_receiver: &mut tokio::sync::mpsc::UnboundedReceiver<DeckUpdate>,
-        delta_time: Duration,
-    ) {
+        start_time: Timecode,
+        end_time: Timecode,
+    ) -> DeckUpdateResults {
         while let Ok(deck_state_update_function) = update_receiver.try_recv() {
             deck_state_update_function(self);
         }
@@ -25,120 +48,199 @@ impl DeckState {
             None
         };
 
-        for (number, mixer_channel) in self.mixer_channels.iter_mut().enumerate() {
-            let player = &mut mixer_channel.player;
+        let mut channel_updates =
+            self.mixer_channels
+                .iter_mut()
+                .enumerate()
+                .map(|(channel_number, mixer_channel)| {
+                    let is_master = if let Some(master_channel_number) = self.master_channel {
+                        master_channel_number == channel_number
+                    } else {
+                        false
+                    };
 
-            let Some(ref _current_track) = player.current_track else {
-                player.time = 0.0;
-                player.cue_time = None;
-                player.touch_cue_time = None;
+                    mixer_channel.update(is_master, start_time, end_time, master_track_bpm)
+                });
 
-                player.slip_playing = false;
-                player.slip_time = 0.0;
+        DeckUpdateResults {
+            channels: [
+                channel_updates.next().expect("channel 0 update"),
+                channel_updates.next().expect("channel 1 update"),
+                channel_updates.next().expect("channel 2 update"),
+                channel_updates.next().expect("channel 3 update"),
+            ],
+        }
+    }
+}
 
-                player.beat_loop_start = None;
-                player.beat_loop_end = None;
-                player.last_beat_loop = None;
-                player.beat_loop_adjust_mode = BeatLoopAdjustMode::None;
+impl ChannelState {
+    #[allow(clippy::too_many_lines)]
+    pub fn update(
+        &mut self,
+        is_master: bool,
+        start_time: Timecode,
+        end_time: Timecode,
+        master_track_bpm: Option<f32>,
+    ) -> ChannelUpdateResults {
+        ChannelUpdateResults {
+            player: self
+                .player
+                .update(is_master, start_time, end_time, master_track_bpm),
+        }
+    }
+}
 
-                player.keyshift = 0.0;
+impl PlayerState {
+    #[allow(clippy::too_many_lines)]
+    pub fn update(
+        &mut self,
+        is_master: bool,
+        start_time: Timecode,
+        end_time: Timecode,
+        master_track_bpm: Option<f32>,
+    ) -> PlayerUpdateResults {
+        let Some(ref _current_track) = self.current_track else {
+            self.time = Timecode::zero();
+            self.cue_time = None;
+            self.touch_cue_time = None;
 
-                continue;
+            self.slip_playing = false;
+            self.slip_time = Timecode::zero();
+
+            self.beat_loop_start = None;
+            self.beat_loop_end = None;
+            self.last_beat_loop = None;
+            self.beat_loop_adjust_mode = BeatLoopAdjustMode::None;
+
+            self.keyshift = 0.0;
+
+            return PlayerUpdateResults {
+                playback_frame_start_time: Timecode::zero(),
+                playback_frame_end_time: Timecode::zero(),
+
+                playback_wrap_times: None,
+
+                touch_cue_playback_times: None,
             };
+        };
 
-            if let Some(master_channel_number) = self.master_channel
-                && master_channel_number != number
-                && let Some(master_track_bpm) = master_track_bpm
-                && let Some(current_source_bpm) = player.get_current_source_bpm()
-            {
-                match player.beat_sync {
-                    BeatSyncMode::Off => {}
-                    BeatSyncMode::BPMSync => {
-                        player.tempo_slider_is_accurate = false;
+        let player_start_time = self.time;
 
-                        player.tempo_percent = closest_bpm_multiple(
-                            master_track_bpm,
-                            current_source_bpm * (player.tempo_percent + 1.0).max(0.0),
-                        ) / current_source_bpm;
-                    }
-                    BeatSyncMode::BeatSync => {
-                        player.tempo_slider_is_accurate = false;
+        if !is_master
+            && let Some(master_track_bpm) = master_track_bpm
+            && let Some(current_source_bpm) = self.get_current_source_bpm()
+        {
+            match self.beat_sync {
+                BeatSyncMode::Off => {}
+                BeatSyncMode::BPMSync => {
+                    self.tempo_slider_is_accurate = false;
 
-                        // todo: sync beat times and tempo with closest matching
-                        // beats
-                    }
+                    self.tempo_percent = closest_bpm_multiple(
+                        master_track_bpm,
+                        current_source_bpm * (self.tempo_percent + 1.0).max(0.0),
+                    ) / current_source_bpm;
+                }
+                BeatSyncMode::BeatSync => {
+                    self.tempo_slider_is_accurate = false;
+
+                    // todo: sync beat times and tempo with closest
+                    // matching beats
                 }
             }
+        }
 
-            let track_time_delta = player.calculate_track_time_delta(delta_time);
+        let delta_time = end_time - start_time;
 
-            match (player.play_state, player.jog_state) {
-                (PlayState::Stop, JogState::Released) => {}
-                (_, JogState::Jog(rpm)) | (PlayState::Stop, JogState::PitchBend(rpm)) => {
-                    let jog_time = rpm.jog_time_offset(delta_time);
+        let track_time_delta = self.calculate_track_time_delta(delta_time);
 
-                    player.time += jog_time;
-                }
-                (PlayState::Play, jog_mode @ (JogState::Released | JogState::PitchBend(_))) => {
-                    let pitch_time = match jog_mode {
-                        JogState::PitchBend(rpm) => rpm.pitch_bend_time_offset(delta_time),
-                        _ => 0.0,
-                    };
+        let mut touch_cue_playback_times = None;
 
-                    player.slip_playing = player.slip;
+        if let Some(ref mut touch_cue_time) = self.touch_cue_time {
+            let touch_cue_start_time = *touch_cue_time;
 
-                    if player.reverse_enabled {
-                        player.time -= track_time_delta + pitch_time;
-                    } else {
-                        player.time += track_time_delta + pitch_time;
-                    }
-                }
-                (PlayState::Cue, jog_mode @ (JogState::Released | JogState::PitchBend(_))) => {
-                    let pitch_time = match jog_mode {
-                        JogState::PitchBend(rpm) => rpm.pitch_bend_time_offset(delta_time),
-                        _ => 0.0,
-                    };
+            *touch_cue_time += track_time_delta;
 
-                    player.slip_playing = false;
+            touch_cue_playback_times = Some((touch_cue_start_time, *touch_cue_time));
+        }
 
-                    if player.reverse_enabled {
-                        player.time -= track_time_delta + pitch_time;
-                    } else {
-                        player.time += track_time_delta + pitch_time;
-                    }
+        match (self.play_state, self.jog_state) {
+            (PlayState::Stop, JogState::Released) => {}
+            (_, JogState::Jog(rpm)) | (PlayState::Stop, JogState::PitchBend(rpm)) => {
+                let jog_time = rpm.jog_time_offset(delta_time);
+
+                self.time += jog_time;
+            }
+            (PlayState::Play, jog_mode @ (JogState::Released | JogState::PitchBend(_))) => {
+                let pitch_time = match jog_mode {
+                    JogState::PitchBend(rpm) => rpm.pitch_bend_time_offset(delta_time),
+                    _ => Duration::zero(),
+                };
+
+                self.slip_playing = self.slip;
+
+                if self.reverse_enabled {
+                    self.time -= track_time_delta + pitch_time;
+                } else {
+                    self.time += track_time_delta + pitch_time;
                 }
             }
+            (PlayState::Cue, jog_mode @ (JogState::Released | JogState::PitchBend(_))) => {
+                let pitch_time = match jog_mode {
+                    JogState::PitchBend(rpm) => rpm.pitch_bend_time_offset(delta_time),
+                    _ => Duration::zero(),
+                };
 
-            if player.slip_playing {
-                match (player.play_state, player.jog_state) {
-                    (PlayState::Stop, _) | (_, JogState::Jog(_)) => {
-                        player.slip_time += track_time_delta;
-                    }
-                    (
-                        PlayState::Play | PlayState::Cue,
-                        JogState::Released | JogState::PitchBend(_),
-                    ) => {
-                        player.slip_time = player.time;
-                    }
-                }
-            } else {
-                player.slip_time = player.time;
-            }
+                self.slip_playing = false;
 
-            if let Some(beat_loop_start) = player.beat_loop_start
-                && let Some(beat_loop_end) = player.beat_loop_end
-            {
-                while player.time < beat_loop_start {
-                    player.time += beat_loop_end - beat_loop_start;
-                }
-                while player.time > beat_loop_end {
-                    player.time -= beat_loop_end - beat_loop_start;
+                if self.reverse_enabled {
+                    self.time -= track_time_delta + pitch_time;
+                } else {
+                    self.time += track_time_delta + pitch_time;
                 }
             }
+        }
 
-            if let Some(ref mut touch_cue_time) = player.touch_cue_time {
-                *touch_cue_time += track_time_delta;
+        if self.slip_playing {
+            match (self.play_state, self.jog_state) {
+                (PlayState::Stop, _) | (_, JogState::Jog(_)) => {
+                    self.slip_time += track_time_delta;
+                }
+                (PlayState::Play | PlayState::Cue, JogState::Released | JogState::PitchBend(_)) => {
+                    self.slip_time = self.time;
+                }
             }
+        } else {
+            self.slip_time = self.time;
+        }
+
+        let mut playback_wrap_times = None;
+
+        if let Some(beat_loop_start) = self.beat_loop_start
+            && let Some(beat_loop_end) = self.beat_loop_end
+        {
+            while self.time < beat_loop_start {
+                self.time += beat_loop_end - beat_loop_start;
+
+                if playback_wrap_times.is_none() {
+                    playback_wrap_times = Some((beat_loop_start, beat_loop_end));
+                }
+            }
+            while self.time > beat_loop_end {
+                self.time -= beat_loop_end - beat_loop_start;
+
+                if playback_wrap_times.is_none() {
+                    playback_wrap_times = Some((beat_loop_end, beat_loop_start));
+                }
+            }
+        }
+
+        PlayerUpdateResults {
+            playback_frame_start_time: player_start_time,
+            playback_frame_end_time: self.time,
+
+            playback_wrap_times,
+
+            touch_cue_playback_times,
         }
     }
 }
