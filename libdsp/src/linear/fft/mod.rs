@@ -63,10 +63,11 @@ pub fn complexMulConj_split_complex<V>(
     bi: &[V],
     cr: &[V],
     ci: &[V],
+    size: usize,
 ) where
     V: Float,
 {
-    for i in 0..ar.len() {
+    for i in 0..size {
         let rr = cr[i] * br[i] + ci[i] * bi[i];
         let ri = cr[i] * bi[i] - ci[i] * br[i];
 
@@ -79,7 +80,7 @@ pub fn complexMulConj_split_complex<V>(
 #[allow(clippy::indexing_slicing)]
 pub fn interleaveCopy_const_astride<V, const ASTRIDE: usize>(a: &[V], b: &mut [V], b_stride: usize)
 where
-    V: Float,
+    V: Copy,
 {
     for bi in 0..b_stride {
         for ai in 0..ASTRIDE {
@@ -90,7 +91,7 @@ where
 #[allow(clippy::indexing_slicing)]
 pub fn interleaveCopy<V>(a: &[V], b: &mut [V], a_stride: usize, b_stride: usize)
 where
-    V: Float,
+    V: Copy,
 {
     for bi in 0..b_stride {
         for ai in 0..a_stride {
@@ -107,7 +108,7 @@ pub fn interleaveCopy_const_astride_split_complex<V, const ASTRIDE: usize>(
     b_imag: &mut [V],
     b_stride: usize,
 ) where
-    V: Float,
+    V: Copy,
 {
     for bi in 0..b_stride {
         for ai in 0..ASTRIDE {
@@ -125,7 +126,7 @@ pub fn interleaveCopy_split_complex<V>(
     a_stride: usize,
     b_stride: usize,
 ) where
-    V: Float,
+    V: Copy,
 {
     for bi in 0..b_stride {
         for ai in 0..a_stride {

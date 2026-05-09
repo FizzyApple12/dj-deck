@@ -21,8 +21,8 @@ where
 
     fn resize(&mut self, size: usize);
 
-    fn fft(&mut self, time: &mut [Complex<f32>], freq: &mut [Complex<f32>]);
-    fn ifft(&mut self, freq: &mut [Complex<f32>], time: &mut [Complex<f32>]);
+    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
+    fn ifft(&mut self, freq: &[Complex<f32>], time: &mut [Complex<f32>]);
     fn fft_split_complex(
         &mut self,
         in_r: &[Sample],
@@ -62,11 +62,11 @@ impl<const SPLIT_COMPUTATION: bool> Pow2FFTTrait<f32, SPLIT_COMPUTATION>
         self.tmp.resize(size, Complex { re: 0.0, im: 0.0 });
     }
 
-    fn fft(&mut self, time: &mut [Complex<f32>], freq: &mut [Complex<f32>]) {
+    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
         self.simple_fft.fft(time, freq);
     }
 
-    fn ifft(&mut self, freq: &mut [Complex<f32>], time: &mut [Complex<f32>]) {
+    fn ifft(&mut self, freq: &[Complex<f32>], time: &mut [Complex<f32>]) {
         self.simple_fft.ifft(freq, time);
     }
 

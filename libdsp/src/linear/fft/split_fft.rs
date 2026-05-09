@@ -1,26 +1,30 @@
 use num::{Float, complex::Complex};
 
 use crate::linear::{
-    complex_to_two_float,
-    fft::pow2_fft::{Pow2FFT, Pow2FFTTrait},
+    complex_to_two_float_mut,
+    fft::{
+        complexMul, complexMul_split_complex, complexMulConj, complexMulConj_split_complex,
+        interleaveCopy, interleaveCopy_const_astride, interleaveCopy_split_complex,
+        pow2_fft::{Pow2FFT, Pow2FFTTrait},
+    },
 };
 
 #[derive(Clone, Copy, PartialEq)]
 enum StepType {
-    passthrough,
-    interleaveOrder2,
-    interleaveOrder3,
-    interleaveOrder4,
-    interleaveOrder5,
-    interleaveOrderN,
-    firstFFT,
-    middleFFT,
-    twiddles,
-    finalOrder2,
-    finalOrder3,
-    finalOrder4,
-    finalOrder5,
-    finalOrderN,
+    Passthrough,
+    InterleaveOrder2,
+    InterleaveOrder3,
+    InterleaveOrder4,
+    InterleaveOrder5,
+    InterleaveOrderN,
+    FirstFFT,
+    MiddleFFT,
+    Twiddles,
+    FinalOrder2,
+    FinalOrder3,
+    FinalOrder4,
+    FinalOrder5,
+    FinalOrderN,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -34,16 +38,16 @@ pub struct SplitFFT<Sample, const SPLIT_COMPUTATION: bool>
 where
     Sample: Float,
 {
-    innerFFT: Pow2FFT<Sample, SPLIT_COMPUTATION>,
+    inner_fft: Pow2FFT<Sample, SPLIT_COMPUTATION>,
 
-    innerSize: usize,
-    outerSize: usize,
-    tmpFreq: Vec<Complex<Sample>>,
-    outerTwiddles: Vec<Complex<Sample>>,
-    outerTwiddlesR: Vec<Sample>,
-    outerTwiddlesI: Vec<Sample>,
-    dftTwists: Vec<Complex<Sample>>,
-    dftTmp: Vec<Complex<Sample>>,
+    inner_size: usize,
+    outer_size: usize,
+    tmp_freq: Vec<Complex<Sample>>,
+    outer_twiddles: Vec<Complex<Sample>>,
+    outer_twiddles_r: Vec<Sample>,
+    outer_twiddles_i: Vec<Sample>,
+    dft_twists: Vec<Complex<Sample>>,
+    dft_tmp: Vec<Complex<Sample>>,
     plan: Vec<Step>,
 }
 
@@ -55,7 +59,7 @@ where
     const MIN_INNER_SIZE: usize;
     const PREFERS_SPLIT: bool;
 
-    fn fastSizeAbove(size: usize) -> usize;
+    fn fast_size_above(size: usize) -> usize;
 
     fn new(size: usize) -> Self;
 
@@ -64,11 +68,41 @@ where
     fn size(&self) -> usize;
     fn steps(&self) -> usize;
 
-    // fn fft(&mut self, time: &mut [f32], freq: &mut [Complex<f32>]);
-    // fn ifft(&mut self, freq: &mut [Complex<f32>], time: &mut [f32]);
-    // fn fft_split_complex(&mut self, in_r: &[f32], out_r: &mut [f32], out_i: &mut
-    // [f32]); fn ifft_split_complex(&mut self, in_r: &[f32], in_i: &[f32],
-    // out_r: &mut [f32]);
+    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
+    fn fft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
+    fn fft_split_complex(
+        &mut self,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    );
+    fn fft_step_split_complex(
+        &mut self,
+        step: usize,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    );
+
+    fn ifft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
+    fn ifft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
+    fn ifft_split_complex(
+        &mut self,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    );
+    fn ifft_step_split_complex(
+        &mut self,
+        step: usize,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    );
 }
 
 impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
@@ -78,7 +112,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     const MIN_INNER_SIZE: usize = 32;
     const PREFERS_SPLIT: bool = Pow2FFT::<f32, SPLIT_COMPUTATION>::PREFERS_SPLIT;
 
-    fn fastSizeAbove(size: usize) -> usize {
+    fn fast_size_above(size: usize) -> usize {
         let mut pow2 = 1;
 
         while pow2 < 16 && pow2 < size {
@@ -99,17 +133,17 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
 
     fn new(size: usize) -> Self {
         let mut new = Self {
-            innerFFT: Pow2FFT::<f32, SPLIT_COMPUTATION>::new(size),
+            inner_fft: Pow2FFT::<f32, SPLIT_COMPUTATION>::new(size),
 
-            innerSize: 1,
-            outerSize: size,
+            inner_size: 1,
+            outer_size: size,
 
-            tmpFreq: Vec::new(),
-            outerTwiddles: Vec::new(),
-            outerTwiddlesR: Vec::new(),
-            outerTwiddlesI: Vec::new(),
-            dftTwists: Vec::new(),
-            dftTmp: Vec::new(),
+            tmp_freq: Vec::new(),
+            outer_twiddles: Vec::new(),
+            outer_twiddles_r: Vec::new(),
+            outer_twiddles_i: Vec::new(),
+            dft_twists: Vec::new(),
+            dft_tmp: Vec::new(),
             plan: Vec::new(),
         };
 
@@ -120,11 +154,11 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
 
     #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
     fn resize(&mut self, size: usize) {
-        self.innerSize = 1;
-        self.outerSize = size;
+        self.inner_size = 1;
+        self.outer_size = size;
 
-        self.dftTmp.clear();
-        self.dftTwists.clear();
+        self.dft_tmp.clear();
+        self.dft_twists.clear();
         self.plan.clear();
 
         if size == 0 {
@@ -133,64 +167,64 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
 
         // Inner size = largest power of 2 such that either the inner size >=
         // minInnerSize, or we have the target number of splits
-        while (self.outerSize & 1 == 0)
-            && (self.outerSize > SplitFFT::<f32, SPLIT_COMPUTATION>::MAX_SPLIT
-                || self.innerSize < SplitFFT::<f32, SPLIT_COMPUTATION>::MIN_INNER_SIZE)
+        while (self.outer_size & 1 == 0)
+            && (self.outer_size > SplitFFT::<f32, SPLIT_COMPUTATION>::MAX_SPLIT
+                || self.inner_size < SplitFFT::<f32, SPLIT_COMPUTATION>::MIN_INNER_SIZE)
         {
-            self.innerSize *= 2;
-            self.outerSize /= 2;
+            self.inner_size *= 2;
+            self.outer_size /= 2;
         }
-        self.tmpFreq.resize(size, Complex { re: 0.0, im: 0.0 });
-        self.innerFFT.resize(self.innerSize);
+        self.tmp_freq.resize(size, Complex { re: 0.0, im: 0.0 });
+        self.inner_fft.resize(self.inner_size);
 
-        self.outerTwiddles.resize(
-            self.innerSize * (self.outerSize - 1),
+        self.outer_twiddles.resize(
+            self.inner_size * (self.outer_size - 1),
             Complex { re: 0.0, im: 0.0 },
         );
-        self.outerTwiddlesR
-            .resize(self.innerSize * (self.outerSize - 1), 0.0);
-        self.outerTwiddlesI
-            .resize(self.innerSize * (self.outerSize - 1), 0.0);
+        self.outer_twiddles_r
+            .resize(self.inner_size * (self.outer_size - 1), 0.0);
+        self.outer_twiddles_i
+            .resize(self.inner_size * (self.outer_size - 1), 0.0);
 
-        for i in 0..self.innerSize {
-            for s in 1..self.outerSize {
-                let twiddle_phase = -2.0 * std::f32::consts::PI * i as f32 / self.innerSize as f32
+        for i in 0..self.inner_size {
+            for s in 1..self.outer_size {
+                let twiddle_phase = -2.0 * std::f32::consts::PI * i as f32 / self.inner_size as f32
                     * s as f32
-                    / self.outerSize as f32;
-                self.outerTwiddles[i + (s - 1) * self.innerSize] =
+                    / self.outer_size as f32;
+                self.outer_twiddles[i + (s - 1) * self.inner_size] =
                     Complex::from_polar(1.0, twiddle_phase);
             }
         }
 
-        for i in 0..self.outerTwiddles.len() {
-            self.outerTwiddlesR[i] = self.outerTwiddles[i].re;
-            self.outerTwiddlesI[i] = self.outerTwiddles[i].im;
+        for i in 0..self.outer_twiddles.len() {
+            self.outer_twiddles_r[i] = self.outer_twiddles[i].re;
+            self.outer_twiddles_i[i] = self.outer_twiddles[i].im;
         }
 
-        let mut interleave_step = StepType::interleaveOrderN;
-        let mut final_step = StepType::finalOrderN;
+        let mut interleave_step = StepType::InterleaveOrderN;
+        let mut final_step = StepType::FinalOrderN;
 
-        if self.outerSize == 2 {
-            interleave_step = StepType::interleaveOrder2;
-            final_step = StepType::finalOrder2;
+        if self.outer_size == 2 {
+            interleave_step = StepType::InterleaveOrder2;
+            final_step = StepType::FinalOrder2;
         }
-        if self.outerSize == 3 {
-            interleave_step = StepType::interleaveOrder3;
-            final_step = StepType::finalOrder3;
+        if self.outer_size == 3 {
+            interleave_step = StepType::InterleaveOrder3;
+            final_step = StepType::FinalOrder3;
         }
-        if self.outerSize == 4 {
-            interleave_step = StepType::interleaveOrder4;
-            final_step = StepType::finalOrder4;
+        if self.outer_size == 4 {
+            interleave_step = StepType::InterleaveOrder4;
+            final_step = StepType::FinalOrder4;
         }
-        if self.outerSize == 5 {
-            interleave_step = StepType::interleaveOrder5;
-            final_step = StepType::finalOrder5;
+        if self.outer_size == 5 {
+            interleave_step = StepType::InterleaveOrder5;
+            final_step = StepType::FinalOrder5;
         }
 
-        if self.outerSize <= 1 {
+        if self.outer_size <= 1 {
             if size > 0 {
                 self.plan.push(Step {
-                    step_type: StepType::passthrough,
+                    step_type: StepType::Passthrough,
                     offset: 0,
                 });
             }
@@ -200,17 +234,17 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
                 offset: 0,
             });
             self.plan.push(Step {
-                step_type: StepType::firstFFT,
+                step_type: StepType::FirstFFT,
                 offset: 0,
             });
-            for s in 1..self.outerSize {
+            for s in 1..self.outer_size {
                 self.plan.push(Step {
-                    step_type: StepType::middleFFT,
-                    offset: s * self.innerSize,
+                    step_type: StepType::MiddleFFT,
+                    offset: s * self.inner_size,
                 });
             }
             self.plan.push(Step {
-                step_type: StepType::twiddles,
+                step_type: StepType::Twiddles,
                 offset: 0,
             });
             self.plan.push(Step {
@@ -218,266 +252,404 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
                 offset: 0,
             });
 
-            if final_step == StepType::finalOrderN {
-                self.dftTmp
-                    .resize(self.outerSize, Complex { re: 0.0, im: 0.0 });
-                self.dftTwists
-                    .resize(self.outerSize, Complex { re: 0.0, im: 0.0 });
-                for s in 0..self.outerSize {
-                    let dft_phase = -2.0 * std::f32::consts::PI * s as f32 / self.outerSize as f32;
+            if final_step == StepType::FinalOrderN {
+                self.dft_tmp
+                    .resize(self.outer_size, Complex { re: 0.0, im: 0.0 });
+                self.dft_twists
+                    .resize(self.outer_size, Complex { re: 0.0, im: 0.0 });
+                for s in 0..self.outer_size {
+                    let dft_phase = -2.0 * std::f32::consts::PI * s as f32 / self.outer_size as f32;
 
-                    self.dftTwists[s] = Complex::from_polar(1.0, dft_phase);
+                    self.dft_twists[s] = Complex::from_polar(1.0, dft_phase);
                 }
             }
         }
     }
 
     fn size(&self) -> usize {
-        self.innerSize * self.outerSize
+        self.inner_size * self.outer_size
     }
 
     fn steps(&self) -> usize {
         self.plan.len()
     }
 
-    // 	void fft(const Complex *time, Complex *freq) {
-    // 		for (auto &step : plan) {
-    // 			fftStep<false>(step, time, freq);
-    // 		}
-    // 	}
-    // 	void fft(size_t step, const Complex *time, Complex *freq) {
-    // 		fftStep<false>(plan[step], time, freq);
-    // 	}
-    // 	void fft(const Sample *inR, const Sample *inI, Sample *outR, Sample *outI) {
-    // 		for (auto &step : plan) {
-    // 			fftStep<false>(step, inR, inI, outR, outI);
-    // 		}
-    // 	}
-    // 	void fft(size_t step, const Sample *inR, const Sample *inI, Sample *outR,
-    // Sample *outI) { 		fftStep<false>(plan[step], inR, inI, outR, outI);
-    // 	}
+    #[allow(clippy::undocumented_unsafe_blocks)]
+    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
+        let plan_pointer = &raw const self.plan;
 
-    // 	void ifft(const Complex *freq, Complex *time) {
-    // 		for (auto &step : plan) {
-    // 			fftStep<true>(step, freq, time);
-    // 		}
-    // 	}
-    // 	void ifft(size_t step, const Complex *freq, Complex *time) {
-    // 		fftStep<true>(plan[step], freq, time);
-    // 	}
-    // 	void ifft(const Sample *inR, const Sample *inI, Sample *outR, Sample *outI)
-    // { 		for (auto &step : plan) {
-    // 			fftStep<true>(step, inR, inI, outR, outI);
-    // 		}
-    // 	}
-    // 	void ifft(size_t step, const Sample *inR, const Sample *inI, Sample *outR,
-    // Sample *outI) { 		fftStep<true>(plan[step], inR, inI, outR, outI);
-    // 	}
+        for step in unsafe { &*plan_pointer } {
+            self.fft_step_internal::<false>(step, time, freq);
+        }
+    }
+
+    #[allow(clippy::undocumented_unsafe_blocks, clippy::indexing_slicing)]
+    fn fft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
+        let plan_pointer = &raw const self.plan[step];
+
+        self.fft_step_internal::<false>(unsafe { &*plan_pointer }, time, freq);
+    }
+
+    #[allow(clippy::undocumented_unsafe_blocks)]
+    fn fft_split_complex(
+        &mut self,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    ) {
+        let plan_pointer = &raw const self.plan;
+
+        for step in unsafe { &*plan_pointer } {
+            self.fft_step_split_complex_internal::<false>(step, in_r, in_i, out_r, out_i);
+        }
+    }
+
+    #[allow(clippy::undocumented_unsafe_blocks, clippy::indexing_slicing)]
+    fn fft_step_split_complex(
+        &mut self,
+        step: usize,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    ) {
+        let plan_pointer = &raw const self.plan[step];
+
+        self.fft_step_split_complex_internal::<false>(
+            unsafe { &*plan_pointer },
+            in_r,
+            in_i,
+            out_r,
+            out_i,
+        );
+    }
+
+    #[allow(clippy::undocumented_unsafe_blocks)]
+    fn ifft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
+        let plan_pointer = &raw const self.plan;
+
+        for step in unsafe { &*plan_pointer } {
+            self.fft_step_internal::<true>(step, time, freq);
+        }
+    }
+
+    #[allow(clippy::undocumented_unsafe_blocks, clippy::indexing_slicing)]
+    fn ifft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
+        let plan_pointer = &raw const self.plan[step];
+
+        self.fft_step_internal::<true>(unsafe { &*plan_pointer }, time, freq);
+    }
+
+    #[allow(clippy::undocumented_unsafe_blocks)]
+    fn ifft_split_complex(
+        &mut self,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    ) {
+        let plan_pointer = &raw const self.plan;
+
+        for step in unsafe { &*plan_pointer } {
+            self.fft_step_split_complex_internal::<true>(step, in_r, in_i, out_r, out_i);
+        }
+    }
+
+    #[allow(clippy::undocumented_unsafe_blocks, clippy::indexing_slicing)]
+    fn ifft_step_split_complex(
+        &mut self,
+        step: usize,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    ) {
+        let plan_pointer = &raw const self.plan[step];
+
+        self.fft_step_split_complex_internal::<true>(
+            unsafe { &*plan_pointer },
+            in_r,
+            in_i,
+            out_r,
+            out_i,
+        );
+    }
 }
 
 impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
-    // 	template<bool inverse>
-    // 	void fftStep(Step step, const Complex *time, Complex *freq) {
-    // 		switch (step.type) {
-    // 			case (StepType::passthrough): {
-    // 				if (inverse) {
-    // 					innerFFT.ifft(time, freq);
-    // 				} else {
-    // 					innerFFT.fft(time, freq);
-    // 				}
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrder2): {
-    // 				_impl::interleaveCopy<2>(time, tmpFreq.data(), innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrder3): {
-    // 				_impl::interleaveCopy<3>(time, tmpFreq.data(), innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrder4): {
-    // 				_impl::interleaveCopy<4>(time, tmpFreq.data(), innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrder5): {
-    // 				_impl::interleaveCopy<5>(time, tmpFreq.data(), innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrderN): {
-    // 				_impl::interleaveCopy(time, tmpFreq.data(), outerSize, innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::firstFFT): {
-    // 				if (inverse) {
-    // 					innerFFT.ifft(tmpFreq.data(), freq);
-    // 				} else {
-    // 					innerFFT.fft(tmpFreq.data(), freq);
-    // 				}
-    // 				break;
-    // 			}
-    // 			case (StepType::middleFFT): {
-    // 				Complex *offsetOut = freq + step.offset;
-    // 				if (inverse) {
-    // 					innerFFT.ifft(tmpFreq.data() + step.offset, offsetOut);
-    // 				} else {
-    // 					innerFFT.fft(tmpFreq.data() + step.offset, offsetOut);
-    // 				}
-    // 				break;
-    // 			}
-    // 			case (StepType::twiddles): {
-    // 				if (inverse) {
-    // 					_impl::complexMulConj(freq + innerSize, freq + innerSize,
-    // outerTwiddles.data(), innerSize*(outerSize - 1)); 				} else {
-    // 					_impl::complexMul(freq + innerSize, freq + innerSize,
-    // outerTwiddles.data(), innerSize*(outerSize - 1)); 				}
-    // 				break;
-    // 			}
-    // 			case StepType::finalOrder2:
-    // 				finalPass2(freq);
-    // 				break;
-    // 			case StepType::finalOrder3:
-    // 				finalPass3<inverse>(freq);
-    // 				break;
-    // 			case StepType::finalOrder4:
-    // 				finalPass4<inverse>(freq);
-    // 				break;
-    // 			case StepType::finalOrder5:
-    // 				finalPass5<inverse>(freq);
-    // 				break;
-    // 			case StepType::finalOrderN:
-    // 				finalPassN<inverse>(freq);
-    // 				break;
-    // 		}
-    // 	}
+    #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
+    fn fft_step_internal<const INVERSE: bool>(
+        &mut self,
+        step: &Step,
+        time: &[Complex<f32>],
+        freq: &mut [Complex<f32>],
+    ) {
+        match step.step_type {
+            StepType::Passthrough => {
+                if INVERSE {
+                    self.inner_fft.ifft(time, freq);
+                } else {
+                    self.inner_fft.fft(time, freq);
+                }
+            }
+            StepType::InterleaveOrder2 => {
+                interleaveCopy_const_astride::<Complex<f32>, 2>(
+                    time,
+                    &mut self.tmp_freq,
+                    self.inner_size,
+                );
+            }
+            StepType::InterleaveOrder3 => {
+                interleaveCopy_const_astride::<Complex<f32>, 3>(
+                    time,
+                    &mut self.tmp_freq,
+                    self.inner_size,
+                );
+            }
+            StepType::InterleaveOrder4 => {
+                interleaveCopy_const_astride::<Complex<f32>, 4>(
+                    time,
+                    &mut self.tmp_freq,
+                    self.inner_size,
+                );
+            }
+            StepType::InterleaveOrder5 => {
+                interleaveCopy_const_astride::<Complex<f32>, 5>(
+                    time,
+                    &mut self.tmp_freq,
+                    self.inner_size,
+                );
+            }
+            StepType::InterleaveOrderN => {
+                interleaveCopy::<Complex<f32>>(
+                    time,
+                    &mut self.tmp_freq,
+                    self.outer_size,
+                    self.inner_size,
+                );
+            }
+            StepType::FirstFFT => {
+                if INVERSE {
+                    self.inner_fft.ifft(&self.tmp_freq, freq);
+                } else {
+                    self.inner_fft.fft(&self.tmp_freq, freq);
+                }
+            }
+            StepType::MiddleFFT => {
+                if INVERSE {
+                    self.inner_fft
+                        .ifft(&self.tmp_freq[step.offset..], &mut freq[step.offset..]);
+                } else {
+                    self.inner_fft
+                        .fft(&self.tmp_freq[step.offset..], &mut freq[step.offset..]);
+                }
+            }
+            StepType::Twiddles => {
+                let freq_pointer = &raw const freq;
 
-    // 	template<bool inverse>
-    // 	void fftStep(Step step, const Sample *inR, const Sample *inI, Sample *outR,
-    // Sample *outI) { 		Sample *tmpR = (Sample *)tmpFreq.data(), *tmpI = tmpR +
-    // tmpFreq.size(); 		switch (step.type) {
-    // 			case (StepType::passthrough): {
-    // 				if (inverse) {
-    // 					innerFFT.ifft(inR, inI, outR, outI);
-    // 				} else {
-    // 					innerFFT.fft(inR, inI, outR, outI);
-    // 				}
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrder2): {
-    // 				_impl::interleaveCopy<2>(inR, tmpR, innerSize);
-    // 				_impl::interleaveCopy<2>(inI, tmpI, innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrder3): {
-    // 				_impl::interleaveCopy<3>(inR, tmpR, innerSize);
-    // 				_impl::interleaveCopy<3>(inI, tmpI, innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrder4): {
-    // 				_impl::interleaveCopy<4>(inR, tmpR, innerSize);
-    // 				_impl::interleaveCopy<4>(inI, tmpI, innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrder5): {
-    // 				_impl::interleaveCopy<5>(inR, tmpR, innerSize);
-    // 				_impl::interleaveCopy<5>(inI, tmpI, innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::interleaveOrderN): {
-    // 				_impl::interleaveCopy(inR, inI, tmpR, tmpI, outerSize, innerSize);
-    // 				break;
-    // 			}
-    // 			case (StepType::firstFFT): {
-    // 				if (inverse) {
-    // 					innerFFT.ifft(tmpR, tmpI, outR, outI);
-    // 				} else {
-    // 					innerFFT.fft(tmpR, tmpI, outR, outI);
-    // 				}
-    // 				break;
-    // 			}
-    // 			case (StepType::middleFFT): {
-    // 				size_t offset = step.offset;
-    // 				Sample *offsetOutR = outR + offset;
-    // 				Sample *offsetOutI = outI + offset;
-    // 				if (inverse) {
-    // 					innerFFT.ifft(tmpR + offset, tmpI + offset, offsetOutR, offsetOutI);
-    // 				} else {
-    // 					innerFFT.fft(tmpR + offset, tmpI + offset, offsetOutR, offsetOutI);
-    // 				}
-    // 				break;
-    // 			}
-    // 			case(StepType::twiddles): {
-    // 				auto *twiddlesR = outerTwiddlesR.data();
-    // 				auto *twiddlesI = outerTwiddlesI.data();
-    // 				if (inverse) {
-    // 					_impl::complexMulConj(outR + innerSize, outI + innerSize, outR +
-    // innerSize, outI + innerSize, twiddlesR, twiddlesI, innerSize*(outerSize -
-    // 1)); 				} else {
-    // 					_impl::complexMul(outR + innerSize, outI + innerSize, outR + innerSize,
-    // outI + innerSize, twiddlesR, twiddlesI, innerSize*(outerSize - 1)); 				}
-    // 				break;
-    // 			}
-    // 			case StepType::finalOrder2:
-    // 				finalPass2(outR, outI);
-    // 				break;
-    // 			case StepType::finalOrder3:
-    // 				finalPass3<inverse>(outR, outI);
-    // 				break;
-    // 			case StepType::finalOrder4:
-    // 				finalPass4<inverse>(outR, outI);
-    // 				break;
-    // 			case StepType::finalOrder5:
-    // 				finalPass5<inverse>(outR, outI);
-    // 				break;
-    // 			case StepType::finalOrderN:
-    // 				finalPassN<inverse>(outR, outI);
-    // 				break;
-    // 		}
-    // 	}
+                let freq_2 = unsafe { &*freq_pointer };
 
-    #[allow(clippy::indexing_slicing)]
-    fn finalPass2(&self, f0: &mut [Complex<f32>]) {
-        for i in 0..self.innerSize {
-            let a = f0[i];
-            let b = f0[self.innerSize + i];
+                if INVERSE {
+                    complexMulConj::<f32>(
+                        &mut freq[self.inner_size..],
+                        &freq_2[self.inner_size..],
+                        &self.outer_twiddles,
+                        self.inner_size * (self.outer_size - 1),
+                    );
+                } else {
+                    complexMul::<f32>(
+                        &mut freq[self.inner_size..],
+                        &freq_2[self.inner_size..],
+                        &self.outer_twiddles,
+                        self.inner_size * (self.outer_size - 1),
+                    );
+                }
+            }
+            StepType::FinalOrder2 => {
+                self.final_pass_2(freq);
+            }
+            StepType::FinalOrder3 => {
+                self.final_pass_3::<INVERSE>(freq);
+            }
+            StepType::FinalOrder4 => {
+                self.final_pass_4::<INVERSE>(freq);
+            }
+            StepType::FinalOrder5 => {
+                self.final_pass_5::<INVERSE>(freq);
+            }
+            StepType::FinalOrderN => {
+                self.final_pass_n::<INVERSE>(freq);
+            }
+        }
+    }
 
-            f0[i] = a + b;
-            f0[self.innerSize + i] = a - b;
+    #[allow(
+        clippy::indexing_slicing,
+        clippy::undocumented_unsafe_blocks,
+        clippy::similar_names,
+        clippy::too_many_lines
+    )]
+    fn fft_step_split_complex_internal<const INVERSE: bool>(
+        &mut self,
+        step: &Step,
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
+    ) {
+        let (tmp_r, tmp_i) = complex_to_two_float_mut(&mut self.tmp_freq);
+
+        match step.step_type {
+            StepType::Passthrough => {
+                if INVERSE {
+                    self.inner_fft.ifft_split_complex(in_r, in_i, out_r, out_i);
+                } else {
+                    self.inner_fft.fft_split_complex(in_r, in_i, out_r, out_i);
+                }
+            }
+            StepType::InterleaveOrder2 => {
+                interleaveCopy_const_astride::<f32, 2>(in_r, tmp_r, self.inner_size);
+                interleaveCopy_const_astride::<f32, 2>(in_i, tmp_i, self.inner_size);
+            }
+            StepType::InterleaveOrder3 => {
+                interleaveCopy_const_astride::<f32, 3>(in_r, tmp_r, self.inner_size);
+                interleaveCopy_const_astride::<f32, 3>(in_i, tmp_i, self.inner_size);
+            }
+            StepType::InterleaveOrder4 => {
+                interleaveCopy_const_astride::<f32, 4>(in_r, tmp_r, self.inner_size);
+                interleaveCopy_const_astride::<f32, 4>(in_i, tmp_i, self.inner_size);
+            }
+            StepType::InterleaveOrder5 => {
+                interleaveCopy_const_astride::<f32, 5>(in_r, tmp_r, self.inner_size);
+                interleaveCopy_const_astride::<f32, 5>(in_i, tmp_i, self.inner_size);
+            }
+            StepType::InterleaveOrderN => {
+                interleaveCopy_split_complex::<f32>(
+                    in_r,
+                    in_i,
+                    tmp_r,
+                    tmp_i,
+                    self.outer_size,
+                    self.inner_size,
+                );
+            }
+            StepType::FirstFFT => {
+                if INVERSE {
+                    self.inner_fft
+                        .ifft_split_complex(tmp_r, tmp_i, out_r, out_i);
+                } else {
+                    self.inner_fft.fft_split_complex(tmp_r, tmp_i, out_r, out_i);
+                }
+            }
+            StepType::MiddleFFT => {
+                if INVERSE {
+                    self.inner_fft.ifft_split_complex(
+                        &tmp_r[step.offset..],
+                        &tmp_i[step.offset..],
+                        &mut out_r[step.offset..],
+                        &mut out_i[step.offset..],
+                    );
+                } else {
+                    self.inner_fft.fft_split_complex(
+                        &tmp_r[step.offset..],
+                        &tmp_i[step.offset..],
+                        &mut out_r[step.offset..],
+                        &mut out_i[step.offset..],
+                    );
+                }
+            }
+            StepType::Twiddles => {
+                let out_r_pointer = &raw const out_r;
+                let out_r_2 = unsafe { &*out_r_pointer };
+
+                let out_i_pointer = &raw const out_i;
+                let out_i_2 = unsafe { &*out_i_pointer };
+
+                if INVERSE {
+                    complexMulConj_split_complex(
+                        &mut out_r[self.inner_size..],
+                        &mut out_i[self.inner_size..],
+                        &out_r_2[self.inner_size..],
+                        &out_i_2[self.inner_size..],
+                        &self.outer_twiddles_r,
+                        &self.outer_twiddles_i,
+                        self.inner_size * (self.outer_size - 1),
+                    );
+                } else {
+                    complexMul_split_complex(
+                        &mut out_r[self.inner_size..],
+                        &mut out_i[self.inner_size..],
+                        &out_r_2[self.inner_size..],
+                        &out_i_2[self.inner_size..],
+                        &self.outer_twiddles_r,
+                        &self.outer_twiddles_i,
+                        self.inner_size * (self.outer_size - 1),
+                    );
+                }
+            }
+            StepType::FinalOrder2 => {
+                self.final_pass_2_split_complex(out_r, out_i);
+            }
+            StepType::FinalOrder3 => {
+                self.final_pass_3_split_complex::<INVERSE>(out_r, out_i);
+            }
+            StepType::FinalOrder4 => {
+                self.final_pass_4_split_complex::<INVERSE>(out_r, out_i);
+            }
+            StepType::FinalOrder5 => {
+                self.final_pass_5_split_complex::<INVERSE>(out_r, out_i);
+            }
+            StepType::FinalOrderN => {
+                self.final_pass_n_split_complex::<INVERSE>(out_r, out_i);
+            }
         }
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn finalPass2_split_complex(&self, f0r: &mut [f32], f0i: &mut [f32]) {
-        for i in 0..self.innerSize {
+    fn final_pass_2(&self, f0: &mut [Complex<f32>]) {
+        for i in 0..self.inner_size {
+            let a = f0[i];
+            let b = f0[self.inner_size + i];
+
+            f0[i] = a + b;
+            f0[self.inner_size + i] = a - b;
+        }
+    }
+
+    #[allow(clippy::indexing_slicing)]
+    fn final_pass_2_split_complex(&self, f0r: &mut [f32], f0i: &mut [f32]) {
+        for i in 0..self.inner_size {
             let ar = f0r[i];
             let ai = f0i[i];
-            let br = f0r[self.innerSize + i];
-            let bi = f0i[self.innerSize + i];
+            let br = f0r[self.inner_size + i];
+            let bi = f0i[self.inner_size + i];
 
             f0r[i] = ar + br;
             f0i[i] = ai + bi;
-            f0r[self.innerSize + i] = ar - br;
-            f0i[self.innerSize + i] = ai - bi;
+            f0r[self.inner_size + i] = ar - br;
+            f0i[self.inner_size + i] = ai - bi;
         }
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn finalPass3<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
+    fn final_pass_3<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
         let tw1 = Complex::new(-0.5, -(0.75).sqrt() * (if INVERSE { -1.0 } else { 1.0 }));
 
-        for i in 0..self.innerSize {
+        for i in 0..self.inner_size {
             let a = f0[i];
-            let b = f0[self.innerSize + i];
-            let c = f0[self.innerSize * 2 + i];
+            let b = f0[self.inner_size + i];
+            let c = f0[self.inner_size * 2 + i];
 
             let bc0 = b + c;
             let bc1 = b - c;
 
             f0[i] = a + bc0;
-            f0[self.innerSize + i] = Complex::new(
+            f0[self.inner_size + i] = Complex::new(
                 a.re + bc0.re * tw1.re - bc1.im * tw1.im,
                 a.im + bc0.im * tw1.re + bc1.re * tw1.im,
             );
-            f0[self.innerSize * 2 + i] = Complex::new(
+            f0[self.inner_size * 2 + i] = Complex::new(
                 a.re + bc0.re * tw1.re + bc1.im * tw1.im,
                 a.im + bc0.im * tw1.re - bc1.re * tw1.im,
             );
@@ -485,34 +657,34 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     }
 
     #[allow(clippy::indexing_slicing, clippy::similar_names)]
-    fn finalPass3_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
+    fn final_pass_3_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
         let tw1r = -0.5;
         let tw1i = -(0.75).sqrt() * (if INVERSE { -1.0 } else { 1.0 });
 
-        for i in 0..self.innerSize {
+        for i in 0..self.inner_size {
             let ar = f0r[i];
             let ai = f0i[i];
-            let br = f0r[self.innerSize + i];
-            let bi = f0i[self.innerSize + i];
-            let cr = f0r[self.innerSize * 2 + i];
-            let ci = f0i[self.innerSize * 2 + i];
+            let br = f0r[self.inner_size + i];
+            let bi = f0i[self.inner_size + i];
+            let cr = f0r[self.inner_size * 2 + i];
+            let ci = f0i[self.inner_size * 2 + i];
 
             f0r[i] = ar + br + cr;
             f0i[i] = ai + bi + ci;
-            f0r[self.innerSize + i] = ar + br * tw1r - bi * tw1i + cr * tw1r + ci * tw1i;
-            f0i[self.innerSize + i] = ai + bi * tw1r + br * tw1i - cr * tw1i + ci * tw1r;
-            f0r[self.innerSize * 2 + i] = ar + br * tw1r + bi * tw1i + cr * tw1r - ci * tw1i;
-            f0i[self.innerSize * 2 + i] = ai + bi * tw1r - br * tw1i + cr * tw1i + ci * tw1r;
+            f0r[self.inner_size + i] = ar + br * tw1r - bi * tw1i + cr * tw1r + ci * tw1i;
+            f0i[self.inner_size + i] = ai + bi * tw1r + br * tw1i - cr * tw1i + ci * tw1r;
+            f0r[self.inner_size * 2 + i] = ar + br * tw1r + bi * tw1i + cr * tw1r - ci * tw1i;
+            f0i[self.inner_size * 2 + i] = ai + bi * tw1r - br * tw1i + cr * tw1i + ci * tw1r;
         }
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn finalPass4<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
-        for i in 0..self.innerSize {
+    fn final_pass_4<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
+        for i in 0..self.inner_size {
             let a = f0[i];
-            let b = f0[self.innerSize + i];
-            let c = f0[self.innerSize * 2 + i];
-            let d = f0[self.innerSize * 3 + i];
+            let b = f0[self.inner_size + i];
+            let c = f0[self.inner_size * 2 + i];
+            let d = f0[self.inner_size * 3 + i];
 
             let ac0 = a + c;
             let ac1 = a - c;
@@ -521,23 +693,23 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
             let bd1i = Complex::new(-bd1.im, bd1.re);
 
             f0[i] = ac0 + bd0;
-            f0[self.innerSize + i] = ac1 + bd1i;
-            f0[self.innerSize * 2 + i] = ac0 - bd0;
-            f0[self.innerSize * 3 + i] = ac1 - bd1i;
+            f0[self.inner_size + i] = ac1 + bd1i;
+            f0[self.inner_size * 2 + i] = ac0 - bd0;
+            f0[self.inner_size * 3 + i] = ac1 - bd1i;
         }
     }
 
     #[allow(clippy::indexing_slicing, clippy::similar_names)]
-    fn finalPass4_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
-        for i in 0..self.innerSize {
+    fn final_pass_4_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
+        for i in 0..self.inner_size {
             let ar = f0r[i];
             let ai = f0i[i];
-            let br = f0r[self.innerSize + i];
-            let bi = f0i[self.innerSize + i];
-            let cr = f0r[self.innerSize * 2 + i];
-            let ci = f0i[self.innerSize * 2 + i];
-            let dr = f0r[self.innerSize * 3 + i];
-            let di = f0i[self.innerSize * 3 + i];
+            let br = f0r[self.inner_size + i];
+            let bi = f0i[self.inner_size + i];
+            let cr = f0r[self.inner_size * 2 + i];
+            let ci = f0i[self.inner_size * 2 + i];
+            let dr = f0r[self.inner_size * 3 + i];
+            let di = f0i[self.inner_size * 3 + i];
 
             let ac0r = ar + cr;
             let ac0i = ai + ci;
@@ -550,12 +722,12 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
 
             f0r[i] = ac0r + bd0r;
             f0i[i] = ac0i + bd0i;
-            f0r[self.innerSize + i] = if INVERSE { ac1r - bd1i } else { ac1r + bd1i };
-            f0i[self.innerSize + i] = if INVERSE { ac1i + bd1r } else { ac1i - bd1r };
-            f0r[self.innerSize * 2 + i] = ac0r - bd0r;
-            f0i[self.innerSize * 2 + i] = ac0i - bd0i;
-            f0r[self.innerSize * 3 + i] = if INVERSE { ac1r + bd1i } else { ac1r - bd1i };
-            f0i[self.innerSize * 3 + i] = if INVERSE { ac1i - bd1r } else { ac1i + bd1r };
+            f0r[self.inner_size + i] = if INVERSE { ac1r - bd1i } else { ac1r + bd1i };
+            f0i[self.inner_size + i] = if INVERSE { ac1i + bd1r } else { ac1i - bd1r };
+            f0r[self.inner_size * 2 + i] = ac0r - bd0r;
+            f0i[self.inner_size * 2 + i] = ac0i - bd0i;
+            f0r[self.inner_size * 3 + i] = if INVERSE { ac1r + bd1i } else { ac1r - bd1i };
+            f0i[self.inner_size * 3 + i] = if INVERSE { ac1i - bd1r } else { ac1i + bd1r };
         }
     }
 
@@ -566,18 +738,18 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
         clippy::unreadable_literal,
         clippy::many_single_char_names
     )]
-    fn finalPass5<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
+    fn final_pass_5<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
         let tw1r = 0.30901699437494745;
         let tw1i = -0.9510565162951535 * (if INVERSE { -1.0 } else { 1.0 });
         let tw2r = -0.8090169943749473;
         let tw2i = -0.5877852522924732 * (if INVERSE { -1.0 } else { 1.0 });
 
-        for i in 0..self.innerSize {
+        for i in 0..self.inner_size {
             let a = f0[i];
-            let b = f0[self.innerSize + i];
-            let c = f0[self.innerSize * 2 + i];
-            let d = f0[self.innerSize * 3 + i];
-            let e = f0[self.innerSize * 4 + i];
+            let b = f0[self.inner_size + i];
+            let c = f0[self.inner_size * 2 + i];
+            let d = f0[self.inner_size * 3 + i];
+            let e = f0[self.inner_size * 4 + i];
 
             let be0 = b + e;
             let be1 = Complex::new(e.im - b.im, b.re - e.re); //(b - e)*i
@@ -590,10 +762,10 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
             let bcde12 = be1 * tw2i - cd1 * tw1i;
 
             f0[i] = a + be0 + cd0;
-            f0[self.innerSize + i] = a + bcde01 + bcde11;
-            f0[self.innerSize * 2 + i] = a + bcde02 + bcde12;
-            f0[self.innerSize * 3 + i] = a + bcde02 - bcde12;
-            f0[self.innerSize * 4 + i] = a + bcde01 - bcde11;
+            f0[self.inner_size + i] = a + bcde01 + bcde11;
+            f0[self.inner_size * 2 + i] = a + bcde02 + bcde12;
+            f0[self.inner_size * 3 + i] = a + bcde02 - bcde12;
+            f0[self.inner_size * 4 + i] = a + bcde01 - bcde11;
         }
     }
 
@@ -603,23 +775,23 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
         clippy::excessive_precision,
         clippy::unreadable_literal
     )]
-    fn finalPass5_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
+    fn final_pass_5_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
         let tw1r = 0.30901699437494745;
         let tw1i = -0.9510565162951535 * (if INVERSE { -1.0 } else { 1.0 });
         let tw2r = -0.8090169943749473;
         let tw2i = -0.5877852522924732 * (if INVERSE { -1.0 } else { 1.0 });
 
-        for i in 0..self.innerSize {
+        for i in 0..self.inner_size {
             let ar = f0r[i];
             let ai = f0i[i];
-            let br = f0r[self.innerSize + i];
-            let bi = f0i[self.innerSize + i];
-            let cr = f0r[self.innerSize * 2 + i];
-            let ci = f0i[self.innerSize * 2 + i];
-            let dr = f0r[self.innerSize * 3 + i];
-            let di = f0i[self.innerSize * 3 + i];
-            let er = f0r[self.innerSize * 4 + i];
-            let ei = f0i[self.innerSize * 4 + i];
+            let br = f0r[self.inner_size + i];
+            let bi = f0i[self.inner_size + i];
+            let cr = f0r[self.inner_size * 2 + i];
+            let ci = f0i[self.inner_size * 2 + i];
+            let dr = f0r[self.inner_size * 3 + i];
+            let di = f0i[self.inner_size * 3 + i];
+            let er = f0r[self.inner_size * 4 + i];
+            let ei = f0i[self.inner_size * 4 + i];
 
             let be0r = br + er;
             let be0i = bi + ei;
@@ -641,64 +813,68 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
 
             f0r[i] = ar + be0r + cd0r;
             f0i[i] = ai + be0i + cd0i;
-            f0r[self.innerSize + i] = ar + bcde01r + bcde11r;
-            f0i[self.innerSize + i] = ai + bcde01i + bcde11i;
-            f0r[self.innerSize * 2 + i] = ar + bcde02r + bcde12r;
-            f0i[self.innerSize * 2 + i] = ai + bcde02i + bcde12i;
-            f0r[self.innerSize * 3 + i] = ar + bcde02r - bcde12r;
-            f0i[self.innerSize * 3 + i] = ai + bcde02i - bcde12i;
-            f0r[self.innerSize * 4 + i] = ar + bcde01r - bcde11r;
-            f0i[self.innerSize * 4 + i] = ai + bcde01i - bcde11i;
+            f0r[self.inner_size + i] = ar + bcde01r + bcde11r;
+            f0i[self.inner_size + i] = ai + bcde01i + bcde11i;
+            f0r[self.inner_size * 2 + i] = ar + bcde02r + bcde12r;
+            f0i[self.inner_size * 2 + i] = ai + bcde02i + bcde12i;
+            f0r[self.inner_size * 3 + i] = ar + bcde02r - bcde12r;
+            f0i[self.inner_size * 3 + i] = ai + bcde02i - bcde12i;
+            f0r[self.inner_size * 4 + i] = ar + bcde01r - bcde11r;
+            f0i[self.inner_size * 4 + i] = ai + bcde01i - bcde11i;
         }
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn finalPassN<const INVERSE: bool>(&mut self, f0: &mut [Complex<f32>]) {
-        for i in 0..self.innerSize {
+    fn final_pass_n<const INVERSE: bool>(&mut self, f0: &mut [Complex<f32>]) {
+        for i in 0..self.inner_size {
             let mut sum = Complex::new(0.0, 0.0);
 
-            for i2 in 0..self.outerSize {
-                let tmp_value = f0[i + i2 * self.innerSize];
+            for i2 in 0..self.outer_size {
+                let tmp_value = f0[i + i2 * self.inner_size];
 
-                self.dftTmp[i2] = tmp_value;
+                self.dft_tmp[i2] = tmp_value;
                 sum += tmp_value;
             }
 
             f0[i] = sum;
 
-            for f in 1..self.outerSize {
-                let mut sum = self.dftTmp[0];
+            for f in 1..self.outer_size {
+                let mut sum = self.dft_tmp[0];
 
-                for i2 in 1..self.outerSize {
-                    let twist_index = (i2 * f) % self.outerSize;
+                for i2 in 1..self.outer_size {
+                    let twist_index = (i2 * f) % self.outer_size;
                     let twist = if INVERSE {
-                        self.dftTwists[twist_index].conj()
+                        self.dft_twists[twist_index].conj()
                     } else {
-                        self.dftTwists[twist_index]
+                        self.dft_twists[twist_index]
                     };
 
                     sum += Complex::new(
-                        self.dftTmp[i2].re * twist.re - self.dftTmp[i2].im * twist.im,
-                        self.dftTmp[i2].im * twist.re + self.dftTmp[i2].re * twist.im,
+                        self.dft_tmp[i2].re * twist.re - self.dft_tmp[i2].im * twist.im,
+                        self.dft_tmp[i2].im * twist.re + self.dft_tmp[i2].re * twist.im,
                     );
                 }
 
-                f0[i + f * self.innerSize] = sum;
+                f0[i + f * self.inner_size] = sum;
             }
         }
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn finalPassN_split_complex<const INVERSE: bool>(&mut self, f0r: &mut [f32], f0i: &mut [f32]) {
-        let (tmp_r, tmp_i) = complex_to_two_float(&mut self.dftTmp);
+    fn final_pass_n_split_complex<const INVERSE: bool>(
+        &mut self,
+        f0r: &mut [f32],
+        f0i: &mut [f32],
+    ) {
+        let (tmp_r, tmp_i) = complex_to_two_float_mut(&mut self.dft_tmp);
 
-        for i in 0..self.innerSize {
+        for i in 0..self.inner_size {
             let mut sum_r = 0.0;
             let mut sum_i = 0.0;
 
-            for i2 in 0..self.outerSize {
-                let tmp_value_r = f0r[i + i2 * self.innerSize];
-                let tmp_value_i = f0i[i + i2 * self.innerSize];
+            for i2 in 0..self.outer_size {
+                let tmp_value_r = f0r[i + i2 * self.inner_size];
+                let tmp_value_i = f0i[i + i2 * self.inner_size];
 
                 tmp_r[i2] = tmp_value_r;
                 sum_r += tmp_value_r;
@@ -709,25 +885,25 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
             f0r[i] = sum_r;
             f0i[i] = sum_i;
 
-            for f in 1..self.outerSize {
+            for f in 1..self.outer_size {
                 let mut sum_r = tmp_r[0];
                 let mut sum_i = tmp_i[0];
 
-                for i2 in 1..self.outerSize {
-                    let twist_index = (i2 * f) % self.outerSize;
+                for i2 in 1..self.outer_size {
+                    let twist_index = (i2 * f) % self.outer_size;
 
                     let twist = if INVERSE {
-                        self.dftTwists[twist_index].conj()
+                        self.dft_twists[twist_index].conj()
                     } else {
-                        self.dftTwists[twist_index]
+                        self.dft_twists[twist_index]
                     };
 
                     sum_r += tmp_r[i2] * twist.re - tmp_i[i2] * twist.im;
                     sum_i += tmp_i[i2] * twist.re + tmp_r[i2] * twist.im;
                 }
 
-                f0r[i + f * self.innerSize] = sum_r;
-                f0i[i + f * self.innerSize] = sum_i;
+                f0r[i + f * self.inner_size] = sum_r;
+                f0i[i + f * self.inner_size] = sum_i;
             }
         }
     }

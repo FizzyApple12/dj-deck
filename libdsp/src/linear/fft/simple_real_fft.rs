@@ -1,7 +1,7 @@
 use num::{Float, complex::Complex};
 
 use crate::linear::{
-    complex_to_two_float,
+    complex_to_two_float_mut,
     fft::pow2_fft::{Pow2FFT, Pow2FFTTrait},
 };
 
@@ -24,8 +24,8 @@ where
 
     fn resize(&mut self, size: usize);
 
-    fn fft(&mut self, time: &mut [f32], freq: &mut [Complex<f32>]);
-    fn ifft(&mut self, freq: &mut [Complex<f32>], time: &mut [f32]);
+    fn fft(&mut self, time: &[f32], freq: &mut [Complex<f32>]);
+    fn ifft(&mut self, freq: &[Complex<f32>], time: &mut [f32]);
     fn fft_split_complex(&mut self, in_r: &[f32], out_r: &mut [f32], out_i: &mut [f32]);
     fn ifft_split_complex(&mut self, in_r: &[f32], in_i: &[f32], out_r: &mut [f32]);
 }
@@ -60,12 +60,12 @@ impl<const SPLIT_COMPUTATION: bool> SimpleRealFFTTrait<f32, SPLIT_COMPUTATION>
         clippy::manual_memcpy,
         clippy::needless_range_loop
     )]
-    fn fft(&mut self, time: &mut [f32], freq: &mut [Complex<f32>]) {
+    fn fft(&mut self, time: &[f32], freq: &mut [Complex<f32>]) {
         for i in 0..self.tmp_time.len() {
             self.tmp_time[i] = Complex::from(time[i]);
         }
 
-        self.complex_fft.fft(&mut self.tmp_time, &mut self.tmp_freq);
+        self.complex_fft.fft(&self.tmp_time, &mut self.tmp_freq);
 
         for i in 0..(self.tmp_freq.len() / 2) {
             freq[i] = self.tmp_freq[i];
@@ -78,7 +78,7 @@ impl<const SPLIT_COMPUTATION: bool> SimpleRealFFTTrait<f32, SPLIT_COMPUTATION>
     }
 
     #[allow(clippy::indexing_slicing, clippy::needless_range_loop)]
-    fn ifft(&mut self, freq: &mut [Complex<f32>], time: &mut [f32]) {
+    fn ifft(&mut self, freq: &[Complex<f32>], time: &mut [f32]) {
         self.tmp_freq[0] = Complex::from(freq[0].re);
 
         let temp_freq_len = self.tmp_freq.len();
@@ -90,8 +90,7 @@ impl<const SPLIT_COMPUTATION: bool> SimpleRealFFTTrait<f32, SPLIT_COMPUTATION>
             self.tmp_freq[temp_freq_len - i] = freq[i].conj();
         }
 
-        self.complex_fft
-            .ifft(&mut self.tmp_freq, &mut self.tmp_time);
+        self.complex_fft.ifft(&self.tmp_freq, &mut self.tmp_time);
 
         for i in 0..self.tmp_time.len() {
             time[i] = self.tmp_time[i].re;
@@ -102,9 +101,9 @@ impl<const SPLIT_COMPUTATION: bool> SimpleRealFFTTrait<f32, SPLIT_COMPUTATION>
     fn fft_split_complex(&mut self, in_r: &[f32], out_r: &mut [f32], out_i: &mut [f32]) {
         let tmp_freq_len = self.tmp_freq.len();
 
-        let (tmp_freq_r, tmp_freq_i) = complex_to_two_float(&mut self.tmp_freq);
+        let (tmp_freq_r, tmp_freq_i) = complex_to_two_float_mut(&mut self.tmp_freq);
 
-        let (tmp_time, _) = complex_to_two_float(&mut self.tmp_time);
+        let (tmp_time, _) = complex_to_two_float_mut(&mut self.tmp_time);
 
         for i in 0..(tmp_time.len() / 2) {
             tmp_time[i] = 0.0;
@@ -125,9 +124,9 @@ impl<const SPLIT_COMPUTATION: bool> SimpleRealFFTTrait<f32, SPLIT_COMPUTATION>
     fn ifft_split_complex(&mut self, in_r: &[f32], in_i: &[f32], out_r: &mut [f32]) {
         let tmp_freq_len = self.tmp_freq.len();
 
-        let (tmp_freq_r, tmp_freq_i) = complex_to_two_float(&mut self.tmp_freq);
+        let (tmp_freq_r, tmp_freq_i) = complex_to_two_float_mut(&mut self.tmp_freq);
 
-        let (tmp_time, _) = complex_to_two_float(&mut self.tmp_time);
+        let (tmp_time, _) = complex_to_two_float_mut(&mut self.tmp_time);
 
         tmp_freq_r[0] = in_r[0];
         tmp_freq_r[tmp_freq_len / 2] = in_i[0];

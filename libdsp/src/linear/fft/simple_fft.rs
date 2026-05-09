@@ -1,6 +1,6 @@
 use num::{Float, complex::Complex};
 
-use crate::linear::complex_to_two_float;
+use crate::linear::complex_to_two_float_mut;
 
 // Fairly simple and very portable power-of-2 FFT
 pub struct SimpleFFT<Sample>
@@ -19,8 +19,7 @@ where
 
     fn resize(&mut self, size: usize);
 
-    fn fft(&mut self, time: &mut [Complex<f32>], freq: &mut [Complex<f32>]);
-    fn ifft(&mut self, freq: &mut [Complex<f32>], time: &mut [Complex<f32>]);
+    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
     fn fft_split_complex(
         &mut self,
         in_r: &[Sample],
@@ -28,6 +27,7 @@ where
         out_r: &mut [Sample],
         out_i: &mut [Sample],
     );
+    fn ifft(&mut self, freq: &[Complex<f32>], time: &mut [Complex<f32>]);
     fn ifft_split_complex(
         &mut self,
         in_r: &[Sample],
@@ -62,8 +62,8 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
         self.working.resize(size, Complex { re: 0.0, im: 0.0 });
     }
 
-    #[allow(clippy::indexing_slicing)]
-    fn fft(&mut self, time: &mut [Complex<f32>], freq: &mut [Complex<f32>]) {
+    #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
+    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
         let size = self.working.len();
 
         if size < 1 {
@@ -74,27 +74,12 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
             return;
         }
 
-        // self.fftPass::<false>(size, 1, time, freq, &mut self.working);
-        todo!("ughhhhhh")
+        let working_pointer = &raw mut self.working;
+
+        self.fft_pass::<false>(size, 1, time, freq, unsafe { &mut *working_pointer });
     }
 
-    #[allow(clippy::indexing_slicing)]
-    fn ifft(&mut self, freq: &mut [Complex<f32>], time: &mut [Complex<f32>]) {
-        let size = self.working.len();
-
-        if size < 1 {
-            return;
-        } else if size == 1 {
-            time[0] = freq[0];
-
-            return;
-        }
-
-        // self.fftPass::<true>(size, 1, freq, time, &mut self.working);
-        todo!("ughhhhhh")
-    }
-
-    #[allow(clippy::indexing_slicing)]
+    #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
     fn fft_split_complex(
         &mut self,
         in_r: &[f32],
@@ -113,14 +98,33 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
             return;
         }
 
-        let (working_r, working_i) = complex_to_two_float(&mut self.working);
+        let working_pointer = &raw mut self.working;
 
-        // self.fftPass_split_complex::<false>(size, 1, in_r, in_i, out_r, out_i,
-        // working_r, working_i);
-        todo!("ughhhhhh")
+        let (working_r, working_i) = complex_to_two_float_mut(unsafe { &mut *working_pointer });
+
+        self.fft_pass_split_complex::<false>(
+            size, 1, in_r, in_i, out_r, out_i, working_r, working_i,
+        );
     }
 
-    #[allow(clippy::indexing_slicing)]
+    #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
+    fn ifft(&mut self, freq: &[Complex<f32>], time: &mut [Complex<f32>]) {
+        let size = self.working.len();
+
+        if size < 1 {
+            return;
+        } else if size == 1 {
+            time[0] = freq[0];
+
+            return;
+        }
+
+        let working_pointer = &raw mut self.working;
+
+        self.fft_pass::<true>(size, 1, freq, time, unsafe { &mut *working_pointer });
+    }
+
+    #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
     fn ifft_split_complex(
         &mut self,
         in_r: &[f32],
@@ -139,11 +143,13 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
             return;
         }
 
-        let (working_r, working_i) = complex_to_two_float(&mut self.working);
+        let working_pointer = &raw mut self.working;
 
-        // self.fftPass_split_complex::<false>(size, 1, in_r, in_i, out_r, out_i,
-        // working_r, working_i);
-        todo!("ughhhhhh")
+        let (working_r, working_i) = complex_to_two_float_mut(unsafe { &mut *working_pointer });
+
+        self.fft_pass_split_complex::<false>(
+            size, 1, in_r, in_i, out_r, out_i, working_r, working_i,
+        );
     }
 }
 
@@ -157,7 +163,7 @@ impl SimpleFFT<f32> {
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn fftPass<const INVERSE: bool>(
+    fn fft_pass<const INVERSE: bool>(
         &self,
         size: usize,
         stride: usize,
@@ -167,7 +173,7 @@ impl SimpleFFT<f32> {
     ) {
         if size / 4 > 1 {
             // Calculate four quarter-size FFTs
-            self.fftPass::<INVERSE>(size / 4, stride * 4, input, working, output);
+            self.fft_pass::<INVERSE>(size / 4, stride * 4, input, working, output);
             self.combine4::<INVERSE>(size, stride, working, output);
         } else if size == 4 {
             self.combine4::<INVERSE>(4, stride, input, output);
@@ -222,7 +228,7 @@ impl SimpleFFT<f32> {
 
     // The same thing, but translated for split-complex input/output
     #[allow(clippy::indexing_slicing, clippy::too_many_arguments)]
-    fn fftPass_split_complex<const INVERSE: bool>(
+    fn fft_pass_split_complex<const INVERSE: bool>(
         &self,
         size: usize,
         stride: usize,
@@ -235,7 +241,7 @@ impl SimpleFFT<f32> {
     ) {
         if size / 4 > 1 {
             // Calculate four quarter-size FFTs
-            self.fftPass_split_complex::<INVERSE>(
+            self.fft_pass_split_complex::<INVERSE>(
                 size / 4,
                 stride * 4,
                 input_r,
