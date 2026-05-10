@@ -7,9 +7,11 @@ pub mod split_fft;
 
 use num::{Float, complex::Complex};
 
+use crate::linear::fft::{real_fft::RealFFT, split_fft::SplitFFT};
+
 // Helpers for complex arithmetic, ignoring the NaN/Inf edge-cases you get
 #[allow(clippy::indexing_slicing)]
-pub fn complexMul<V>(a: &mut [Complex<V>], b: &[Complex<V>], c: &[Complex<V>], size: usize)
+pub fn complex_mul<V>(a: &mut [Complex<V>], b: &[Complex<V>], c: &[Complex<V>], size: usize)
 where
     V: Float,
 {
@@ -22,7 +24,7 @@ where
 }
 
 #[allow(clippy::indexing_slicing)]
-pub fn complexMulConj<V>(a: &mut [Complex<V>], b: &[Complex<V>], c: &[Complex<V>], size: usize)
+pub fn complex_mul_conj<V>(a: &mut [Complex<V>], b: &[Complex<V>], c: &[Complex<V>], size: usize)
 where
     V: Float,
 {
@@ -35,7 +37,7 @@ where
 }
 
 #[allow(clippy::indexing_slicing)]
-pub fn complexMul_split_complex<V>(
+pub fn complex_mul_split_complex<V>(
     ar: &mut [V],
     ai: &mut [V],
     br: &[V],
@@ -56,7 +58,7 @@ pub fn complexMul_split_complex<V>(
 }
 
 #[allow(clippy::indexing_slicing)]
-pub fn complexMulConj_split_complex<V>(
+pub fn complex_mul_conj_split_complex<V>(
     ar: &mut [V],
     ai: &mut [V],
     br: &[V],
@@ -78,7 +80,7 @@ pub fn complexMulConj_split_complex<V>(
 
 // Input: aStride elements next to each other -> output with bStride
 #[allow(clippy::indexing_slicing)]
-pub fn interleaveCopy_const_astride<V, const ASTRIDE: usize>(a: &[V], b: &mut [V], b_stride: usize)
+pub fn interleave_copy_const_astride<V, const ASTRIDE: usize>(a: &[V], b: &mut [V], b_stride: usize)
 where
     V: Copy,
 {
@@ -89,7 +91,7 @@ where
     }
 }
 #[allow(clippy::indexing_slicing)]
-pub fn interleaveCopy<V>(a: &[V], b: &mut [V], a_stride: usize, b_stride: usize)
+pub fn interleave_copy<V>(a: &[V], b: &mut [V], a_stride: usize, b_stride: usize)
 where
     V: Copy,
 {
@@ -101,7 +103,7 @@ where
 }
 
 #[allow(clippy::indexing_slicing)]
-pub fn interleaveCopy_const_astride_split_complex<V, const ASTRIDE: usize>(
+pub fn interleave_copy_const_astride_split_complex<V, const ASTRIDE: usize>(
     a_real: &[V],
     a_imag: &[V],
     b_real: &mut [V],
@@ -118,7 +120,7 @@ pub fn interleaveCopy_const_astride_split_complex<V, const ASTRIDE: usize>(
     }
 }
 #[allow(clippy::indexing_slicing)]
-pub fn interleaveCopy_split_complex<V>(
+pub fn interleave_copy_split_complex<V>(
     a_real: &[V],
     a_imag: &[V],
     b_real: &mut [V],
@@ -136,22 +138,7 @@ pub fn interleaveCopy_split_complex<V>(
     }
 }
 
-// template<typename Sample, bool splitComputation=false>
-// using FFT = SplitFFT<Sample, splitComputation>;
+pub type FFT<Sample, const SPLIT_COMPUTATION: bool> = SplitFFT<Sample, SPLIT_COMPUTATION>;
 
-// template<typename Sample, bool splitComputation=false>
-// using ModifiedRealFFT = RealFFT<Sample, splitComputation, true>;
-
-// // Override `Pow2FFT` / `Pow2RealFFT` templates with faster implementations
-// #if defined(SIGNALSMITH_USE_PFFFT) || defined(SIGNALSMITH_USE_PFFFT_DOUBLE)
-// #	if defined(SIGNALSMITH_USE_PFFFT)
-// #		include "./platform/fft-pffft.h"
-// #	endif
-// #	if defined(SIGNALSMITH_USE_PFFFT_DOUBLE)
-// #		include "./platform/fft-pffft-double.h"
-// #	endif
-// #elif defined(SIGNALSMITH_USE_ACCELERATE)
-// #	include "./platform/fft-accelerate.h"
-// #elif defined(SIGNALSMITH_USE_IPP)
-// #	include "./platform/fft-ipp.h"
-// #endif
+pub type ModifiedRealFFT<Sample, const SPLIT_COMPUTATION: bool> =
+    RealFFT<Sample, SPLIT_COMPUTATION, true>;

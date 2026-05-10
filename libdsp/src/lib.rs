@@ -1,3 +1,7 @@
+#![allow(incomplete_features)]
+#![feature(inherent_associated_types)]
+#![feature(generic_const_exprs)]
+
 // this library is ported from:
 // https://github.com/Signalsmith-Audio/linear
 // https://signalsmith-audio.co.uk/code/dsp/
@@ -7,3 +11,4 @@
 // TODO: ADD f64 VARIANTS
 
 pub mod linear;
+pub mod stretch;

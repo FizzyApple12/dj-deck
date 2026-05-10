@@ -7,25 +7,25 @@ use crate::linear::{
 
 // A Real FFT which can handle multiples of 3 and 5, and can be computed in
 // chunks
-
-// template<typename Sample, bool splitComputation=false, bool
-// halfBinShift=false>
 pub struct RealFFT<Sample, const SPLIT_COMPUTATION: bool, const HALF_BIN_SHIFT: bool>
 where
     Sample: Float,
 {
-    complexFft: SplitFFT<Sample, SPLIT_COMPUTATION>,
+    complex_fft: SplitFFT<Sample, SPLIT_COMPUTATION>,
 
-    tmpFreq: Vec<Complex<Sample>>,
-    tmpTime: Vec<Complex<Sample>>,
+    tmp_freq: Vec<Complex<Sample>>,
+    tmp_time: Vec<Complex<Sample>>,
     twiddles: Vec<Complex<Sample>>,
-    halfBinTwists: Vec<Complex<Sample>>,
+    half_bin_twists: Vec<Complex<Sample>>,
 }
 
 pub trait RealFFTTrait<Sample, const SPLIT_COMPUTATION: bool, const HALF_BIN_SHIFT: bool>
 where
     Sample: Float + Default,
 {
+    type Complex;
+    type Sample;
+
     const PREFERS_SPLIT: bool;
 
     fn fast_size_above(size: usize) -> usize;
@@ -37,61 +37,60 @@ where
     fn size(&self) -> usize;
     fn steps(&self) -> usize;
 
-    fn fft(&mut self, time: &[f32], freq: &mut [Complex<f32>]);
-    fn fft_step(&mut self, step: usize, time: &[f32], freq: &mut [Complex<f32>]);
-    // fn fft_split_complex(
-    //     &mut self,
-    //     in_r: &[f32],
-    //     in_i: &[f32],
-    //     out_r: &mut [f32],
-    //     out_i: &mut [f32],
-    // );
-    // fn fft_step_split_complex(
-    //     &mut self,
-    //     step: usize,
-    //     in_r: &[f32],
-    //     in_i: &[f32],
-    //     out_r: &mut [f32],
-    //     out_i: &mut [f32],
-    // );
+    fn fft(&mut self, time: &[Self::Sample], freq: &mut [Self::Complex]);
+    fn fft_step(&mut self, step: usize, time: &[Self::Sample], freq: &mut [Self::Complex]);
+    fn fft_split_complex(
+        &mut self,
+        in_r: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
+    );
+    fn fft_step_split_complex(
+        &mut self,
+        step: usize,
+        in_r: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
+    );
 
-    // fn ifft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
-    // fn ifft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut
-    // [Complex<f32>]); fn ifft_split_complex(
-    //     &mut self,
-    //     in_r: &[f32],
-    //     in_i: &[f32],
-    //     out_r: &mut [f32],
-    //     out_i: &mut [f32],
-    // );
-    // fn ifft_step_split_complex(
-    //     &mut self,
-    //     step: usize,
-    //     in_r: &[f32],
-    //     in_i: &[f32],
-    //     out_r: &mut [f32],
-    //     out_i: &mut [f32],
-    // );
+    fn ifft(&mut self, freq: &[Self::Complex], time: &mut [Self::Sample]);
+    fn ifft_step(&mut self, step: usize, freq: &[Self::Complex], time: &mut [Self::Sample]);
+    fn ifft_split_complex(
+        &mut self,
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+    );
+    fn ifft_step_split_complex(
+        &mut self,
+        step: usize,
+        in_i: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+    );
 }
 
 impl<const SPLIT_COMPUTATION: bool, const HALF_BIN_SHIFT: bool>
     RealFFTTrait<f32, SPLIT_COMPUTATION, HALF_BIN_SHIFT>
     for RealFFT<f32, SPLIT_COMPUTATION, HALF_BIN_SHIFT>
 {
-    const PREFERS_SPLIT: bool = SplitFFT::<f32, SPLIT_COMPUTATION>::PREFERS_SPLIT;
+    type Complex = Complex<f32>;
+    type Sample = f32;
+
+    const PREFERS_SPLIT: bool = SplitFFT::<Self::Sample, SPLIT_COMPUTATION>::PREFERS_SPLIT;
 
     fn fast_size_above(size: usize) -> usize {
-        SplitFFT::<f32, SPLIT_COMPUTATION>::fast_size_above(size.div_ceil(2)) * 2
+        SplitFFT::<Self::Sample, SPLIT_COMPUTATION>::fast_size_above(size.div_ceil(2)) * 2
     }
 
     fn new(size: usize) -> Self {
         let mut new = Self {
-            complexFft: SplitFFT::<f32, SPLIT_COMPUTATION>::new(size),
+            complex_fft: SplitFFT::<Self::Sample, SPLIT_COMPUTATION>::new(size),
 
-            tmpFreq: Vec::new(),
-            tmpTime: Vec::new(),
+            tmp_freq: Vec::new(),
+            tmp_time: Vec::new(),
             twiddles: Vec::new(),
-            halfBinTwists: Vec::new(),
+            half_bin_twists: Vec::new(),
         };
 
         new.resize(size);
@@ -103,455 +102,620 @@ impl<const SPLIT_COMPUTATION: bool, const HALF_BIN_SHIFT: bool>
     fn resize(&mut self, size: usize) {
         let h_size = size / 2;
 
-        self.complexFft.resize(h_size);
-        self.tmpFreq.resize(h_size, Complex { re: 0.0, im: 0.0 });
-        self.tmpTime.resize(h_size, Complex { re: 0.0, im: 0.0 });
+        self.complex_fft.resize(h_size);
+        self.tmp_freq
+            .resize(h_size, Self::Complex { re: 0.0, im: 0.0 });
+        self.tmp_time
+            .resize(h_size, Self::Complex { re: 0.0, im: 0.0 });
 
         self.twiddles
-            .resize(h_size / 2 + 1, Complex { re: 0.0, im: 0.0 });
+            .resize(h_size / 2 + 1, Self::Complex { re: 0.0, im: 0.0 });
 
         if HALF_BIN_SHIFT {
             for i in 0..self.twiddles.len() {
-                let rot_phase = (i as f32 + 0.5) * (-2.0 * std::f32::consts::PI / size as f32)
+                let rot_phase = (i as Self::Sample + 0.5)
+                    * (-2.0 * std::f32::consts::PI / size as Self::Sample)
                     - std::f32::consts::PI / 2.0;
 
-                self.twiddles[i] = Complex::from_polar(1.0, rot_phase);
+                self.twiddles[i] = Self::Complex::from_polar(1.0, rot_phase);
             }
 
-            self.halfBinTwists
-                .resize(h_size, Complex { re: 0.0, im: 0.0 });
+            self.half_bin_twists
+                .resize(h_size, Self::Complex { re: 0.0, im: 0.0 });
 
             for i in 0..h_size {
-                let twist_phase = -2.0 * std::f32::consts::PI * i as f32 / size as f32;
+                let twist_phase =
+                    -2.0 * std::f32::consts::PI * i as Self::Sample / size as Self::Sample;
 
-                self.halfBinTwists[i] = Complex::from_polar(1.0, twist_phase);
+                self.half_bin_twists[i] = Self::Complex::from_polar(1.0, twist_phase);
             }
         } else {
             for i in 0..self.twiddles.len() {
-                let rot_phase = i as f32 * (-2.0 * std::f32::consts::PI / size as f32)
+                let rot_phase = i as Self::Sample
+                    * (-2.0 * std::f32::consts::PI / size as Self::Sample)
                     - std::f32::consts::PI / 2.0; // bake rotation by (-i) into twiddles
 
-                self.twiddles[i] = Complex::from_polar(1.0, rot_phase);
+                self.twiddles[i] = Self::Complex::from_polar(1.0, rot_phase);
             }
         }
     }
 
     fn size(&self) -> usize {
-        self.complexFft.size() * 2
+        self.complex_fft.size() * 2
     }
 
     fn steps(&self) -> usize {
-        self.complexFft.steps() + if SPLIT_COMPUTATION { 3 } else { 2 }
+        self.complex_fft.steps() + if SPLIT_COMPUTATION { 3 } else { 2 }
     }
 
-    fn fft(&mut self, time: &[f32], freq: &mut [Complex<f32>]) {
+    fn fft(&mut self, time: &[Self::Sample], freq: &mut [Self::Complex]) {
         for s in 0..self.steps() {
             self.fft_step(s, time, freq);
         }
     }
 
-    fn fft_step(&mut self, mut step: usize, time: &[f32], freq: &mut [Complex<f32>]) {
+    #[allow(
+        clippy::too_many_lines,
+        clippy::indexing_slicing,
+        clippy::bool_to_int_with_if,
+        clippy::undocumented_unsafe_blocks
+    )]
+    fn fft_step(&mut self, mut step: usize, time: &[Self::Sample], freq: &mut [Self::Complex]) {
         if Self::PREFERS_SPLIT {
-            let hSize = self.complexFft.size();
+            let h_size = self.complex_fft.size();
 
-            let (tmpTimeR, tmpTimeI) = complex_to_two_float_mut(&mut self.tmpTime);
-            let (tmpFreqR, tmpFreqI) = complex_to_two_float_mut(&mut self.tmpFreq);
-
-            // let tmpTimeR = self.tmpTime.data();
-            // let tmpTimeI = tmpTimeR + hSize;
-            // let tmpFreqR = self.tmpFreq.data();
-            // let tmpFreqI = tmpFreqR + hSize;
+            let (tmp_time_r, tmp_time_i) = complex_to_two_float_mut(&mut self.tmp_time);
+            let (tmp_freq_r, tmp_freq_i) = complex_to_two_float_mut(&mut self.tmp_freq);
 
             let step_check = step;
             step -= 1;
 
             if step_check == 0 {
-                let hSize = self.complexFft.size();
+                let h_size = self.complex_fft.size();
 
                 if HALF_BIN_SHIFT {
-                    for i in 0..hSize {
+                    for i in 0..h_size {
                         let tr = time[2 * i];
                         let ti = time[2 * i + 1];
 
-                        let twist = self.halfBinTwists[i];
+                        let twist = self.half_bin_twists[i];
 
-                        tmpTimeR[i] = tr * twist.re - ti * twist.im;
-                        tmpTimeI[i] = ti * twist.re + tr * twist.im;
+                        tmp_time_r[i] = tr * twist.re - ti * twist.im;
+                        tmp_time_i[i] = ti * twist.re + tr * twist.im;
                     }
                 } else {
-                    for i in 0..hSize {
-                        tmpTimeR[i] = time[2 * i];
-                        tmpTimeI[i] = time[2 * i + 1];
+                    for i in 0..h_size {
+                        tmp_time_r[i] = time[2 * i];
+                        tmp_time_i[i] = time[2 * i + 1];
                     }
                 }
-            } else if step < self.complexFft.steps() {
-                self.complexFft
-                    .fft_step_split_complex(step, tmpTimeR, tmpTimeI, tmpFreqR, tmpFreqI);
+            } else if step < self.complex_fft.steps() {
+                self.complex_fft
+                    .fft_step_split_complex(step, tmp_time_r, tmp_time_i, tmp_freq_r, tmp_freq_i);
             } else {
                 if !HALF_BIN_SHIFT {
-                    let bin0r = tmpFreqR[0];
-                    let bin0i = tmpFreqI[0];
+                    let bin0_r = tmp_freq_r[0];
+                    let bin0_i = tmp_freq_i[0];
 
-                    freq[0] = Complex::new(bin0r + bin0i, bin0r - bin0i);
+                    freq[0] = Self::Complex::new(bin0_r + bin0_i, bin0_r - bin0_i);
                 }
 
-                let startI = if HALF_BIN_SHIFT { 0 } else { 1 };
-                let endI = hSize / 2 + 1;
+                let mut start_i = if HALF_BIN_SHIFT { 0 } else { 1 };
+                let mut end_i = h_size / 2 + 1;
 
                 if SPLIT_COMPUTATION {
                     // Do this last twiddle in two halves
-                    if step == self.complexFft.steps() {
-                        endI = (startI + endI) / 2;
+                    if step == self.complex_fft.steps() {
+                        end_i = usize::midpoint(start_i, end_i);
                     } else {
-                        startI = (startI + endI) / 2;
+                        start_i = usize::midpoint(start_i, end_i);
                     }
                 }
 
-                for i in startI..endI {
-                    let conjI = if HALF_BIN_SHIFT {
-                        hSize - 1 - i
+                for i in start_i..end_i {
+                    let conj_i = if HALF_BIN_SHIFT {
+                        h_size - 1 - i
                     } else {
-                        hSize - i
+                        h_size - i
                     };
 
                     let twiddle = self.twiddles[i];
 
-                    let oddR = (tmpFreqR[i] + tmpFreqR[conjI]) * 0.5;
-                    let oddI = (tmpFreqI[i] - tmpFreqI[conjI]) * 0.5;
-                    let evenIR = (tmpFreqR[i] - tmpFreqR[conjI]) * 0.5;
-                    let evenII = (tmpFreqI[i] + tmpFreqI[conjI]) * 0.5;
+                    let odd_r = (tmp_freq_r[i] + tmp_freq_r[conj_i]) * 0.5;
+                    let odd_i = (tmp_freq_i[i] - tmp_freq_i[conj_i]) * 0.5;
+                    let even_i_r = (tmp_freq_r[i] - tmp_freq_r[conj_i]) * 0.5;
+                    let even_i_i = (tmp_freq_i[i] + tmp_freq_i[conj_i]) * 0.5;
 
-                    let evenRotMinusIR = evenIR * twiddle.re - evenII * twiddle.im;
-                    let evenRotMinusII = evenII * twiddle.re + evenIR * twiddle.im;
+                    let even_rot_minus_i_r = even_i_r * twiddle.re - even_i_i * twiddle.im;
+                    let even_rot_minus_i_i = even_i_i * twiddle.re + even_i_r * twiddle.im;
 
-                    freq[i] = Complex::new(oddR + evenRotMinusIR, oddI + evenRotMinusII);
-                    freq[conjI] = Complex::new(oddR - evenRotMinusIR, evenRotMinusII - oddI);
+                    freq[i] =
+                        Self::Complex::new(odd_r + even_rot_minus_i_r, odd_i + even_rot_minus_i_i);
+                    freq[conj_i] =
+                        Self::Complex::new(odd_r - even_rot_minus_i_r, even_rot_minus_i_i - odd_i);
                 }
             }
         } else {
             let raw_time = &raw const time;
 
-            let canUseTime = !HALF_BIN_SHIFT
-                && ((raw_time as usize % std::mem::align_of::<Complex<f32>>()) == 0);
+            let can_use_time = !HALF_BIN_SHIFT
+                && (raw_time as usize).is_multiple_of(std::mem::align_of::<Self::Complex>());
 
             let step_check = step;
             step -= 1;
 
             if step_check == 0 {
-                let hSize = self.complexFft.size();
+                let h_size = self.complex_fft.size();
 
                 if HALF_BIN_SHIFT {
-                    for i in 0..hSize {
+                    for i in 0..h_size {
                         let tr = time[2 * i];
                         let ti = time[2 * i + 1];
 
-                        let twist = self.halfBinTwists[i];
+                        let twist = self.half_bin_twists[i];
 
-                        self.tmpTime[i] = Complex::new(
+                        self.tmp_time[i] = Self::Complex::new(
                             tr * twist.re - ti * twist.im,
                             ti * twist.re + tr * twist.im,
                         );
                     }
-                } else if !canUseTime {
-                    std::mem::copy(
-                        &self.tmpTime,
-                        time,
-                        std::mem::size_of::<Complex<f32>>() * hSize,
-                    );
+                } else if !can_use_time {
+                    let transmuted_time =
+                        unsafe { &*((&raw const time).cast::<&[Self::Complex]>()) };
+
+                    self.tmp_time.copy_from_slice(&transmuted_time[0..h_size]);
                 }
-            } else if step < self.complexFft.steps() {
-                self.complexFft.fft_step(
+            } else if step < self.complex_fft.steps() {
+                let transmuted_time = unsafe { *((&raw const time).cast::<&[Self::Complex]>()) };
+
+                self.complex_fft.fft_step(
                     step,
-                    if canUseTime { time } else { &self.tmpTime },
-                    &mut self.tmpFreq,
+                    if can_use_time {
+                        transmuted_time
+                    } else {
+                        &self.tmp_time
+                    },
+                    &mut self.tmp_freq,
                 );
             } else {
                 if !HALF_BIN_SHIFT {
-                    let bin0 = self.tmpFreq[0];
+                    let bin0 = self.tmp_freq[0];
 
-                    freq[0] = Complex::new(
+                    freq[0] = Self::Complex::new(
                         // pack DC & Nyquist together
                         bin0.re + bin0.im,
                         bin0.re - bin0.im,
                     );
                 }
 
-                let hSize = self.complexFft.size();
+                let h_size = self.complex_fft.size();
 
-                let startI = if HALF_BIN_SHIFT { 0 } else { 1 };
-                let endI = hSize / 2 + 1;
+                let mut start_i = if HALF_BIN_SHIFT { 0 } else { 1 };
+                let mut end_i = h_size / 2 + 1;
 
                 if SPLIT_COMPUTATION {
                     // Do this last twiddle in two halves
-                    if step == self.complexFft.steps() {
-                        endI = (startI + endI) / 2;
+                    if step == self.complex_fft.steps() {
+                        end_i = usize::midpoint(start_i, end_i);
                     } else {
-                        startI = (startI + endI) / 2;
+                        start_i = usize::midpoint(start_i, end_i);
                     }
                 }
-                for i in startI..endI {
-                    let conjI = if HALF_BIN_SHIFT {
-                        hSize - 1 - i
+                for i in start_i..end_i {
+                    let conj_i = if HALF_BIN_SHIFT {
+                        h_size - 1 - i
                     } else {
-                        hSize - i
+                        h_size - i
                     };
 
                     let twiddle = self.twiddles[i];
 
-                    let odd = (self.tmpFreq[i] + self.tmpFreq[conjI].conj()) * 0.5;
-                    let evenI = (self.tmpFreq[i] - self.tmpFreq[conjI].conj()) * 0.5;
+                    let odd = (self.tmp_freq[i] + self.tmp_freq[conj_i].conj()) * 0.5;
+                    let even_i = (self.tmp_freq[i] - self.tmp_freq[conj_i].conj()) * 0.5;
 
-                    let evenRotMinusI = Complex::new(
+                    let even_rot_minus_i = Self::Complex::new(
                         // twiddle includes a factor of -i
-                        evenI.re * twiddle.re - evenI.im * twiddle.im,
-                        evenI.im * twiddle.re + evenI.re * twiddle.im,
+                        even_i.re * twiddle.re - even_i.im * twiddle.im,
+                        even_i.im * twiddle.re + even_i.re * twiddle.im,
                     );
 
-                    freq[i] = odd + evenRotMinusI;
-                    freq[conjI] =
-                        Complex::new(odd.re - evenRotMinusI.re, evenRotMinusI.im - odd.im);
+                    freq[i] = odd + even_rot_minus_i;
+                    freq[conj_i] = Self::Complex::new(
+                        odd.re - even_rot_minus_i.re,
+                        even_rot_minus_i.im - odd.im,
+                    );
                 }
             }
         }
     }
+
+    fn fft_split_complex(
+        &mut self,
+        in_r: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
+    ) {
+        for s in 0..self.steps() {
+            self.fft_step_split_complex(s, in_r, out_r, out_i);
+        }
+    }
+
+    #[allow(
+        clippy::indexing_slicing,
+        clippy::bool_to_int_with_if,
+        clippy::undocumented_unsafe_blocks
+    )]
+    fn fft_step_split_complex(
+        &mut self,
+        mut step: usize,
+        in_r: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
+    ) {
+        let h_size = self.complex_fft.size();
+
+        let (tmp_time_r, tmp_time_i) = complex_to_two_float_mut(&mut self.tmp_time);
+        let (tmp_freq_r, tmp_freq_i) = complex_to_two_float_mut(&mut self.tmp_freq);
+
+        let step_check = step;
+        step -= 1;
+
+        if step_check == 0 {
+            let h_size = self.complex_fft.size();
+
+            if HALF_BIN_SHIFT {
+                for i in 0..h_size {
+                    let tr = in_r[2 * i];
+                    let ti = in_r[2 * i + 1];
+
+                    let twist = self.half_bin_twists[i];
+
+                    tmp_time_r[i] = tr * twist.re - ti * twist.im;
+                    tmp_time_i[i] = ti * twist.re + tr * twist.im;
+                }
+            } else {
+                for i in 0..h_size {
+                    tmp_time_r[i] = in_r[2 * i];
+                    tmp_time_i[i] = in_r[2 * i + 1];
+                }
+            }
+        } else if step < self.complex_fft.steps() {
+            self.complex_fft
+                .fft_step_split_complex(step, tmp_time_r, tmp_time_i, tmp_freq_r, tmp_freq_i);
+        } else {
+            if !HALF_BIN_SHIFT {
+                let bin0_r = tmp_freq_r[0];
+                let bin0_i = tmp_freq_i[0];
+                out_r[0] = bin0_r + bin0_i;
+                out_i[0] = bin0_r - bin0_i;
+            }
+
+            let mut start_i = if HALF_BIN_SHIFT { 0 } else { 1 };
+            let mut end_i = h_size / 2 + 1;
+
+            if SPLIT_COMPUTATION {
+                // Do this last twiddle in two halves
+                if step == self.complex_fft.steps() {
+                    end_i = usize::midpoint(start_i, end_i);
+                } else {
+                    start_i = usize::midpoint(start_i, end_i);
+                }
+            }
+
+            for i in start_i..end_i {
+                let conj_i = if HALF_BIN_SHIFT {
+                    h_size - 1 - i
+                } else {
+                    h_size - i
+                };
+                let twiddle = self.twiddles[i];
+
+                let odd_r = (tmp_freq_r[i] + tmp_freq_r[conj_i]) * 0.5;
+                let odd_i = (tmp_freq_i[i] - tmp_freq_i[conj_i]) * 0.5;
+                let even_i_r = (tmp_freq_r[i] - tmp_freq_r[conj_i]) * 0.5;
+                let even_i_i = (tmp_freq_i[i] + tmp_freq_i[conj_i]) * 0.5;
+                let even_rot_minus_i_r = even_i_r * twiddle.re - even_i_i * twiddle.im;
+                let even_rot_minus_i_i = even_i_i * twiddle.re + even_i_r * twiddle.im;
+
+                out_r[i] = odd_r + even_rot_minus_i_r;
+                out_i[i] = odd_i + even_rot_minus_i_i;
+                out_r[conj_i] = odd_r - even_rot_minus_i_r;
+                out_i[conj_i] = even_rot_minus_i_i - odd_i;
+            }
+        }
+    }
+
+    fn ifft(&mut self, freq: &[Self::Complex], time: &mut [Self::Sample]) {
+        for s in 0..self.steps() {
+            self.ifft_step(s, freq, time);
+        }
+    }
+
+    #[allow(
+        clippy::too_many_lines,
+        clippy::indexing_slicing,
+        clippy::bool_to_int_with_if,
+        clippy::undocumented_unsafe_blocks
+    )]
+    fn ifft_step(
+        &mut self,
+        mut step: usize,
+        freq: &[Self::Complex],
+        mut time: &mut [Self::Sample],
+    ) {
+        if Self::PREFERS_SPLIT {
+            let h_size = self.complex_fft.size();
+
+            let (tmp_time_r, tmp_time_i) = complex_to_two_float_mut(&mut self.tmp_time);
+            let (tmp_freq_r, tmp_freq_i) = complex_to_two_float_mut(&mut self.tmp_freq);
+
+            let step_check = step;
+            step -= 1;
+
+            let split_frst = SPLIT_COMPUTATION && (step_check == 0);
+
+            let step_check = step;
+            step -= 1;
+
+            if split_frst || step_check == 0 {
+                let bin0 = freq[0];
+
+                if !HALF_BIN_SHIFT {
+                    tmp_freq_r[0] = bin0.re + bin0.im;
+                    tmp_freq_i[0] = bin0.re - bin0.im;
+                }
+
+                let mut start_i = if HALF_BIN_SHIFT { 0 } else { 1 };
+                let mut end_i = h_size / 2 + 1;
+
+                if SPLIT_COMPUTATION {
+                    // Do this first twiddle in two halves
+                    if split_frst {
+                        end_i = usize::midpoint(start_i, end_i);
+                    } else {
+                        start_i = usize::midpoint(start_i, end_i);
+                    }
+                }
+
+                for i in start_i..end_i {
+                    let conj_i = if HALF_BIN_SHIFT {
+                        h_size - 1 - i
+                    } else {
+                        h_size - i
+                    };
+                    let twiddle = self.twiddles[i];
+
+                    let odd = freq[i] + freq[conj_i].conj();
+                    let even_rot_minus_i = freq[i] - freq[conj_i].conj();
+
+                    let even_i = Self::Complex::new(
+                        // Conjugate twiddle
+                        even_rot_minus_i.re * twiddle.re + even_rot_minus_i.im * twiddle.im,
+                        even_rot_minus_i.im * twiddle.re - even_rot_minus_i.re * twiddle.im,
+                    );
+
+                    tmp_freq_r[i] = odd.re + even_i.re;
+                    tmp_freq_i[i] = odd.im + even_i.im;
+                    tmp_freq_r[conj_i] = odd.re - even_i.re;
+                    tmp_freq_i[conj_i] = even_i.im - odd.im;
+                }
+            } else if step < self.complex_fft.steps() {
+                self.complex_fft
+                    .ifft_step_split_complex(step, tmp_freq_r, tmp_freq_i, tmp_time_r, tmp_time_i);
+            } else {
+                let h_size = self.complex_fft.size();
+
+                if HALF_BIN_SHIFT {
+                    for i in 0..h_size {
+                        let tr = tmp_time_r[i];
+                        let ti = tmp_time_i[i];
+
+                        let twist = self.half_bin_twists[i];
+
+                        time[2 * i] = tr * twist.re + ti * twist.im;
+                        time[2 * i + 1] = ti * twist.re - tr * twist.im;
+                    }
+                } else {
+                    for i in 0..h_size {
+                        time[2 * i] = tmp_time_r[i];
+                        time[2 * i + 1] = tmp_time_i[i];
+                    }
+                }
+            }
+        } else {
+            let raw_time = &raw const time;
+
+            let can_use_time = !HALF_BIN_SHIFT
+                && (raw_time as usize).is_multiple_of(std::mem::align_of::<Self::Complex>());
+
+            let step_check = step;
+            step -= 1;
+
+            let split_first = SPLIT_COMPUTATION && (step_check == 0);
+
+            let step_check = step;
+            step -= 1;
+
+            if split_first || step_check == 0 {
+                let bin0 = freq[0];
+
+                if !HALF_BIN_SHIFT {
+                    self.tmp_freq[0] = Self::Complex::new(bin0.re + bin0.im, bin0.re - bin0.im);
+                }
+
+                let h_size = self.complex_fft.size();
+
+                let mut start_i = if HALF_BIN_SHIFT { 0 } else { 1 };
+                let mut end_i = h_size / 2 + 1;
+
+                if SPLIT_COMPUTATION {
+                    // Do this first twiddle in two halves
+                    if split_first {
+                        end_i = usize::midpoint(start_i, end_i);
+                    } else {
+                        start_i = usize::midpoint(start_i, end_i);
+                    }
+                }
+
+                for i in start_i..end_i {
+                    let conj_i = if HALF_BIN_SHIFT {
+                        h_size - 1 - i
+                    } else {
+                        h_size - i
+                    };
+                    let twiddle = self.twiddles[i];
+
+                    let odd = freq[i] + freq[conj_i].conj();
+                    let even_rot_minus_i = freq[i] - freq[conj_i].conj();
+
+                    let even_i = Self::Complex::new(
+                        // Conjugate twiddle
+                        even_rot_minus_i.re * twiddle.re + even_rot_minus_i.im * twiddle.im,
+                        even_rot_minus_i.im * twiddle.re - even_rot_minus_i.re * twiddle.im,
+                    );
+
+                    self.tmp_freq[i] = odd + even_i;
+                    self.tmp_freq[conj_i] =
+                        Self::Complex::new(odd.re - even_i.re, even_i.im - odd.im);
+                }
+            } else if step < self.complex_fft.steps() {
+                let transmuted_time: &mut [Self::Complex] =
+                    unsafe { *((&raw mut time).cast::<&mut [Self::Complex]>()) };
+
+                // Can't just use time as (Complex *), since it might not be aligned properly
+                self.complex_fft.ifft_step(
+                    step,
+                    &self.tmp_freq,
+                    if can_use_time {
+                        transmuted_time
+                    } else {
+                        &mut self.tmp_time
+                    },
+                );
+            } else {
+                let h_size = self.complex_fft.size();
+
+                if HALF_BIN_SHIFT {
+                    for i in 0..h_size {
+                        let t = self.tmp_time[i];
+                        let twist = self.half_bin_twists[i];
+
+                        time[2 * i] = t.re * twist.re + t.im * twist.im;
+                        time[2 * i + 1] = t.im * twist.re - t.re * twist.im;
+                    }
+                } else if !can_use_time {
+                    let transmuted_tmp_time =
+                        unsafe { &*((&raw const self.tmp_time).cast::<&[Self::Sample]>()) };
+
+                    time.copy_from_slice(&transmuted_tmp_time[0..(h_size * 2)]);
+                }
+            }
+        }
+    }
+
+    fn ifft_split_complex(
+        &mut self,
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+    ) {
+        for s in 0..self.steps() {
+            self.ifft_step_split_complex(s, in_r, in_i, out_r);
+        }
+    }
+
+    #[allow(
+        clippy::indexing_slicing,
+        clippy::bool_to_int_with_if,
+        clippy::undocumented_unsafe_blocks,
+        clippy::similar_names
+    )]
+    fn ifft_step_split_complex(
+        &mut self,
+        mut step: usize,
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+    ) {
+        let h_size = self.complex_fft.size();
+
+        let (tmp_time_r, tmp_time_i) = complex_to_two_float_mut(&mut self.tmp_time);
+        let (tmp_freq_r, tmp_freq_i) = complex_to_two_float_mut(&mut self.tmp_freq);
+
+        let step_check = step;
+        step -= 1;
+
+        let split_first = SPLIT_COMPUTATION && (step_check == 0);
+
+        let step_check = step;
+        step -= 1;
+
+        if split_first || step_check == 0 {
+            let bin0_r = in_r[0];
+            let bin0_i = in_i[0];
+
+            if !HALF_BIN_SHIFT {
+                tmp_freq_r[0] = bin0_r + bin0_i;
+                tmp_freq_i[0] = bin0_r - bin0_i;
+            }
+
+            let mut start_i = if HALF_BIN_SHIFT { 0 } else { 1 };
+            let mut end_i = h_size / 2 + 1;
+
+            if SPLIT_COMPUTATION {
+                // Do this first twiddle in two halves
+                if split_first {
+                    end_i = usize::midpoint(start_i, end_i);
+                } else {
+                    start_i = usize::midpoint(start_i, end_i);
+                }
+            }
+
+            for i in start_i..end_i {
+                let conj_i = if HALF_BIN_SHIFT {
+                    h_size - 1 - i
+                } else {
+                    h_size - i
+                };
+
+                let twiddle = self.twiddles[i];
+                let fir = in_r[i];
+                let fii = in_i[i];
+                let fcir = in_r[conj_i];
+                let fcii = in_i[conj_i];
+
+                let odd = Self::Complex::new(fir + fcir, fii - fcii);
+                let even_rot_minus_i = Self::Complex::new(fir - fcir, fii + fcii);
+
+                let even_i = Self::Complex::new(
+                    // Conjugate twiddle
+                    even_rot_minus_i.re * twiddle.re + even_rot_minus_i.im * twiddle.im,
+                    even_rot_minus_i.im * twiddle.re - even_rot_minus_i.re * twiddle.im,
+                );
+
+                tmp_freq_r[i] = odd.re + even_i.re;
+                tmp_freq_i[i] = odd.im + even_i.im;
+                tmp_freq_r[conj_i] = odd.re - even_i.re;
+                tmp_freq_i[conj_i] = even_i.im - odd.im;
+            }
+        } else if step < self.complex_fft.steps() {
+            // Can't just use time as (Complex *), since it might not be aligned properly
+            self.complex_fft
+                .ifft_step_split_complex(step, tmp_freq_r, tmp_freq_i, tmp_time_r, tmp_time_i);
+        } else if HALF_BIN_SHIFT {
+            for i in 0..h_size {
+                let tr = tmp_time_r[i];
+                let ti = tmp_time_i[i];
+                let twist = self.half_bin_twists[i];
+
+                out_r[2 * i] = tr * twist.re + ti * twist.im;
+                out_r[2 * i + 1] = ti * twist.re - tr * twist.im;
+            }
+        } else {
+            for i in 0..h_size {
+                out_r[2 * i] = tmp_time_r[i];
+                out_r[2 * i + 1] = tmp_time_i[i];
+            }
+        }
+    }
 }
-
-// 	void fft(const Sample *inR, Sample *outR, Sample *outI) {
-// 		for (size_t s = 0; s < steps(); ++s) {
-// 			fft(s, inR, outR, outI);
-// 		}
-// 	}
-// 	void fft(size_t step, const Sample *inR, Sample *outR, Sample *outI) {
-// 		size_t hSize = complexFft.size();
-// 		Sample *tmpTimeR = (Sample *)tmpTime.data(), *tmpTimeI = tmpTimeR + hSize;
-// 		Sample *tmpFreqR = (Sample *)tmpFreq.data(), *tmpFreqI = tmpFreqR + hSize;
-// 		if (step-- == 0) {
-// 			size_t hSize = complexFft.size();
-// 			if (halfBinShift) {
-// 				for (size_t i = 0; i < hSize; ++i) {
-// 					Sample tr = inR[2*i], ti = inR[2*i + 1];
-// 					Complex twist = halfBinTwists[i];
-// 					tmpTimeR[i] = tr*twist.re - ti*twist.im;
-// 					tmpTimeI[i] = ti*twist.re + tr*twist.im;
-// 				}
-// 			} else {
-// 				for (size_t i = 0; i < hSize; ++i) {
-// 					tmpTimeR[i] = inR[2*i];
-// 					tmpTimeI[i] = inR[2*i + 1];
-// 				}
-// 			}
-// 		} else if (step < complexFft.steps()) {
-// 			complexFft.fft(step, tmpTimeR, tmpTimeI, tmpFreqR, tmpFreqI);
-// 		} else {
-// 			if (!halfBinShift) {
-// 				Sample bin0r = tmpFreqR[0], bin0i = tmpFreqI[0];
-// 				outR[0] = bin0r + bin0i;
-// 				outI[0] = bin0r - bin0i;
-// 			}
-
-// 			size_t startI = halfBinShift ? 0 : 1;
-// 			size_t endI = hSize/2 + 1;
-// 			if (splitComputation) { // Do this last twiddle in two halves
-// 				if (step == complexFft.steps()) {
-// 					endI = (startI + endI)/2;
-// 				} else {
-// 					startI = (startI + endI)/2;
-// 				}
-// 			}
-// 			for (size_t i = startI; i < endI; ++i) {
-// 				size_t conjI = halfBinShift ? (hSize - 1 - i) : (hSize - i);
-// 				Complex twiddle = twiddles[i];
-
-// 				Sample oddR = (tmpFreqR[i] + tmpFreqR[conjI])*Sample(0.5);
-// 				Sample oddI = (tmpFreqI[i] - tmpFreqI[conjI])*Sample(0.5);
-// 				Sample evenIR = (tmpFreqR[i] - tmpFreqR[conjI])*Sample(0.5);
-// 				Sample evenII = (tmpFreqI[i] + tmpFreqI[conjI])*Sample(0.5);
-// 				Sample evenRotMinusIR = evenIR*twiddle.re - evenII*twiddle.im;
-// 				Sample evenRotMinusII = evenII*twiddle.re + evenIR*twiddle.im;
-
-// 				outR[i] = oddR + evenRotMinusIR;
-// 				outI[i] = oddI + evenRotMinusII;
-// 				outR[conjI] = oddR - evenRotMinusIR;
-// 				outI[conjI] = evenRotMinusII - oddI;
-// 			}
-// 		}
-// 	}
-
-// 	void ifft(const Complex *freq, Sample *time) {
-// 		for (size_t s = 0; s < steps(); ++s) {
-// 			ifft(s, freq, time);
-// 		}
-// 	}
-// 	void ifft(size_t step, const Complex *freq, Sample *time) {
-// 		if (complexPrefersSplit) {
-// 			size_t hSize = complexFft.size();
-// 			Sample *tmpTimeR = (Sample *)tmpTime.data(), *tmpTimeI = tmpTimeR + hSize;
-// 			Sample *tmpFreqR = (Sample *)tmpFreq.data(), *tmpFreqI = tmpFreqR + hSize;
-
-// 			bool splitFirst = splitComputation && (step-- == 0);
-// 			if (splitFirst || step-- == 0) {
-// 				Complex bin0 = freq[0];
-// 				if (!halfBinShift) {
-// 					tmpFreqR[0] = bin0.re + bin0.im;
-// 					tmpFreqI[0] = bin0.re - bin0.im;
-// 				}
-// 				size_t startI = halfBinShift ? 0 : 1;
-// 				size_t endI = hSize/2 + 1;
-// 				if (splitComputation) { // Do this first twiddle in two halves
-// 					if (splitFirst) {
-// 						endI = (startI + endI)/2;
-// 					} else {
-// 						startI = (startI + endI)/2;
-// 					}
-// 				}
-// 				for (size_t i = startI; i < endI; ++i) {
-// 					size_t conjI = halfBinShift ? (hSize - 1 - i) : (hSize - i);
-// 					Complex twiddle = twiddles[i];
-
-// 					Complex odd = freq[i] + std::conj(freq[conjI]);
-// 					Complex evenRotMinusI = freq[i] - std::conj(freq[conjI]);
-// 					Complex evenI = { // Conjugate twiddle
-// 						evenRotMinusI.re*twiddle.re +
-// evenRotMinusI.im*twiddle.im, 						evenRotMinusI.im*twiddle.
-// real() - evenRotMinusI.re*twiddle.im 					};
-
-// 					tmpFreqR[i] = odd.re + evenI.re;
-// 					tmpFreqI[i] = odd.im + evenI.im;
-// 					tmpFreqR[conjI] = odd.re - evenI.re;
-// 					tmpFreqI[conjI] = evenI.im - odd.im;
-// 				}
-// 			} else if (step < complexFft.steps()) {
-// 				complexFft.ifft(step, tmpFreqR, tmpFreqI, tmpTimeR, tmpTimeI);
-// 			} else {
-// 				size_t hSize = complexFft.size();
-// 				if (halfBinShift) {
-// 					for (size_t i = 0; i < hSize; ++i) {
-// 						Sample tr = tmpTimeR[i], ti = tmpTimeI[i];
-// 						Complex twist = halfBinTwists[i];
-// 						time[2*i] = 	tr*twist.re + ti*twist.im;
-// 						time[2*i + 1] = ti*twist.re - tr*twist.im;
-// 					}
-// 				} else {
-// 					for (size_t i = 0; i < hSize; ++i) {
-// 						time[2*i] = tmpTimeR[i];
-// 						time[2*i + 1] = tmpTimeI[i];
-// 					}
-// 				}
-// 			}
-// 		} else {
-// 			bool canUseTime = !halfBinShift && !(size_t(time)%alignof(Complex));
-// 			bool splitFirst = splitComputation && (step-- == 0);
-// 			if (splitFirst || step-- == 0) {
-// 				Complex bin0 = freq[0];
-// 				if (!halfBinShift) {
-// 					tmpFreq[0] = {
-// 						bin0.re + bin0.im,
-// 						bin0.re - bin0.im
-// 					};
-// 				}
-// 				size_t hSize = complexFft.size();
-// 				size_t startI = halfBinShift ? 0 : 1;
-// 				size_t endI = hSize/2 + 1;
-// 				if (splitComputation) { // Do this first twiddle in two halves
-// 					if (splitFirst) {
-// 						endI = (startI + endI)/2;
-// 					} else {
-// 						startI = (startI + endI)/2;
-// 					}
-// 				}
-// 				for (size_t i = startI; i < endI; ++i) {
-// 					size_t conjI = halfBinShift ? (hSize - 1 - i) : (hSize - i);
-// 					Complex twiddle = twiddles[i];
-
-// 					Complex odd = freq[i] + std::conj(freq[conjI]);
-// 					Complex evenRotMinusI = freq[i] - std::conj(freq[conjI]);
-// 					Complex evenI = { // Conjugate twiddle
-// 						evenRotMinusI.re*twiddle.re +
-// evenRotMinusI.im*twiddle.im, 						evenRotMinusI.im*twiddle.
-// real() - evenRotMinusI.re*twiddle.im 					};
-
-// 					tmpFreq[i] = odd + evenI;
-// 					tmpFreq[conjI] = {odd.re - evenI.re, evenI.im - odd.im};
-// 				}
-// 			} else if (step < complexFft.steps()) {
-// 				// Can't just use time as (Complex *), since it might not be aligned
-// properly 				complexFft.ifft(step, tmpFreq.data(), canUseTime ? (Complex
-// *)time : tmpTime.data()); 			} else {
-// 				size_t hSize = complexFft.size();
-// 				if (halfBinShift) {
-// 					for (size_t i = 0; i < hSize; ++i) {
-// 						Complex t = tmpTime[i];
-// 						Complex twist = halfBinTwists[i];
-// 						time[2*i] = 	t.re*twist.re + t.im*twist.im;
-// 						time[2*i + 1] = t.im*twist.re - t.re*twist.im;
-// 					}
-// 				} else if (!canUseTime) {
-// 					std::memcpy(time, tmpTime.data(), sizeof(Complex)*hSize);
-// 				}
-// 			}
-// 		}
-// 	}
-// 	void ifft(const Sample *inR, const Sample *inI, Sample *outR) {
-// 		for (size_t s = 0; s < steps(); ++s) {
-// 			ifft(s, inR, inI, outR);
-// 		}
-// 	}
-// 	void ifft(size_t step, const Sample *inR, const Sample *inI, Sample *outR) {
-// 		size_t hSize = complexFft.size();
-// 		Sample *tmpTimeR = (Sample *)tmpTime.data(), *tmpTimeI = tmpTimeR + hSize;
-// 		Sample *tmpFreqR = (Sample *)tmpFreq.data(), *tmpFreqI = tmpFreqR + hSize;
-
-// 		bool splitFirst = splitComputation && (step-- == 0);
-// 		if (splitFirst || step-- == 0) {
-// 			Sample bin0r = inR[0], bin0i = inI[0];
-// 			if (!halfBinShift) {
-// 				tmpFreqR[0] = bin0r + bin0i;
-// 				tmpFreqI[0] = bin0r - bin0i;
-// 			}
-// 			size_t startI = halfBinShift ? 0 : 1;
-// 			size_t endI = hSize/2 + 1;
-// 			if (splitComputation) { // Do this first twiddle in two halves
-// 				if (splitFirst) {
-// 					endI = (startI + endI)/2;
-// 				} else {
-// 					startI = (startI + endI)/2;
-// 				}
-// 			}
-// 			for (size_t i = startI; i < endI; ++i) {
-// 				size_t conjI = halfBinShift ? (hSize - 1 - i) : (hSize - i);
-// 				Complex twiddle = twiddles[i];
-// 				Sample fir = inR[i], fii = inI[i];
-// 				Sample fcir = inR[conjI], fcii = inI[conjI];
-
-// 				Complex odd = {fir + fcir, fii - fcii};
-// 				Complex evenRotMinusI = {fir - fcir, fii + fcii};
-// 				Complex evenI = { // Conjugate twiddle
-// 					evenRotMinusI.re*twiddle.re +
-// evenRotMinusI.im*twiddle.im, 					evenRotMinusI.im*twiddle.re
-// - evenRotMinusI.re*twiddle.im 				};
-
-// 				tmpFreqR[i] = odd.re + evenI.re;
-// 				tmpFreqI[i] = odd.im + evenI.im;
-// 				tmpFreqR[conjI] = odd.re - evenI.re;
-// 				tmpFreqI[conjI] = evenI.im - odd.im;
-// 			}
-// 		} else if (step < complexFft.steps()) {
-// 			// Can't just use time as (Complex *), since it might not be aligned
-// properly 			complexFft.ifft(step, tmpFreqR, tmpFreqI, tmpTimeR, tmpTimeI);
-// 		} else {
-// 			if (halfBinShift) {
-// 				for (size_t i = 0; i < hSize; ++i) {
-// 					Sample tr = tmpTimeR[i], ti = tmpTimeI[i];
-// 					Complex twist = halfBinTwists[i];
-// 					outR[2*i] = 	tr*twist.re + ti*twist.im;
-// 					outR[2*i + 1] = ti*twist.re - tr*twist.im;
-// 				}
-// 			} else {
-// 				for (size_t i = 0; i < hSize; ++i) {
-// 					outR[2*i] = tmpTimeR[i];
-// 					outR[2*i + 1] = tmpTimeI[i];
-// 				}
-// 			}
-// 		}
-// 	}
-// };

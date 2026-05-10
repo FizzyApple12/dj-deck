@@ -1,6 +1,7 @@
 use num::{Complex, Float};
 
 pub mod fft;
+pub mod stft;
 
 #[allow(clippy::transmute_ptr_to_ptr, clippy::undocumented_unsafe_blocks)]
 pub fn complex_to_two_float<F>(complex: &[Complex<F>]) -> (&[F], &[F])

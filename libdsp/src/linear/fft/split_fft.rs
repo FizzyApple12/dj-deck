@@ -3,8 +3,8 @@ use num::{Float, complex::Complex};
 use crate::linear::{
     complex_to_two_float_mut,
     fft::{
-        complexMul, complexMul_split_complex, complexMulConj, complexMulConj_split_complex,
-        interleaveCopy, interleaveCopy_const_astride, interleaveCopy_split_complex,
+        complex_mul, complex_mul_conj, complex_mul_conj_split_complex, complex_mul_split_complex,
+        interleave_copy, interleave_copy_const_astride, interleave_copy_split_complex,
         pow2_fft::{Pow2FFT, Pow2FFTTrait},
     },
 };
@@ -55,6 +55,9 @@ pub trait SplitFFTTrait<Sample, const SPLIT_COMPUTATION: bool>
 where
     Sample: Float + Default,
 {
+    type Complex;
+    type Sample;
+
     const MAX_SPLIT: usize;
     const MIN_INNER_SIZE: usize;
     const PREFERS_SPLIT: bool;
@@ -68,49 +71,52 @@ where
     fn size(&self) -> usize;
     fn steps(&self) -> usize;
 
-    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
-    fn fft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
+    fn fft(&mut self, time: &[Self::Complex], freq: &mut [Self::Complex]);
+    fn fft_step(&mut self, step: usize, time: &[Self::Complex], freq: &mut [Self::Complex]);
     fn fft_split_complex(
         &mut self,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     );
     fn fft_step_split_complex(
         &mut self,
         step: usize,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     );
 
-    fn ifft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
-    fn ifft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut [Complex<f32>]);
+    fn ifft(&mut self, time: &[Self::Complex], freq: &mut [Self::Complex]);
+    fn ifft_step(&mut self, step: usize, time: &[Self::Complex], freq: &mut [Self::Complex]);
     fn ifft_split_complex(
         &mut self,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     );
     fn ifft_step_split_complex(
         &mut self,
         step: usize,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     );
 }
 
 impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     for SplitFFT<f32, SPLIT_COMPUTATION>
 {
+    type Complex = Self::Complex;
+    type Sample = Self::Sample;
+
     const MAX_SPLIT: usize = if SPLIT_COMPUTATION { 4 } else { 1 };
     const MIN_INNER_SIZE: usize = 32;
-    const PREFERS_SPLIT: bool = Pow2FFT::<f32, SPLIT_COMPUTATION>::PREFERS_SPLIT;
+    const PREFERS_SPLIT: bool = Pow2FFT::<Self::Sample, SPLIT_COMPUTATION>::PREFERS_SPLIT;
 
     fn fast_size_above(size: usize) -> usize {
         let mut pow2 = 1;
@@ -133,7 +139,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
 
     fn new(size: usize) -> Self {
         let mut new = Self {
-            inner_fft: Pow2FFT::<f32, SPLIT_COMPUTATION>::new(size),
+            inner_fft: Pow2FFT::<Self::Sample, SPLIT_COMPUTATION>::new(size),
 
             inner_size: 1,
             outer_size: size,
@@ -168,8 +174,8 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
         // Inner size = largest power of 2 such that either the inner size >=
         // minInnerSize, or we have the target number of splits
         while (self.outer_size & 1 == 0)
-            && (self.outer_size > SplitFFT::<f32, SPLIT_COMPUTATION>::MAX_SPLIT
-                || self.inner_size < SplitFFT::<f32, SPLIT_COMPUTATION>::MIN_INNER_SIZE)
+            && (self.outer_size > SplitFFT::<Self::Sample, SPLIT_COMPUTATION>::MAX_SPLIT
+                || self.inner_size < SplitFFT::<Self::Sample, SPLIT_COMPUTATION>::MIN_INNER_SIZE)
         {
             self.inner_size *= 2;
             self.outer_size /= 2;
@@ -188,11 +194,12 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
 
         for i in 0..self.inner_size {
             for s in 1..self.outer_size {
-                let twiddle_phase = -2.0 * std::f32::consts::PI * i as f32 / self.inner_size as f32
-                    * s as f32
-                    / self.outer_size as f32;
+                let twiddle_phase = -2.0 * std::f32::consts::PI * i as Self::Sample
+                    / self.inner_size as Self::Sample
+                    * s as Self::Sample
+                    / self.outer_size as Self::Sample;
                 self.outer_twiddles[i + (s - 1) * self.inner_size] =
-                    Complex::from_polar(1.0, twiddle_phase);
+                    Self::Complex::from_polar(1.0, twiddle_phase);
             }
         }
 
@@ -258,9 +265,10 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
                 self.dft_twists
                     .resize(self.outer_size, Complex { re: 0.0, im: 0.0 });
                 for s in 0..self.outer_size {
-                    let dft_phase = -2.0 * std::f32::consts::PI * s as f32 / self.outer_size as f32;
+                    let dft_phase = -2.0 * std::f32::consts::PI * s as Self::Sample
+                        / self.outer_size as Self::Sample;
 
-                    self.dft_twists[s] = Complex::from_polar(1.0, dft_phase);
+                    self.dft_twists[s] = Self::Complex::from_polar(1.0, dft_phase);
                 }
             }
         }
@@ -275,7 +283,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     }
 
     #[allow(clippy::undocumented_unsafe_blocks)]
-    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
+    fn fft(&mut self, time: &[Self::Complex], freq: &mut [Self::Complex]) {
         let plan_pointer = &raw const self.plan;
 
         for step in unsafe { &*plan_pointer } {
@@ -284,7 +292,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     }
 
     #[allow(clippy::undocumented_unsafe_blocks, clippy::indexing_slicing)]
-    fn fft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
+    fn fft_step(&mut self, step: usize, time: &[Self::Complex], freq: &mut [Self::Complex]) {
         let plan_pointer = &raw const self.plan[step];
 
         self.fft_step_internal::<false>(unsafe { &*plan_pointer }, time, freq);
@@ -293,10 +301,10 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     #[allow(clippy::undocumented_unsafe_blocks)]
     fn fft_split_complex(
         &mut self,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     ) {
         let plan_pointer = &raw const self.plan;
 
@@ -309,10 +317,10 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     fn fft_step_split_complex(
         &mut self,
         step: usize,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     ) {
         let plan_pointer = &raw const self.plan[step];
 
@@ -326,7 +334,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     }
 
     #[allow(clippy::undocumented_unsafe_blocks)]
-    fn ifft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
+    fn ifft(&mut self, time: &[Self::Complex], freq: &mut [Self::Complex]) {
         let plan_pointer = &raw const self.plan;
 
         for step in unsafe { &*plan_pointer } {
@@ -335,7 +343,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     }
 
     #[allow(clippy::undocumented_unsafe_blocks, clippy::indexing_slicing)]
-    fn ifft_step(&mut self, step: usize, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
+    fn ifft_step(&mut self, step: usize, time: &[Self::Complex], freq: &mut [Self::Complex]) {
         let plan_pointer = &raw const self.plan[step];
 
         self.fft_step_internal::<true>(unsafe { &*plan_pointer }, time, freq);
@@ -344,10 +352,10 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     #[allow(clippy::undocumented_unsafe_blocks)]
     fn ifft_split_complex(
         &mut self,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     ) {
         let plan_pointer = &raw const self.plan;
 
@@ -360,10 +368,10 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
     fn ifft_step_split_complex(
         &mut self,
         step: usize,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     ) {
         let plan_pointer = &raw const self.plan[step];
 
@@ -378,12 +386,15 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFTTrait<f32, SPLIT_COMPUTATION>
 }
 
 impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
+    pub type Complex = Complex<f32>;
+    pub type Sample = f32;
+
     #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
     fn fft_step_internal<const INVERSE: bool>(
         &mut self,
         step: &Step,
-        time: &[Complex<f32>],
-        freq: &mut [Complex<f32>],
+        time: &[Self::Complex],
+        freq: &mut [Self::Complex],
     ) {
         match step.step_type {
             StepType::Passthrough => {
@@ -394,35 +405,35 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
                 }
             }
             StepType::InterleaveOrder2 => {
-                interleaveCopy_const_astride::<Complex<f32>, 2>(
+                interleave_copy_const_astride::<Self::Complex, 2>(
                     time,
                     &mut self.tmp_freq,
                     self.inner_size,
                 );
             }
             StepType::InterleaveOrder3 => {
-                interleaveCopy_const_astride::<Complex<f32>, 3>(
+                interleave_copy_const_astride::<Self::Complex, 3>(
                     time,
                     &mut self.tmp_freq,
                     self.inner_size,
                 );
             }
             StepType::InterleaveOrder4 => {
-                interleaveCopy_const_astride::<Complex<f32>, 4>(
+                interleave_copy_const_astride::<Self::Complex, 4>(
                     time,
                     &mut self.tmp_freq,
                     self.inner_size,
                 );
             }
             StepType::InterleaveOrder5 => {
-                interleaveCopy_const_astride::<Complex<f32>, 5>(
+                interleave_copy_const_astride::<Self::Complex, 5>(
                     time,
                     &mut self.tmp_freq,
                     self.inner_size,
                 );
             }
             StepType::InterleaveOrderN => {
-                interleaveCopy::<Complex<f32>>(
+                interleave_copy::<Self::Complex>(
                     time,
                     &mut self.tmp_freq,
                     self.outer_size,
@@ -451,14 +462,14 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
                 let freq_2 = unsafe { &*freq_pointer };
 
                 if INVERSE {
-                    complexMulConj::<f32>(
+                    complex_mul_conj::<Self::Sample>(
                         &mut freq[self.inner_size..],
                         &freq_2[self.inner_size..],
                         &self.outer_twiddles,
                         self.inner_size * (self.outer_size - 1),
                     );
                 } else {
-                    complexMul::<f32>(
+                    complex_mul::<Self::Sample>(
                         &mut freq[self.inner_size..],
                         &freq_2[self.inner_size..],
                         &self.outer_twiddles,
@@ -493,10 +504,10 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     fn fft_step_split_complex_internal<const INVERSE: bool>(
         &mut self,
         step: &Step,
-        in_r: &[f32],
-        in_i: &[f32],
-        out_r: &mut [f32],
-        out_i: &mut [f32],
+        in_r: &[Self::Sample],
+        in_i: &[Self::Sample],
+        out_r: &mut [Self::Sample],
+        out_i: &mut [Self::Sample],
     ) {
         let (tmp_r, tmp_i) = complex_to_two_float_mut(&mut self.tmp_freq);
 
@@ -509,23 +520,23 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
                 }
             }
             StepType::InterleaveOrder2 => {
-                interleaveCopy_const_astride::<f32, 2>(in_r, tmp_r, self.inner_size);
-                interleaveCopy_const_astride::<f32, 2>(in_i, tmp_i, self.inner_size);
+                interleave_copy_const_astride::<Self::Sample, 2>(in_r, tmp_r, self.inner_size);
+                interleave_copy_const_astride::<Self::Sample, 2>(in_i, tmp_i, self.inner_size);
             }
             StepType::InterleaveOrder3 => {
-                interleaveCopy_const_astride::<f32, 3>(in_r, tmp_r, self.inner_size);
-                interleaveCopy_const_astride::<f32, 3>(in_i, tmp_i, self.inner_size);
+                interleave_copy_const_astride::<Self::Sample, 3>(in_r, tmp_r, self.inner_size);
+                interleave_copy_const_astride::<Self::Sample, 3>(in_i, tmp_i, self.inner_size);
             }
             StepType::InterleaveOrder4 => {
-                interleaveCopy_const_astride::<f32, 4>(in_r, tmp_r, self.inner_size);
-                interleaveCopy_const_astride::<f32, 4>(in_i, tmp_i, self.inner_size);
+                interleave_copy_const_astride::<Self::Sample, 4>(in_r, tmp_r, self.inner_size);
+                interleave_copy_const_astride::<Self::Sample, 4>(in_i, tmp_i, self.inner_size);
             }
             StepType::InterleaveOrder5 => {
-                interleaveCopy_const_astride::<f32, 5>(in_r, tmp_r, self.inner_size);
-                interleaveCopy_const_astride::<f32, 5>(in_i, tmp_i, self.inner_size);
+                interleave_copy_const_astride::<Self::Sample, 5>(in_r, tmp_r, self.inner_size);
+                interleave_copy_const_astride::<Self::Sample, 5>(in_i, tmp_i, self.inner_size);
             }
             StepType::InterleaveOrderN => {
-                interleaveCopy_split_complex::<f32>(
+                interleave_copy_split_complex::<Self::Sample>(
                     in_r,
                     in_i,
                     tmp_r,
@@ -567,7 +578,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
                 let out_i_2 = unsafe { &*out_i_pointer };
 
                 if INVERSE {
-                    complexMulConj_split_complex(
+                    complex_mul_conj_split_complex(
                         &mut out_r[self.inner_size..],
                         &mut out_i[self.inner_size..],
                         &out_r_2[self.inner_size..],
@@ -577,7 +588,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
                         self.inner_size * (self.outer_size - 1),
                     );
                 } else {
-                    complexMul_split_complex(
+                    complex_mul_split_complex(
                         &mut out_r[self.inner_size..],
                         &mut out_i[self.inner_size..],
                         &out_r_2[self.inner_size..],
@@ -607,7 +618,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn final_pass_2(&self, f0: &mut [Complex<f32>]) {
+    fn final_pass_2(&self, f0: &mut [Self::Complex]) {
         for i in 0..self.inner_size {
             let a = f0[i];
             let b = f0[self.inner_size + i];
@@ -618,7 +629,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn final_pass_2_split_complex(&self, f0r: &mut [f32], f0i: &mut [f32]) {
+    fn final_pass_2_split_complex(&self, f0r: &mut [Self::Sample], f0i: &mut [Self::Sample]) {
         for i in 0..self.inner_size {
             let ar = f0r[i];
             let ai = f0i[i];
@@ -633,8 +644,8 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn final_pass_3<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
-        let tw1 = Complex::new(-0.5, -(0.75).sqrt() * (if INVERSE { -1.0 } else { 1.0 }));
+    fn final_pass_3<const INVERSE: bool>(&self, f0: &mut [Self::Complex]) {
+        let tw1 = Self::Complex::new(-0.5, -(0.75).sqrt() * (if INVERSE { -1.0 } else { 1.0 }));
 
         for i in 0..self.inner_size {
             let a = f0[i];
@@ -645,11 +656,11 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
             let bc1 = b - c;
 
             f0[i] = a + bc0;
-            f0[self.inner_size + i] = Complex::new(
+            f0[self.inner_size + i] = Self::Complex::new(
                 a.re + bc0.re * tw1.re - bc1.im * tw1.im,
                 a.im + bc0.im * tw1.re + bc1.re * tw1.im,
             );
-            f0[self.inner_size * 2 + i] = Complex::new(
+            f0[self.inner_size * 2 + i] = Self::Complex::new(
                 a.re + bc0.re * tw1.re + bc1.im * tw1.im,
                 a.im + bc0.im * tw1.re - bc1.re * tw1.im,
             );
@@ -657,7 +668,11 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     }
 
     #[allow(clippy::indexing_slicing, clippy::similar_names)]
-    fn final_pass_3_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
+    fn final_pass_3_split_complex<const INVERSE: bool>(
+        &self,
+        f0r: &mut [Self::Sample],
+        f0i: &mut [Self::Sample],
+    ) {
         let tw1r = -0.5;
         let tw1i = -(0.75).sqrt() * (if INVERSE { -1.0 } else { 1.0 });
 
@@ -679,7 +694,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn final_pass_4<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
+    fn final_pass_4<const INVERSE: bool>(&self, f0: &mut [Self::Complex]) {
         for i in 0..self.inner_size {
             let a = f0[i];
             let b = f0[self.inner_size + i];
@@ -690,7 +705,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
             let ac1 = a - c;
             let bd0 = b + d;
             let bd1 = if INVERSE { b - d } else { d - b };
-            let bd1i = Complex::new(-bd1.im, bd1.re);
+            let bd1i = Self::Complex::new(-bd1.im, bd1.re);
 
             f0[i] = ac0 + bd0;
             f0[self.inner_size + i] = ac1 + bd1i;
@@ -700,7 +715,11 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     }
 
     #[allow(clippy::indexing_slicing, clippy::similar_names)]
-    fn final_pass_4_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
+    fn final_pass_4_split_complex<const INVERSE: bool>(
+        &self,
+        f0r: &mut [Self::Sample],
+        f0i: &mut [Self::Sample],
+    ) {
         for i in 0..self.inner_size {
             let ar = f0r[i];
             let ai = f0i[i];
@@ -738,7 +757,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
         clippy::unreadable_literal,
         clippy::many_single_char_names
     )]
-    fn final_pass_5<const INVERSE: bool>(&self, f0: &mut [Complex<f32>]) {
+    fn final_pass_5<const INVERSE: bool>(&self, f0: &mut [Self::Complex]) {
         let tw1r = 0.30901699437494745;
         let tw1i = -0.9510565162951535 * (if INVERSE { -1.0 } else { 1.0 });
         let tw2r = -0.8090169943749473;
@@ -752,9 +771,9 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
             let e = f0[self.inner_size * 4 + i];
 
             let be0 = b + e;
-            let be1 = Complex::new(e.im - b.im, b.re - e.re); //(b - e)*i
+            let be1 = Self::Complex::new(e.im - b.im, b.re - e.re); //(b - e)*i
             let cd0 = c + d;
-            let cd1 = Complex::new(d.im - c.im, c.re - d.re);
+            let cd1 = Self::Complex::new(d.im - c.im, c.re - d.re);
 
             let bcde01 = be0 * tw1r + cd0 * tw2r;
             let bcde02 = be0 * tw2r + cd0 * tw1r;
@@ -775,7 +794,11 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
         clippy::excessive_precision,
         clippy::unreadable_literal
     )]
-    fn final_pass_5_split_complex<const INVERSE: bool>(&self, f0r: &mut [f32], f0i: &mut [f32]) {
+    fn final_pass_5_split_complex<const INVERSE: bool>(
+        &self,
+        f0r: &mut [Self::Sample],
+        f0i: &mut [Self::Sample],
+    ) {
         let tw1r = 0.30901699437494745;
         let tw1i = -0.9510565162951535 * (if INVERSE { -1.0 } else { 1.0 });
         let tw2r = -0.8090169943749473;
@@ -825,9 +848,9 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn final_pass_n<const INVERSE: bool>(&mut self, f0: &mut [Complex<f32>]) {
+    fn final_pass_n<const INVERSE: bool>(&mut self, f0: &mut [Self::Complex]) {
         for i in 0..self.inner_size {
-            let mut sum = Complex::new(0.0, 0.0);
+            let mut sum = Self::Complex::new(0.0, 0.0);
 
             for i2 in 0..self.outer_size {
                 let tmp_value = f0[i + i2 * self.inner_size];
@@ -849,7 +872,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
                         self.dft_twists[twist_index]
                     };
 
-                    sum += Complex::new(
+                    sum += Self::Complex::new(
                         self.dft_tmp[i2].re * twist.re - self.dft_tmp[i2].im * twist.im,
                         self.dft_tmp[i2].im * twist.re + self.dft_tmp[i2].re * twist.im,
                     );
@@ -863,8 +886,8 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     #[allow(clippy::indexing_slicing)]
     fn final_pass_n_split_complex<const INVERSE: bool>(
         &mut self,
-        f0r: &mut [f32],
-        f0i: &mut [f32],
+        f0r: &mut [Self::Sample],
+        f0i: &mut [Self::Sample],
     ) {
         let (tmp_r, tmp_i) = complex_to_two_float_mut(&mut self.dft_tmp);
 
