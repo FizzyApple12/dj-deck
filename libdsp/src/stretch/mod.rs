@@ -1,10 +1,5 @@
 pub mod io;
 
-use std::{
-    marker::PhantomData,
-    ops::{Index, IndexMut},
-};
-
 use num::{Complex, Float};
 use rand::rngs::ThreadRng;
 use rand_distr::{Distribution, Uniform};
@@ -14,7 +9,7 @@ use crate::{
         DynamicSTFT, DynamicSTFTTrait, Input, InputTrait, Output, OutputTrait, WindowShape,
     },
     stretch::io::{
-        BufferSplitterIo, BufferSplitterIoMut, IoBuffer, IoBufferMut, OffsetIo, OffsetIoMut, ZeroIo,
+        BufferSplitterIoMut, IoBuffer, IoBufferMut, IoBufferOffsetIo, IoBufferOffsetIoMut, ZeroIo,
     },
 };
 
@@ -216,59 +211,48 @@ where
     // copies intput to a buffer. You should ideally feed it `seekLength()`
     // frames of input, unless it's directly after a `.reset()` (in which case
     // `.outputSeek()` might be a better choice)
-    fn seek<'a, Input, InnerInput>(
-        &mut self,
-        inputs: &'a Input,
-        input_samples: i32,
-        playback_rate: f64,
-    ) where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = Self::Sample>;
+    fn seek<Input>(&mut self, inputs: &Input, input_samples: i32, playback_rate: f64)
+    where
+        Input: IoBuffer<f32>;
     fn seek_length(&self) -> usize;
 
     // Moves the input position *and* pre-calculates some output, so that the next
     // samples returned from `.process()` are aligned to the beginning of the
     // sample. The time-stretch rate is inferred from `inputLength`, so use
     // `.outputSeekLength()` to get a correct value for that.
-    fn output_seek<'a, Input, InnerInput>(&mut self, inputs: &'a Input, input_length: i32)
+    fn output_seek<Input>(&mut self, inputs: &Input, input_length: i32)
     where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = Self::Sample>;
+        Input: IoBuffer<f32>;
     fn output_seek_length(&self, playback_rate: Self::Sample) -> usize;
 
-    fn process<'a, Input, InnerInput, Output, InnerOutput>(
+    fn process<Input, Output>(
         &mut self,
-        inputs: &'a Input,
+        inputs: &Input,
         input_samples: i32,
-        outputs: &'a mut Output,
+        outputs: &mut Output,
         output_samples: i32,
     ) where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = Self::Sample>,
-        Output: IoBufferMut<'a, InnerOutput> + IoBuffer<'a, InnerOutput>,
-        InnerOutput: IndexMut<usize, Output = Self::Sample>;
+        Input: IoBuffer<f32>,
+        Output: IoBufferMut<f32>;
 
-    fn flush<'a, Output, InnerOutput>(
+    fn flush<Output>(
         &mut self,
-        outputs: &'a mut Output,
+        outputs: &mut Output,
         output_samples: i32,
         playback_rate: Self::Sample,
     ) where
-        Output: IoBufferMut<'a, InnerOutput> + IoBuffer<'a, InnerOutput>,
-        InnerOutput: IndexMut<usize, Output = Self::Sample>;
+        Output: IoBufferMut<f32>;
 
-    fn exact<'a, Input, InnerInput, Output, InnerOutput>(
+    fn exact<Input, Output>(
         &mut self,
-        inputs: &'a Input,
+        inputs: &Input,
         input_samples: i32,
-        outputs: &'a mut Output,
+        outputs: &mut Output,
         output_samples: i32,
     ) -> bool
     where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = Self::Sample>,
-        Output: IoBufferMut<'a, InnerOutput> + IoBuffer<'a, InnerOutput>,
-        InnerOutput: IndexMut<usize, Output = Self::Sample>;
+        Input: IoBuffer<f32>,
+        Output: IoBufferMut<f32>;
 }
 
 impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
@@ -536,14 +520,9 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         clippy::needless_range_loop,
         clippy::indexing_slicing
     )]
-    fn seek<'a, Input, InnerInput>(
-        &mut self,
-        inputs: &'a Input,
-        input_samples: i32,
-        playback_rate: f64,
-    ) where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = f32>,
+    fn seek<Input>(&mut self, inputs: &Input, input_samples: i32, playback_rate: f64)
+    where
+        Input: IoBuffer<f32>,
     {
         self.tmp_process_buffer.clear();
         self.tmp_process_buffer.resize(
@@ -558,10 +537,10 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 
         for c in 0..self.channels {
             for i in start_index..input_samples {
-                let s = inputs.channel(c)[i as usize];
+                let s = inputs.sample(c, i as usize);
 
                 total_energy += s * s;
-                self.tmp_process_buffer[(i - start_index + pad_start) as usize] = s;
+                self.tmp_process_buffer[(i - start_index + pad_start) as usize] = *s;
             }
 
             self.stft
@@ -601,10 +580,9 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         clippy::indexing_slicing,
         clippy::undocumented_unsafe_blocks
     )]
-    fn output_seek<'a, Input, InnerInput>(&mut self, inputs: &Input, input_length: i32)
+    fn output_seek<Input>(&mut self, inputs: &Input, input_length: i32)
     where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = f32>,
+        Input: IoBuffer<f32>,
     {
         // TODO: add fade-out parameter to avoid clicks, instead of doing a full reset
         self.reset();
@@ -627,11 +605,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         let pre_roll_output = pre_roll_buffer;
 
         // Use the surplus input to produce pre-roll output
-        let offset_input = OffsetIo::new(inputs, seek_samples as usize);
-        // this method of reformatting the inputs and outputs might be faulty and/or
-        // slow, need to test
-        // let mut pre_roll_output: Vec<&mut [f32]> =
-        //     pre_roll_output.chunks_mut(pre_roll_output_length).collect();
+        let offset_input = IoBufferOffsetIo::new(inputs, seek_samples as usize);
         let mut pre_roll_output = BufferSplitterIoMut::new(pre_roll_output, pre_roll_output_length);
 
         self.process(
@@ -679,17 +653,15 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         clippy::indexing_slicing,
         clippy::too_many_lines
     )]
-    fn process<'a, Input, InnerInput, Output, InnerOutput>(
+    fn process<Input, Output>(
         &mut self,
-        inputs: &'a Input,
+        inputs: &Input,
         input_samples: i32,
-        outputs: &'a mut Output,
+        outputs: &mut Output,
         output_samples: i32,
     ) where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = f32>,
-        Output: IoBufferMut<'a, InnerOutput> + IoBuffer<'a, InnerOutput>,
-        InnerOutput: IndexMut<usize, Output = f32>,
+        Input: IoBuffer<f32>,
+        Output: IoBufferMut<f32>,
     {
         let mut prev_copied_input = 0;
 
@@ -697,7 +669,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 
         for c in 0..self.channels {
             for i in 0..input_samples {
-                let s = inputs.channel(c)[i as usize];
+                let s = inputs.sample(c, i as usize);
 
                 total_energy += s * s;
             }
@@ -734,16 +706,14 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
                         let input_index = output_index % input_samples;
 
                         for c in 0..self.channels {
-                            outputs.channel_mut(c)[output_index as usize] =
-                                inputs.channel(c)[input_index as usize];
+                            *outputs.sample_mut(c, output_index as usize) =
+                                *inputs.sample(c, input_index as usize);
                         }
                     }
                 } else {
                     for c in 0..self.channels {
-                        let output_channel = &mut outputs.channel(c);
-
                         for output_index in 0..output_samples {
-                            output_channel[output_index as usize] = 0.0;
+                            *outputs.sample_mut(c, output_index as usize) = 0.0;
                         }
                     }
                 }
@@ -937,13 +907,11 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
             }
 
             for c in 0..self.channels {
-                let output_channel = &mut outputs.channel_mut(c);
-
                 let mut v = [0.0];
 
                 self.stft.read_output(c, 1, &mut v);
 
-                output_channel[output_index as usize] = v[0];
+                *outputs.sample_mut(c, output_index as usize) = v[0];
             }
 
             self.stft.move_output(1);
@@ -969,22 +937,19 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         clippy::needless_range_loop,
         clippy::indexing_slicing
     )]
-    fn flush<'a, Output, InnerOutput>(
+    fn flush<Output>(
         &mut self,
-        outputs: &'a mut Output,
+        outputs: &mut Output,
         output_samples: i32,
         playback_rate: Self::Sample,
     ) where
-        Output: IoBufferMut<'a, InnerOutput> + IoBuffer<'a, InnerOutput>,
-        InnerOutput: IndexMut<usize, Output = f32>,
+        Output: IoBufferMut<f32>,
     {
         // If we're asked for more than an interval of extra output, then zero-pad the
         // input
         let output_block = i32::max(0, output_samples - self.stft.default_interval() as i32);
         if output_block > 0 {
-            let zero_io = ZeroIo::<f32> {
-                phantom_data: PhantomData,
-            };
+            let zero_io = ZeroIo::<f32>::default();
 
             self.process(
                 &zero_io,
@@ -1002,10 +967,9 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
             self.stft
                 .read_output(c, tail_samples as usize, &mut self.tmp_process_buffer);
 
-            let output_channel = &mut outputs.channel_mut(c);
-
             for i in 0..tail_samples {
-                output_channel[(output_block + i) as usize] = self.tmp_process_buffer[i as usize];
+                *outputs.sample_mut(c, (output_block + i) as usize) =
+                    self.tmp_process_buffer[i as usize];
             }
 
             self.stft.read_output_offset(
@@ -1016,7 +980,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
             );
 
             for i in 0..tail_samples {
-                output_channel[(output_block + tail_samples - 1 - i) as usize] -=
+                *outputs.sample_mut(c, (output_block + tail_samples - 1 - i) as usize) -=
                     self.tmp_process_buffer[i as usize];
             }
         }
@@ -1043,7 +1007,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         clippy::needless_range_loop,
         clippy::indexing_slicing
     )]
-    fn exact<'a, Input, InnerInput, Output, InnerOutput>(
+    fn exact<Input, Output>(
         &mut self,
         inputs: &Input,
         input_samples: i32,
@@ -1051,10 +1015,8 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         output_samples: i32,
     ) -> bool
     where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = f32>,
-        Output: IoBufferMut<'a, InnerOutput> + IoBuffer<'a, InnerOutput>,
-        InnerOutput: IndexMut<usize, Output = f32>,
+        Input: IoBuffer<f32>,
+        Output: IoBufferMut<f32>,
     {
         let playback_rate = input_samples as Self::Sample / output_samples as Self::Sample;
         let seek_length = self.output_seek_length(playback_rate);
@@ -1062,10 +1024,8 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         if input_samples < seek_length as i32 {
             // to short for this - zero the output just to be polite
             for c in 0..self.channels {
-                let channel = &mut outputs.channel_mut(c);
-
                 for i in 0..output_samples {
-                    channel[i as usize] = 0.0;
+                    *outputs.sample_mut(c, i as usize) = 0.0;
                 }
             }
             return false;
@@ -1075,7 +1035,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 
         let output_index = output_samples - (seek_length as Self::Sample / playback_rate) as i32;
 
-        let offset_input = OffsetIo::new(inputs, seek_length);
+        let offset_input = IoBufferOffsetIo::new(inputs, seek_length);
         self.process(
             &offset_input,
             input_samples - seek_length as i32,
@@ -1083,7 +1043,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
             output_index,
         );
 
-        let mut offset_output = OffsetIoMut::new(outputs, output_index as usize);
+        let mut offset_output = IoBufferOffsetIoMut::new(outputs, output_index as usize);
         self.flush(
             &mut offset_output,
             output_samples - output_index,
@@ -1105,14 +1065,13 @@ impl SignalsmithStretch<f32> {
         clippy::needless_range_loop,
         clippy::indexing_slicing
     )]
-    fn process_copy_input<'a, Input, InnerInput>(
+    fn process_copy_input<Input>(
         &mut self,
-        inputs: &'a Input,
+        inputs: &Input,
         to_index: i32,
         prev_copied_input: &mut i32,
     ) where
-        Input: IoBuffer<'a, InnerInput>,
-        InnerInput: Index<usize, Output = Self::Sample>,
+        Input: IoBuffer<Self::Sample>,
     {
         let length = i32::min(
             (self.stft.block_samples() + self.stft.default_interval()) as i32,
@@ -1125,7 +1084,7 @@ impl SignalsmithStretch<f32> {
 
         for c in 0..self.channels {
             for i in 0..length {
-                self.tmp_process_buffer[i as usize] = inputs.channel(c)[(i + offset) as usize];
+                self.tmp_process_buffer[i as usize] = *inputs.sample(c, (i + offset) as usize);
             }
 
             self.stft
