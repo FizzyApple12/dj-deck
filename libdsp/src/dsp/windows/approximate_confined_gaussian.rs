@@ -2,7 +2,9 @@ use std::ops::MulAssign;
 
 use num::Float;
 
-// Copied from DSP library `windows.h`
+/** The Approximate Confined Gaussian window is (almost) optimal
+
+ACG windows can be constructing using the shape-parameter (sigma) or using the static `with???()` methods.*/
 pub struct ApproximateConfinedGaussian {
     gaussian_factor: f64,
 }
@@ -12,6 +14,7 @@ impl ApproximateConfinedGaussian {
         (-x * x * self.gaussian_factor).exp()
     }
 
+    /// Heuristic map from bandwidth to the appropriately-optimal sigma
     fn bandwidth_to_sigma(bandwidth: f64) -> f64 {
         0.3 / bandwidth.sqrt()
     }
@@ -32,7 +35,7 @@ impl ApproximateConfinedGaussian {
         clippy::cast_precision_loss,
         clippy::needless_range_loop
     )]
-    pub fn fill<Sample>(&self, data: &mut [Sample], size: usize, warp: f64, is_for_synthesis: bool)
+    pub fn fill<Sample>(&self, data: &mut [Sample], size: usize)
     where
         Sample: Float + MulAssign,
         f64: From<Sample>,
@@ -40,35 +43,15 @@ impl ApproximateConfinedGaussian {
         let inv_size = 1.0 / size as f64;
         let offset_scale = self.gaussian(1.0) / (self.gaussian(3.0) + self.gaussian(-1.0));
         let norm = 1.0 / (self.gaussian(0.0) - 2.0 * offset_scale * (self.gaussian(2.0)));
-        let offset_i = if size & 1 == 0 {
-            1.0
-        } else if is_for_synthesis {
-            0.0
-        } else {
-            2.0
-        };
 
         for i in 0..size {
-            let mut r = (2.0 * i as f64 + offset_i) * inv_size - 1.0;
-            r = (r + warp) / (1.0 + r * warp);
+            let r = (2.0 * i as f64 + 1.0) * inv_size - 1.0;
 
             data[i] = Sample::from(
                 norm * (self.gaussian(r)
                     - offset_scale * (self.gaussian(r - 2.0) + self.gaussian(r + 2.0))),
             )
             .unwrap();
-        }
-
-        if warp != 0.0 {
-            // Warp window vertically as well, to restore some width
-            for i in 0..size {
-                let previous_data = f64::from(data[i]);
-
-                data[i] *= Sample::from(
-                    ((warp + 1.0) / (1.0 + warp * (2.0 * previous_data - 1.0))).sqrt(),
-                )
-                .unwrap();
-            }
         }
     }
 }
