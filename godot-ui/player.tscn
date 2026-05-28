@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3 uid="uid://c6v24sohg60tp"]
+[gd_scene format=3 uid="uid://c6v24sohg60tp"]
 
 [ext_resource type="Theme" uid="uid://d05qtmsvetwx2" path="res://theme.tres" id="1_onrkg"]
 [ext_resource type="Texture2D" uid="uid://dwa2oukgno0y8" path="res://test-album-art.png" id="2_i3pqv"]
-[ext_resource type="Texture2D" uid="uid://dtboqf4wmntxj" path="res://test-small-waveform.png" id="3_i3pqv"]
+[ext_resource type="Shader" uid="uid://b4crvivhagxks" path="res://preview_waveform.gdshader" id="3_i3pqv"]
+[ext_resource type="Texture2D" uid="uid://jcrw35iekm7c" path="res://test-preview-waveform.png" id="4_hqtel"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sweqy"]
 bg_color = Color(0.09019608, 0.09019608, 0.09019608, 1)
@@ -13,10 +14,23 @@ bg_color = Color(1, 1, 1, 1)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hqtel"]
 bg_color = Color(1, 0.50822866, 0.054931685, 1)
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_i3pqv"]
-texture = ExtResource("3_i3pqv")
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_i3pqv"]
+resource_local_to_scene = true
+shader = ExtResource("3_i3pqv")
+shader_parameter/WAVEFORM = ExtResource("4_hqtel")
+shader_parameter/PROGRESS = 0.0
 
-[node name="PanelContainer" type="PlayerContainer" node_paths=PackedStringArray("player_data", "not_loaded", "loading", "player_number_label", "album_art", "track_detail_title", "track_detail_time", "track_detail_bpm", "track_detail_key", "time_remain_label", "time_time_label", "track_time", "track_time_fractional", "tempo_sign", "tempo_percent", "tempo_percent_fractional", "tempo_range", "bpm", "bpm_fractional", "bpm_master", "key", "master_tempo")]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2hs0m"]
+bg_color = Color(1, 1, 1, 0)
+corner_detail = 1
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_i3pqv"]
+color = Color(1, 1, 1, 0.78431374)
+grow_begin = 0.0
+grow_end = 0.0
+vertical = true
+
+[node name="Player 1" type="PlayerContainer" unique_id=922198831 node_paths=PackedStringArray("player_data", "not_loaded", "loading", "player_number_label", "album_art", "track_detail_title", "track_detail_time", "track_detail_bpm", "track_detail_key", "time_remain_label", "time_time_label", "track_time", "track_time_fractional", "tempo_sign", "tempo_percent", "tempo_percent_fractional", "tempo_range", "bpm", "bpm_fractional", "bpm_master", "key", "master_tempo", "waveform_container", "waveform", "playhead")]
 player_data = NodePath("Player")
 not_loaded = NodePath("Not Loaded")
 loading = NodePath("Loading")
@@ -39,34 +53,37 @@ bpm_fractional = NodePath("Player/BPM/BPM Number/Fraction")
 bpm_master = NodePath("Player/BPM/Label Container/Panel")
 key = NodePath("Player/Key/Key")
 master_tempo = NodePath("Player/Key/Label Container/Master Tempo")
+waveform_container = NodePath("Player/Waveform")
+waveform = NodePath("Player/Waveform/Waveform")
+playhead = NodePath("Player/Waveform/Waveform/Playhead Container/Playhead")
 offset_top = 126.0
 offset_right = 619.0
 offset_bottom = 248.0
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_sweqy")
 
-[node name="Player" type="GridContainer" parent="."]
+[node name="Player" type="GridContainer" parent="." unique_id=2131095496]
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("1_onrkg")
 theme_override_constants/h_separation = 12
 columns = 3
 
-[node name="Album Art" type="TextureRect" parent="Player"]
+[node name="Album Art" type="TextureRect" parent="Player" unique_id=1447117585]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 texture = ExtResource("2_i3pqv")
 expand_mode = 2
 stretch_mode = 4
 
-[node name="Top Details" type="HBoxContainer" parent="Player"]
+[node name="Top Details" type="HBoxContainer" parent="Player" unique_id=513205180]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme = ExtResource("1_onrkg")
 theme_override_constants/separation = 12
 
-[node name="Details" type="VBoxContainer" parent="Player/Top Details"]
+[node name="Details" type="VBoxContainer" parent="Player/Top Details" unique_id=2017038791]
 clip_contents = true
 custom_minimum_size = Vector2(1, 0)
 layout_mode = 2
@@ -74,7 +91,7 @@ size_flags_horizontal = 3
 theme = ExtResource("1_onrkg")
 alignment = 1
 
-[node name="Title" type="Label" parent="Player/Top Details/Details"]
+[node name="Title" type="Label" parent="Player/Top Details/Details" unique_id=1044851788]
 custom_minimum_size = Vector2(1, 0)
 layout_mode = 2
 theme = ExtResource("1_onrkg")
@@ -83,64 +100,64 @@ text = "Above The Cloud (Original Mix)"
 vertical_alignment = 2
 clip_text = true
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Player/Top Details/Details"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Player/Top Details/Details" unique_id=355005506]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="Time" type="Label" parent="Player/Top Details/Details/HBoxContainer"]
+[node name="Time" type="Label" parent="Player/Top Details/Details/HBoxContainer" unique_id=1128227138]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 16
 text = "7:29"
 vertical_alignment = 2
 
-[node name="BPM" type="Label" parent="Player/Top Details/Details/HBoxContainer"]
+[node name="BPM" type="Label" parent="Player/Top Details/Details/HBoxContainer" unique_id=479900267]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 16
 text = "124.0"
 vertical_alignment = 2
 
-[node name="Key" type="Label" parent="Player/Top Details/Details/HBoxContainer"]
+[node name="Key" type="Label" parent="Player/Top Details/Details/HBoxContainer" unique_id=1407788175]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 16
 text = "Cm"
 vertical_alignment = 2
 
-[node name="Time" type="VBoxContainer" parent="Player/Top Details"]
+[node name="Time" type="VBoxContainer" parent="Player/Top Details" unique_id=159972556]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_constants/separation = -8
 
-[node name="Label Container" type="HBoxContainer" parent="Player/Top Details/Time"]
+[node name="Label Container" type="HBoxContainer" parent="Player/Top Details/Time" unique_id=1275756867]
 layout_mode = 2
 
-[node name="Remain" type="Label" parent="Player/Top Details/Time/Label Container"]
+[node name="Remain" type="Label" parent="Player/Top Details/Time/Label Container" unique_id=980855445]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 12
 text = "REMAIN"
 vertical_alignment = 2
 
-[node name="Slash" type="Label" parent="Player/Top Details/Time/Label Container"]
+[node name="Slash" type="Label" parent="Player/Top Details/Time/Label Container" unique_id=853639571]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 12
 text = "/"
 vertical_alignment = 2
 
-[node name="Time" type="Label" parent="Player/Top Details/Time/Label Container"]
+[node name="Time" type="Label" parent="Player/Top Details/Time/Label Container" unique_id=1689840453]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 12
 text = "TIME"
 vertical_alignment = 2
 
-[node name="Time Number" type="HBoxContainer" parent="Player/Top Details/Time"]
+[node name="Time Number" type="HBoxContainer" parent="Player/Top Details/Time" unique_id=1362302812]
 layout_mode = 2
 
-[node name="Number" type="Label" parent="Player/Top Details/Time/Time Number"]
+[node name="Number" type="Label" parent="Player/Top Details/Time/Time Number" unique_id=839727529]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 32
@@ -148,7 +165,7 @@ text = "02:35"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Fraction" type="Label" parent="Player/Top Details/Time/Time Number"]
+[node name="Fraction" type="Label" parent="Player/Top Details/Time/Time Number" unique_id=411234145]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme = ExtResource("1_onrkg")
@@ -157,31 +174,31 @@ text = ".000"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Tempo" type="VBoxContainer" parent="Player/Top Details"]
+[node name="Tempo" type="VBoxContainer" parent="Player/Top Details" unique_id=1557612489]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_constants/separation = -8
 
-[node name="Label Container" type="HBoxContainer" parent="Player/Top Details/Tempo"]
+[node name="Label Container" type="HBoxContainer" parent="Player/Top Details/Tempo" unique_id=1949788944]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Player/Top Details/Tempo/Label Container"]
+[node name="Label" type="Label" parent="Player/Top Details/Tempo/Label Container" unique_id=1398454047]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 12
 text = "TEMPO"
 vertical_alignment = 2
 
-[node name="Separator" type="Control" parent="Player/Top Details/Tempo/Label Container"]
+[node name="Separator" type="Control" parent="Player/Top Details/Tempo/Label Container" unique_id=750317686]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Panel" type="Panel" parent="Player/Top Details/Tempo/Label Container"]
+[node name="Panel" type="Panel" parent="Player/Top Details/Tempo/Label Container" unique_id=1149447669]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_i3pqv")
 
-[node name="Tempo Range" type="Label" parent="Player/Top Details/Tempo/Label Container/Panel"]
+[node name="Tempo Range" type="Label" parent="Player/Top Details/Tempo/Label Container/Panel" unique_id=582933384]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -195,10 +212,10 @@ text = "± 16"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="Tempo Number" type="HBoxContainer" parent="Player/Top Details/Tempo"]
+[node name="Tempo Number" type="HBoxContainer" parent="Player/Top Details/Tempo" unique_id=970040670]
 layout_mode = 2
 
-[node name="Sign" type="Label" parent="Player/Top Details/Tempo/Tempo Number"]
+[node name="Sign" type="Label" parent="Player/Top Details/Tempo/Tempo Number" unique_id=1517881428]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 32
@@ -206,7 +223,7 @@ text = "+"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Number" type="Label" parent="Player/Top Details/Tempo/Tempo Number"]
+[node name="Number" type="Label" parent="Player/Top Details/Tempo/Tempo Number" unique_id=1599969878]
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 theme = ExtResource("1_onrkg")
@@ -215,7 +232,7 @@ text = "0"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Fraction" type="Label" parent="Player/Top Details/Tempo/Tempo Number"]
+[node name="Fraction" type="Label" parent="Player/Top Details/Tempo/Tempo Number" unique_id=1895382835]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme = ExtResource("1_onrkg")
@@ -224,28 +241,28 @@ text = ".25%"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="BPM" type="VBoxContainer" parent="Player"]
+[node name="BPM" type="VBoxContainer" parent="Player" unique_id=480285403]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_constants/separation = -8
 
-[node name="Label Container" type="HBoxContainer" parent="Player/BPM"]
+[node name="Label Container" type="HBoxContainer" parent="Player/BPM" unique_id=724787726]
 custom_minimum_size = Vector2(94, 0)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Player/BPM/Label Container"]
+[node name="Label" type="Label" parent="Player/BPM/Label Container" unique_id=1918218952]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 12
 text = "BPM"
 vertical_alignment = 2
 
-[node name="Panel" type="Panel" parent="Player/BPM/Label Container"]
+[node name="Panel" type="Panel" parent="Player/BPM/Label Container" unique_id=1587039376]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_hqtel")
 
-[node name="Master" type="Label" parent="Player/BPM/Label Container/Panel"]
+[node name="Master" type="Label" parent="Player/BPM/Label Container/Panel" unique_id=795415077]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -259,10 +276,10 @@ text = "MASTER"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="BPM Number" type="HBoxContainer" parent="Player/BPM"]
+[node name="BPM Number" type="HBoxContainer" parent="Player/BPM" unique_id=1997657607]
 layout_mode = 2
 
-[node name="Whole" type="Label" parent="Player/BPM/BPM Number"]
+[node name="Whole" type="Label" parent="Player/BPM/BPM Number" unique_id=1737618335]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 32
@@ -270,7 +287,7 @@ text = "124"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Fraction" type="Label" parent="Player/BPM/BPM Number"]
+[node name="Fraction" type="Label" parent="Player/BPM/BPM Number" unique_id=1670129801]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme = ExtResource("1_onrkg")
@@ -279,12 +296,12 @@ text = ".3"
 horizontal_alignment = 2
 vertical_alignment = 2
 
-[node name="Deck Number" type="VBoxContainer" parent="Player"]
+[node name="Deck Number" type="VBoxContainer" parent="Player" unique_id=1843696461]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_constants/separation = -8
 
-[node name="Label" type="Label" parent="Player/Deck Number"]
+[node name="Label" type="Label" parent="Player/Deck Number" unique_id=1949648464]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 12
@@ -292,7 +309,7 @@ text = "PLAYER"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="Number" type="Label" parent="Player/Deck Number"]
+[node name="Number" type="Label" parent="Player/Deck Number" unique_id=1641308122]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 32
@@ -300,36 +317,59 @@ text = "1"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="Waveform" type="PanelContainer" parent="Player"]
+[node name="Waveform" type="VBoxContainer" parent="Player" unique_id=1244348289]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxTexture_i3pqv")
 
-[node name="Cues" type="Control" parent="Player/Waveform"]
+[node name="Cues" type="Control" parent="Player/Waveform" unique_id=730128255]
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
 size_flags_vertical = 0
 
-[node name="Key" type="VBoxContainer" parent="Player"]
+[node name="Waveform" type="PanelContainer" parent="Player/Waveform" unique_id=185238258]
+material = SubResource("ShaderMaterial_i3pqv")
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_2hs0m")
+
+[node name="Playhead Container" type="Control" parent="Player/Waveform/Waveform" unique_id=1710490929]
+layout_mode = 2
+
+[node name="Playhead" type="Panel" parent="Player/Waveform/Waveform/Playhead Container" unique_id=1969279878]
+custom_minimum_size = Vector2(1, 0)
+layout_mode = 0
+offset_right = 1.0000334
+offset_bottom = 38.0
+size_flags_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxLine_i3pqv")
+
+[node name="Time Markers" type="Control" parent="Player/Waveform" unique_id=997398310]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+size_flags_vertical = 8
+
+[node name="Key" type="VBoxContainer" parent="Player" unique_id=461924322]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_constants/separation = -8
 
-[node name="Label Container" type="HBoxContainer" parent="Player/Key"]
+[node name="Label Container" type="HBoxContainer" parent="Player/Key" unique_id=949518050]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Player/Key/Label Container"]
+[node name="Label" type="Label" parent="Player/Key/Label Container" unique_id=2136737969]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 12
 text = "KEY"
 vertical_alignment = 2
 
-[node name="Separator" type="Control" parent="Player/Key/Label Container"]
+[node name="Separator" type="Control" parent="Player/Key/Label Container" unique_id=1199081023]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Master Tempo" type="Label" parent="Player/Key/Label Container"]
+[node name="Master Tempo" type="Label" parent="Player/Key/Label Container" unique_id=1770691510]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_colors/font_color = Color(1, 0.32409987, 0.25894448, 1)
@@ -337,26 +377,26 @@ theme_override_font_sizes/font_size = 12
 text = "MT"
 vertical_alignment = 2
 
-[node name="Key" type="Label" parent="Player/Key"]
+[node name="Key" type="Label" parent="Player/Key" unique_id=1544428680]
 layout_mode = 2
 theme = ExtResource("1_onrkg")
 theme_override_font_sizes/font_size = 32
 text = "Cm"
 vertical_alignment = 2
 
-[node name="Not Loaded" type="CenterContainer" parent="."]
+[node name="Not Loaded" type="CenterContainer" parent="." unique_id=751674157]
 layout_mode = 2
 
-[node name="Not Loaded" type="Label" parent="Not Loaded"]
+[node name="Not Loaded" type="Label" parent="Not Loaded" unique_id=1951205725]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.3254902, 0.25882354, 1)
 theme_override_font_sizes/font_size = 32
 text = "NOT LOADED"
 
-[node name="Loading" type="CenterContainer" parent="."]
+[node name="Loading" type="CenterContainer" parent="." unique_id=1274483253]
 layout_mode = 2
 
-[node name="Loading" type="Label" parent="Loading"]
+[node name="Loading" type="Label" parent="Loading" unique_id=1344127244]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "LOADING..."

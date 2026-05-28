@@ -2,10 +2,7 @@ use base64::{Engine, prelude::BASE64_STANDARD};
 use interprocess::local_socket::{
     GenericFilePath, ToFsName, tokio::Stream, traits::tokio::Stream as _,
 };
-use libdj::types::{
-    deck::{DeckState, DeckUpdate},
-    timecode::Duration,
-};
+use libdj::types::{audio_system::DeckUpdate, timecode::Duration};
 use thiserror::Error;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -164,15 +161,25 @@ async fn process_internal_ui_event(
         InternalUIEvent::EjectDevice(device) => {
             let _ = ui_event_sender.send(UIEvent::EjectDevice(device)).await;
         }
+        InternalUIEvent::GetWaveform { device, id, player } => {
+            let _ = ui_event_sender
+                .send(UIEvent::GetWaveform { device, id, player })
+                .await;
+        }
+        InternalUIEvent::GetPreviewWaveform { device, id, player } => {
+            let _ = ui_event_sender
+                .send(UIEvent::GetPreviewWaveform { device, id, player })
+                .await;
+        }
         InternalUIEvent::TouchCue { cue_time, player } => {
-            let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+            let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                 if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
                     mixer_channel.player.touch_cue_time = cue_time;
                 }
             }));
         }
         InternalUIEvent::BeatJump { beats, player } => {
-            let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+            let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                 if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player)
                     && let Some(bpm) = mixer_channel.player.get_current_bpm()
                 {
@@ -182,7 +189,7 @@ async fn process_internal_ui_event(
             }));
         }
         InternalUIEvent::SetBeatLoop { beats, player } => {
-            let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+            let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                 if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player)
                     && let Some(bpm) = mixer_channel.player.get_current_bpm()
                 {
@@ -197,7 +204,7 @@ async fn process_internal_ui_event(
             }));
         }
         InternalUIEvent::DoubleBeatLoop(player) => {
-            let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+            let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                 if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player)
                     && let Some(beat_loop_start) = mixer_channel.player.beat_loop_start
                     && let Some(beat_loop_end) = mixer_channel.player.beat_loop_end
@@ -209,7 +216,7 @@ async fn process_internal_ui_event(
             }));
         }
         InternalUIEvent::HalveBeatLoop(player) => {
-            let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+            let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                 if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player)
                     && let Some(beat_loop_start) = mixer_channel.player.beat_loop_start
                     && let Some(beat_loop_end) = mixer_channel.player.beat_loop_end
@@ -221,7 +228,7 @@ async fn process_internal_ui_event(
             }));
         }
         InternalUIEvent::SetKeyShift { player, semitones } => {
-            let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+            let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                 if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
                     mixer_channel.player.keyshift = semitones;
                 }

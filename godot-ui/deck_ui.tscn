@@ -2,9 +2,9 @@
 
 [ext_resource type="Theme" uid="uid://d05qtmsvetwx2" path="res://theme.tres" id="1_1q5r0"]
 [ext_resource type="PackedScene" uid="uid://csjsh2y5oe0ii" path="res://device_list_entry.tscn" id="1_eur0n"]
-[ext_resource type="Texture2D" uid="uid://dfmhduky8hp71" path="res://test-big-waveform.png" id="2_pjlna"]
 [ext_resource type="PackedScene" uid="uid://c6v24sohg60tp" path="res://player.tscn" id="2_w13nq"]
 [ext_resource type="PackedScene" uid="uid://bgfjac34nmsfb" path="res://track_list_entry.tscn" id="2_xi870"]
+[ext_resource type="PackedScene" uid="uid://br0a73x66ts2j" path="res://player_waveform.tscn" id="4_fsqqd"]
 
 [node name="Node3D" type="Node3D" unique_id=2110624759]
 
@@ -57,18 +57,21 @@ size_flags_vertical = 3
 [node name="Players" type="VBoxContainer" parent="Deck UI/VBoxContainer" unique_id=563382030]
 layout_mode = 2
 size_flags_vertical = 3
+mouse_filter = 0
+theme_override_constants/separation = 0
 
-[node name="External" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players" unique_id=258400053]
+[node name="Master" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players" unique_id=258400053]
+visible = false
 layout_mode = 2
 
-[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/External" unique_id=2020707197]
+[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Master" unique_id=2020707197]
 custom_minimum_size = Vector2(48, 0)
 layout_mode = 2
 size_flags_vertical = 4
 theme = ExtResource("1_1q5r0")
 theme_override_constants/separation = -8
 
-[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Players/External/Deck Number" unique_id=271528190]
+[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Players/Master/Deck Number" unique_id=271528190]
 layout_mode = 2
 theme = ExtResource("1_1q5r0")
 theme_override_font_sizes/font_size = 12
@@ -76,141 +79,24 @@ text = "MST"
 horizontal_alignment = 1
 vertical_alignment = 2
 
-[node name="External" type="TextureRect" parent="Deck UI/VBoxContainer/Players/External" unique_id=1002959056]
-custom_minimum_size = Vector2(0, 82)
+[node name="Player 3 Waveform" parent="Deck UI/VBoxContainer/Players" unique_id=1954598484 node_paths=PackedStringArray("ipc") instance=ExtResource("4_fsqqd")]
+player_number = 2
+ipc = NodePath("../../../../IPC")
 layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("1_1q5r0")
-texture = ExtResource("2_pjlna")
-expand_mode = 2
 
-[node name="Left Deck" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players" unique_id=1158121428]
+[node name="Player 1 Waveform" parent="Deck UI/VBoxContainer/Players" unique_id=2122337419 node_paths=PackedStringArray("ipc") instance=ExtResource("4_fsqqd")]
+ipc = NodePath("../../../../IPC")
 layout_mode = 2
-size_flags_vertical = 3
 
-[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Left Deck" unique_id=83961163]
-custom_minimum_size = Vector2(48, 0)
+[node name="Player 2 Waveform" parent="Deck UI/VBoxContainer/Players" unique_id=1027361867 node_paths=PackedStringArray("ipc") instance=ExtResource("4_fsqqd")]
+player_number = 1
+ipc = NodePath("../../../../IPC")
 layout_mode = 2
-size_flags_vertical = 4
-theme = ExtResource("1_1q5r0")
-theme_override_constants/separation = -8
 
-[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Players/Left Deck/Deck Number" unique_id=347221209]
+[node name="Player 4 Waveform" parent="Deck UI/VBoxContainer/Players" unique_id=590184291 node_paths=PackedStringArray("ipc") instance=ExtResource("4_fsqqd")]
+player_number = 3
+ipc = NodePath("../../../../IPC")
 layout_mode = 2
-theme = ExtResource("1_1q5r0")
-theme_override_font_sizes/font_size = 12
-text = "PLAYER"
-horizontal_alignment = 1
-vertical_alignment = 2
-
-[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Players/Left Deck/Deck Number" unique_id=1392390051]
-layout_mode = 2
-theme = ExtResource("1_1q5r0")
-theme_override_font_sizes/font_size = 32
-text = "1"
-horizontal_alignment = 1
-vertical_alignment = 2
-
-[node name="Waveform" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Left Deck" unique_id=235150377]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = -24
-
-[node name="Bars" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players/Left Deck/Waveform" unique_id=1789299727]
-z_index = 1
-custom_minimum_size = Vector2(98, 0)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/separation = 8
-alignment = 2
-
-[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Players/Left Deck/Waveform/Bars" unique_id=2001222550]
-layout_mode = 2
-theme = ExtResource("1_1q5r0")
-theme_override_font_sizes/font_size = 16
-text = "42.4"
-horizontal_alignment = 2
-vertical_alignment = 2
-
-[node name="Units" type="Label" parent="Deck UI/VBoxContainer/Players/Left Deck/Waveform/Bars" unique_id=1178290922]
-layout_mode = 2
-theme = ExtResource("1_1q5r0")
-theme_override_font_sizes/font_size = 16
-text = "BARS"
-vertical_alignment = 2
-
-[node name="Waveform" type="TextureRect" parent="Deck UI/VBoxContainer/Players/Left Deck/Waveform" unique_id=776930691]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme = ExtResource("1_1q5r0")
-texture = ExtResource("2_pjlna")
-expand_mode = 2
-
-[node name="Right Deck" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players" unique_id=588187286]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="Deck Number" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Right Deck" unique_id=1989620627]
-custom_minimum_size = Vector2(48, 0)
-layout_mode = 2
-size_flags_vertical = 4
-theme = ExtResource("1_1q5r0")
-theme_override_constants/separation = -8
-
-[node name="Label" type="Label" parent="Deck UI/VBoxContainer/Players/Right Deck/Deck Number" unique_id=1320366884]
-layout_mode = 2
-theme = ExtResource("1_1q5r0")
-theme_override_font_sizes/font_size = 12
-text = "PLAYER"
-horizontal_alignment = 1
-vertical_alignment = 2
-
-[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Players/Right Deck/Deck Number" unique_id=831494137]
-layout_mode = 2
-theme = ExtResource("1_1q5r0")
-theme_override_font_sizes/font_size = 32
-text = "1"
-horizontal_alignment = 1
-vertical_alignment = 2
-
-[node name="Waveform" type="VBoxContainer" parent="Deck UI/VBoxContainer/Players/Right Deck" unique_id=1865157523]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = -24
-
-[node name="Bars" type="HBoxContainer" parent="Deck UI/VBoxContainer/Players/Right Deck/Waveform" unique_id=1325638601]
-z_index = 1
-custom_minimum_size = Vector2(98, 0)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/separation = 8
-alignment = 2
-
-[node name="Number" type="Label" parent="Deck UI/VBoxContainer/Players/Right Deck/Waveform/Bars" unique_id=1389792648]
-layout_mode = 2
-theme = ExtResource("1_1q5r0")
-theme_override_font_sizes/font_size = 16
-text = "42.4"
-horizontal_alignment = 2
-vertical_alignment = 2
-
-[node name="Units" type="Label" parent="Deck UI/VBoxContainer/Players/Right Deck/Waveform/Bars" unique_id=229383256]
-layout_mode = 2
-theme = ExtResource("1_1q5r0")
-theme_override_font_sizes/font_size = 16
-text = "BARS"
-vertical_alignment = 2
-
-[node name="Waveform" type="TextureRect" parent="Deck UI/VBoxContainer/Players/Right Deck/Waveform" unique_id=649092117]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme = ExtResource("1_1q5r0")
-texture = ExtResource("2_pjlna")
-expand_mode = 2
 
 [node name="Browser" type="ScrollContainer" parent="Deck UI/VBoxContainer" unique_id=493661051]
 visible = false

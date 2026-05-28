@@ -4,8 +4,7 @@ use libdatabase::device_manager::{DeviceManager, DeviceManagerEvent, device::Ope
 use libdj::{
     audio_system::{AudioManager, audio_loader::TrackAudioData},
     types::{
-        deck::{DeckState, DeckUpdate},
-        library::Track,
+        analysis::WaveformType, audio_system::DeckUpdate, deck::DeckState, library::Track,
         timecode::Timecode,
     },
 };
@@ -22,20 +21,17 @@ use tokio_stream::StreamExt;
 #[allow(clippy::too_many_lines)]
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut line = String::new();
-    let _ = std::io::stdin().read_line(&mut line);
-
     let (deck_state_sender, deck_state_receiver) =
         tokio::sync::watch::channel(DeckState::default());
     let (deck_update_sender, deck_update_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-    // let mut deck_state = DeckState::default();
-    // let mut deck_update_interval =
-    // tokio::time::interval(Duration::from_millis(10));
-    // let mut last_process_instant = Instant::now();
-
     // todo: vsync?
     let mut ui_deck_update_interval = tokio::time::interval(Duration::from_millis(10));
+
+    let (ui_event_sender, mut ui_event_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    let (audio_system_event_sender, mut audio_system_event_receiver) =
+        tokio::sync::mpsc::unbounded_channel();
 
     let (loaded_track_sender, loaded_track_receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -51,6 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     audio_manager.create_full_audio_pipeline(
         deck_update_receiver,
+        audio_system_event_sender,
         deck_state_sender,
         loaded_track_receiver,
         dj_deck_device,
@@ -71,7 +68,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Starting HMI...");
 
-    let controller = Controller::start_hmi(midi_sender, midi_receiver, deck_update_sender.clone());
+    let controller = Controller::start_hmi(
+        midi_sender,
+        midi_receiver,
+        deck_update_sender.clone(),
+        ui_event_sender.clone(),
+    );
 
     println!("Starting GUI...");
 
@@ -114,12 +116,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     match ui_event {
                         UIEvent::LoadTrack { device, id, player } => {
-                            if let Ok(locked_device_database) = device_manager.devices.lock()
-                                && let Some(qualified_device) = locked_device_database.get(&device)
+                            if let Ok(mut locked_device_database) = device_manager.devices.lock()
+                                && let Some(qualified_device) = locked_device_database.get_mut(&device)
                                 && let Some(track) = qualified_device.database.library.tracks.get(&id) {
                                 let _ = loaded_track_sender.send((player, None));
 
-                                let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+                                let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                                     if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
                                         mixer_channel.player.current_track = None;
                                         mixer_channel.player.is_loading = true;
@@ -136,13 +138,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     }
                                 }));
 
+                                // todo: this should be moved to a new thread
+                                if let Ok(track_analysis) = qualified_device.database.load_analysis(id) {
+                                    let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
+                                        if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
+                                            mixer_channel.player.current_track_analysis = Some(track_analysis);
+                                        }
+                                    }));
+                                } else {
+                                    // todo: perform track analysis
+                                }
+
                                 start_load_task(player, device, track.clone(), deck_update_sender.clone(), loaded_track_sender.clone());
+
+                                if let Ok(waveform) = qualified_device.database.load_waveform(id, WaveformType::ThreeBand) {
+                                     let _ = ui.send(UIMessage::Waveform { player, waveform });
+                                }
+                                if let Ok(waveform) = qualified_device.database.load_preview_waveform(id, WaveformType::ThreeBand) {
+                                     let _ = ui.send(UIMessage::PreviewWaveform { player, waveform });
+                                }
                             }
                         },
                         UIEvent::Eject(player) => {
-                            let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+                            let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                                 if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
                                     mixer_channel.player.current_track = None;
+                                    mixer_channel.player.current_track_analysis = None;
                                     mixer_channel.player.is_loading = false;
 
                                     mixer_channel.player.time = Timecode::zero();
@@ -171,10 +192,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         UIEvent::EjectDevice(id) => {
                             device_manager.eject(id).await;
                         },
+                        UIEvent::GetWaveform { device, id, player } =>  {
+                            if let Ok(mut locked_device_database) = device_manager.devices.lock()
+                                && let Some(qualified_device) = locked_device_database.get_mut(&device)
+                                && let Ok(waveform) = qualified_device.database.load_waveform(id, WaveformType::ThreeBand) {
+                                 let _ = ui.send(UIMessage::Waveform { player, waveform });
+                            }
+                        },
+                        UIEvent::GetPreviewWaveform { device, id, player } =>  {
+                            if let Ok(mut locked_device_database) = device_manager.devices.lock()
+                                && let Some(qualified_device) = locked_device_database.get_mut(&device)
+                                && let Ok(waveform) = qualified_device.database.load_preview_waveform(id, WaveformType::ThreeBand) {
+                                 let _ = ui.send(UIMessage::PreviewWaveform { player, waveform });
+                            }
+                        },
                     }
                 } else {
                     println!("UI Hung Up");
                     break;
+                }
+            }
+            audio_system_event = audio_system_event_receiver.recv() => {
+                if let Some(audio_system_event) = audio_system_event {
+                    match audio_system_event {
+                    }
                 }
             }
             _ = ui_deck_update_interval.tick() => {
@@ -184,6 +225,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let _ = controller.send(ControllerMessage::UpdateCurrentSamples([0.0, 0.0, 0.0, 0.0]));
 
                 let _ = ui.send(UIMessage::UpdateDeckState(deck_state.clone()));
+
+                while let Ok(event) = ui_event_receiver.try_recv() {
+                    let _ = ui.send(event);
+                }
             }
         }
     }
@@ -210,7 +255,7 @@ pub fn start_load_task(
                 // todo: build a way to propagate errors to the ui
                 println!("TRACK LOAD ERROR: {err:?}");
 
-                let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+                let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                     if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
                         mixer_channel.player.is_loading = false;
                     }
@@ -222,7 +267,7 @@ pub fn start_load_task(
 
         let _ = loaded_track_sender.send((player, Some(Box::new(audio_data))));
 
-        let _ = deck_update_sender.send(Box::new(move |deck_state: &mut DeckState| {
+        let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
             if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
                 mixer_channel.player.current_track = Some((device, track));
                 mixer_channel.player.is_loading = false;

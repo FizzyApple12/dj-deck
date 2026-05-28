@@ -58,13 +58,19 @@ impl<Sample> OutputTrait<Sample> for Output<Sample> {
     }
 }
 
-// A self-normalising STFT, with variable position/window for output blocks
-pub struct DynamicSTFT<Sample, const SPLIT_COMPUTATION: bool, const SPECTRUM_TYPE: usize>
-where
+/// A self-normalising STFT, with variable position/window for output blocks
+///
+/// YOU NEED TO SET `HALF_BIN_SHIFT = true` WHEN `SPECTRUM_TYPE ==
+/// STFT_SPECTRUM_MODIFIED`
+pub struct DynamicSTFT<
+    Sample,
+    const SPLIT_COMPUTATION: bool,
+    const SPECTRUM_TYPE: usize,
+    const HALF_BIN_SHIFT: bool,
+> where
     Sample: Float,
-    RealFFT<Sample, SPLIT_COMPUTATION, { SPECTRUM_TYPE == STFT_SPECTRUM_MODIFIED }>: Sized,
 {
-    pub fft: RealFFT<Sample, SPLIT_COMPUTATION, { SPECTRUM_TYPE == STFT_SPECTRUM_MODIFIED }>,
+    pub fft: RealFFT<Sample, SPLIT_COMPUTATION, HALF_BIN_SHIFT>,
 
     pub input: Input<Sample>,
     pub output: Output<Sample>,
@@ -89,10 +95,13 @@ where
     internal_samples_since_analysis: usize,
 }
 
-pub trait DynamicSTFTTrait<Sample, const SPLIT_COMPUTATION: bool, const SPECTRUM_TYPE: usize>
-where
+pub trait DynamicSTFTTrait<
+    Sample,
+    const SPLIT_COMPUTATION: bool,
+    const SPECTRUM_TYPE: usize,
+    const HALF_BIN_SHIFT: bool,
+> where
     Sample: Float,
-    RealFFT<Sample, SPLIT_COMPUTATION, { SPECTRUM_TYPE == STFT_SPECTRUM_MODIFIED }>: Sized,
 {
     type Complex;
     type Sample;
@@ -208,24 +217,18 @@ where
     fn synthesise_step(&mut self, step: usize);
 }
 
-impl<const SPLIT_COMPUTATION: bool, const SPECTRUM_TYPE: usize>
-    DynamicSTFTTrait<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE>
-    for DynamicSTFT<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE>
-where
-    RealFFT<f32, SPLIT_COMPUTATION, { SPECTRUM_TYPE == STFT_SPECTRUM_MODIFIED }>: Sized,
+impl<const SPLIT_COMPUTATION: bool, const SPECTRUM_TYPE: usize, const HALF_BIN_SHIFT: bool>
+    DynamicSTFTTrait<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE, HALF_BIN_SHIFT>
+    for DynamicSTFT<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE, HALF_BIN_SHIFT>
 {
-    type Complex = Self::Complex;
-    type Sample = Self::Sample;
+    type Complex = Complex<f32>;
+    type Sample = f32;
 
-    const ALMOST_ZERO: Self::Sample = f32::EPSILON;
+    const ALMOST_ZERO: f32 = f32::EPSILON;
 
     fn new() -> Self {
         Self {
-            fft: RealFFT::<
-                Self::Sample,
-                SPLIT_COMPUTATION,
-                { SPECTRUM_TYPE == STFT_SPECTRUM_MODIFIED },
-            >::new(0),
+            fft: RealFFT::<f32, SPLIT_COMPUTATION, HALF_BIN_SHIFT>::new(0),
             input: Input {
                 pos: 0,
                 buffer: Vec::new(),
@@ -260,15 +263,14 @@ where
         block_samples: usize,
         extra_input_history: usize,
         interval_samples: usize,
-        asymmetry: Self::Sample,
+        asymmetry: f32,
     ) {
         self.internal_analysis_channels = in_channels;
         self.internal_synthesis_channels = out_channels;
         self.internal_block_samples = block_samples;
         self.internal_fft_samples =
-            RealFFT::<Self::Sample, SPLIT_COMPUTATION, false>::fast_size_above(
-                block_samples.div_ceil(2),
-            ) * 2;
+            RealFFT::<f32, SPLIT_COMPUTATION, false>::fast_size_above(block_samples.div_ceil(2))
+                * 2;
         self.fft.resize(self.internal_fft_samples);
         self.internal_fft_bins =
             self.internal_fft_samples / 2 + usize::from(SPECTRUM_TYPE == STFT_SPECTRUM_UNPACKED);
@@ -292,7 +294,7 @@ where
                     self.internal_analysis_channels,
                     self.internal_synthesis_channels,
                 ),
-            Self::Complex::new(0.0, 0.0),
+            Complex::<f32>::new(0.0, 0.0),
         );
         self.time_buffer.resize(self.internal_fft_samples, 0.0);
 
@@ -342,12 +344,12 @@ where
     }
 
     #[allow(clippy::cast_precision_loss)]
-    fn bin_to_freq(&self, b: Self::Sample) -> Self::Sample {
+    fn bin_to_freq(&self, b: f32) -> f32 {
         (if Self::MODIFIED { b + 0.5 } else { b }) / self.internal_fft_samples as f32
     }
 
     #[allow(clippy::cast_precision_loss)]
-    fn freq_to_bin(&self, f: Self::Sample) -> Self::Sample {
+    fn freq_to_bin(&self, f: f32) -> f32 {
         if Self::MODIFIED {
             f * self.internal_fft_samples as f32 - 0.5
         } else {
@@ -355,8 +357,13 @@ where
         }
     }
 
-    #[allow(clippy::indexing_slicing)]
-    fn reset(&mut self, product_weight: Self::Sample) {
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap,
+        clippy::cast_sign_loss,
+        clippy::indexing_slicing
+    )]
+    fn reset(&mut self, product_weight: f32) {
         self.input.pos = self.internal_block_samples;
         self.output.pos = 0;
 
@@ -367,7 +374,7 @@ where
             *v = 0.0;
         }
         for v in &mut self.spectrum_buffer {
-            *v = Self::Complex::new(0.0, 0.0);
+            *v = Complex::<f32>::new(0.0, 0.0);
         }
         for v in &mut self.output.window_products {
             *v = 0.0;
@@ -375,9 +382,10 @@ where
 
         self.add_window_product();
 
-        for i in (self.internal_block_samples - self.internal_default_interval - 1)..0 {
-            self.output.window_products[i] +=
-                self.output.window_products[i + self.internal_default_interval];
+        for i in 0..(self.internal_block_samples as i32 - self.internal_default_interval as i32 - 1)
+        {
+            self.output.window_products[i as usize] +=
+                self.output.window_products[i as usize + self.internal_default_interval];
         }
 
         for v in &mut self.output.window_products {
@@ -393,7 +401,7 @@ where
         channel: usize,
         offset: usize,
         length: usize,
-        input_array: &[Self::Sample],
+        input_array: &[f32],
     ) {
         let offset_pos = (self.input.pos + offset) % self.internal_input_length_samples;
         let input_wrap_index = self.internal_input_length_samples - offset_pos;
@@ -450,7 +458,7 @@ where
     // long block interval, which can exaggerate artefacts and numerical errors.
     // You still can't read more than `blockSamples()` into the future.
     #[allow(clippy::indexing_slicing)]
-    fn finish_output(&mut self, strength: Self::Sample, offset: usize) {
+    fn finish_output(&mut self, strength: f32, offset: usize) {
         let mut max_window_product = 0.0;
 
         let chunk1 = usize::max(
@@ -465,7 +473,7 @@ where
             let i2 = self.output.pos + i;
             let wp = self.output.window_products[i2];
 
-            max_window_product = Self::Sample::max(wp, max_window_product);
+            max_window_product = f32::max(wp, max_window_product);
 
             self.output.window_products[i2] += (max_window_product - wp) * strength;
         }
@@ -474,7 +482,7 @@ where
             let i2 = i + self.output.pos - self.internal_block_samples;
             let wp = self.output.window_products[i2];
 
-            max_window_product = Self::Sample::max(wp, max_window_product);
+            max_window_product = f32::max(wp, max_window_product);
 
             self.output.window_products[i2] += (max_window_product - wp) * strength;
         }
@@ -486,7 +494,7 @@ where
         channel: usize,
         offset: usize,
         length: usize,
-        mut output_array: &mut [Self::Sample],
+        mut output_array: &mut [f32],
     ) {
         let offset_pos = (self.output.pos + offset) % self.internal_block_samples;
         let output_wrap_index = self.internal_block_samples - offset_pos;
@@ -517,7 +525,7 @@ where
         channel: usize,
         offset: usize,
         mut length: usize,
-        new_output_array: &[Self::Sample],
+        new_output_array: &[f32],
     ) {
         length = usize::min(self.internal_block_samples, length);
 
@@ -550,7 +558,7 @@ where
         channel: usize,
         offset: usize,
         mut length: usize,
-        new_output_array: &[Self::Sample],
+        new_output_array: &[f32],
     ) {
         length = usize::min(self.internal_block_samples, length);
 
@@ -683,12 +691,7 @@ where
         clippy::cast_lossless,
         clippy::cast_precision_loss
     )]
-    fn set_interval(
-        &mut self,
-        default_interval: usize,
-        window_shape: WindowShape,
-        asymmetry: Self::Sample,
-    ) {
+    fn set_interval(&mut self, default_interval: usize, window_shape: WindowShape, asymmetry: f32) {
         self.internal_default_interval = default_interval;
         if window_shape == WindowShape::Ignore {
             return;
@@ -725,7 +728,7 @@ where
                 *v = 1.0;
             }
         } else if asymmetry == 0.0 {
-            DynamicSTFT::<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE>::force_perfect_reconstruction(
+            DynamicSTFT::<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE, HALF_BIN_SHIFT>::force_perfect_reconstruction(
                 &mut self.internal_synthesis_window,
                 self.internal_block_samples,
                 self.internal_default_interval,
@@ -781,7 +784,7 @@ where
         step -= channel * (fft_steps + 1);
 
         let step_check = step;
-        step -= 1;
+        step = step.saturating_sub(1);
 
         if step_check == 0 {
             // extra step at start of each channel: copy windowed input into buffer
@@ -868,7 +871,7 @@ where
             if Self::UNPACKED && step == self.fft.steps() - 1 {
                 self.spectrum_buffer
                     [(channel * self.internal_fft_bins) + (self.internal_fft_bins - 1)] =
-                    Self::Complex::new(
+                    Complex::<f32>::new(
                         self.spectrum_buffer[channel * self.internal_fft_bins].im,
                         0.0,
                     );
@@ -884,7 +887,7 @@ where
             if Self::UNPACKED {
                 self.spectrum_buffer
                     [(channel * self.internal_fft_bins) + (self.internal_fft_bins - 1)] =
-                    Self::Complex::new(
+                    Complex::<f32>::new(
                         self.spectrum_buffer[channel * self.internal_fft_bins].im,
                         0.0,
                     );
@@ -1017,14 +1020,9 @@ where
     }
 }
 
-impl<const SPLIT_COMPUTATION: bool, const SPECTRUM_TYPE: usize>
-    DynamicSTFT<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE>
-where
-    RealFFT<f32, SPLIT_COMPUTATION, { SPECTRUM_TYPE == STFT_SPECTRUM_MODIFIED }>: Sized,
+impl<const SPLIT_COMPUTATION: bool, const SPECTRUM_TYPE: usize, const HALF_BIN_SHIFT: bool>
+    DynamicSTFT<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE, HALF_BIN_SHIFT>
 {
-    pub type Complex = Complex<f32>;
-    pub type Sample = f32;
-
     #[allow(
         clippy::indexing_slicing,
         clippy::cast_precision_loss,
@@ -1065,11 +1063,7 @@ where
     }
 
     #[allow(clippy::indexing_slicing)]
-    fn force_perfect_reconstruction(
-        data: &mut [Self::Sample],
-        window_length: usize,
-        interval: usize,
-    ) {
+    fn force_perfect_reconstruction(data: &mut [f32], window_length: usize, interval: usize) {
         for i in 0..interval {
             let mut sum2 = 0.0;
 

@@ -40,6 +40,10 @@ pub enum DeviceManagerEvent {
 impl DeviceManager {
     #[allow(clippy::too_many_lines)]
     pub fn start() -> Result<DeviceManager, StartDeviceManagerError> {
+        tokio::task::spawn_blocking(async || {
+            unmount_stale_mounts().await;
+        });
+
         let device_list = Arc::new(Mutex::new(HashMap::new()));
         let id_to_number_map = Arc::new(Mutex::new(HashMap::new()));
 

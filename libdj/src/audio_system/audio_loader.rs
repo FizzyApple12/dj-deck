@@ -269,13 +269,13 @@ impl TrackAudioData {
                     }
                 }
 
-                let max_sample_index = self.samples.len() as i64;
-
                 if start < end {
                     for buffer_index in 0..AUDIO_CHANNELS {
+                        let max_sample_index = self.samples[buffer_index].len() as i64;
+
                         for (target_index, source_index) in (start..end).enumerate() {
                             output_buffers[buffer_index][target_index] =
-                                if source_index >= 0 || source_index < max_sample_index {
+                                if source_index >= 0 && source_index < max_sample_index {
                                     self.samples[buffer_index][source_index as usize]
                                 } else {
                                     0.0
@@ -284,9 +284,11 @@ impl TrackAudioData {
                     }
                 } else {
                     for buffer_index in 0..AUDIO_CHANNELS {
+                        let max_sample_index = self.samples[buffer_index].len() as i64;
+
                         for (target_index, source_index) in (end..start).rev().enumerate() {
                             output_buffers[buffer_index][target_index] =
-                                if source_index >= 0 || source_index < max_sample_index {
+                                if source_index >= 0 && source_index < max_sample_index {
                                     self.samples[buffer_index][source_index as usize]
                                 } else {
                                     0.0
@@ -322,13 +324,13 @@ impl TrackAudioData {
                     }
                 }
 
-                let max_sample_index = self.samples.len() as i64;
-
                 if start < wrap_start {
                     for buffer_index in 0..AUDIO_CHANNELS {
+                        let max_sample_index = self.samples[buffer_index].len() as i64;
+
                         for (target_index, source_index) in (start..wrap_start).enumerate() {
                             output_buffers[buffer_index][target_index] =
-                                if source_index >= 0 || source_index < max_sample_index {
+                                if source_index >= 0 && source_index < max_sample_index {
                                     self.samples[buffer_index][source_index as usize]
                                 } else {
                                     0.0
@@ -337,9 +339,11 @@ impl TrackAudioData {
                     }
                 } else {
                     for buffer_index in 0..AUDIO_CHANNELS {
+                        let max_sample_index = self.samples[buffer_index].len() as i64;
+
                         for (target_index, source_index) in (wrap_start..start).rev().enumerate() {
                             output_buffers[buffer_index][target_index] =
-                                if source_index >= 0 || source_index < max_sample_index {
+                                if source_index >= 0 && source_index < max_sample_index {
                                     self.samples[buffer_index][source_index as usize]
                                 } else {
                                     0.0
@@ -350,9 +354,11 @@ impl TrackAudioData {
 
                 if wrap_end < end {
                     for buffer_index in 0..AUDIO_CHANNELS {
+                        let max_sample_index = self.samples[buffer_index].len() as i64;
+
                         for (target_index, source_index) in (wrap_end..end).enumerate() {
                             output_buffers[buffer_index][target_index + total_prewrap_samples] =
-                                if source_index >= 0 || source_index < max_sample_index {
+                                if source_index >= 0 && source_index < max_sample_index {
                                     self.samples[buffer_index][source_index as usize]
                                 } else {
                                     0.0
@@ -361,9 +367,11 @@ impl TrackAudioData {
                     }
                 } else {
                     for buffer_index in 0..AUDIO_CHANNELS {
+                        let max_sample_index = self.samples[buffer_index].len() as i64;
+
                         for (target_index, source_index) in (end..wrap_end).rev().enumerate() {
                             output_buffers[buffer_index][target_index + total_prewrap_samples] =
-                                if source_index >= 0 || source_index < max_sample_index {
+                                if source_index >= 0 && source_index < max_sample_index {
                                     self.samples[buffer_index][source_index as usize]
                                 } else {
                                     0.0

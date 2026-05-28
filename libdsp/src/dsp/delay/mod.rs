@@ -1,9 +1,5 @@
 pub mod interpolators;
 
-use std::marker::PhantomData;
-
-use num::Float;
-
 /*
     /** @brief A delay-line reader which uses an external buffer
 

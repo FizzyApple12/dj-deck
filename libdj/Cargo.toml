@@ -7,6 +7,7 @@ edition.workspace = true
 rkyv.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+num.workspace = true
 cpal = { git = "https://github.com/RustAudio/cpal.git", features = [ "pipewire" ] }
 midir = { version = "0.11.0", features = [ ] }
 symphonia = { version = "0.5.5", features = [ "opt-simd", "all-codecs", "all-formats" ] }

@@ -9,14 +9,14 @@ pub mod nearest;
 // significant translation differences are present here because the original
 // implementation had an infinitely sized struct
 
-pub trait InterpolatorTrait<Data, Sample>
+pub trait InterpolatorTrait<Sample>
 where
     Sample: Float,
 {
     const INPUT_LENGTH: usize;
     const LATENCY: Sample;
 
-    fn fractional(&self, data: Data, fractional: Sample) -> Sample;
+    fn fractional(&self, data: &[Sample], fractional: Sample) -> Sample;
 }
 
 // Efficient Algorithms and Structures for Fractional Delay Filtering Based on

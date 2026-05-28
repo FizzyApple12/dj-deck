@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 pub mod fft;
 pub mod real_fft;
 
@@ -8,7 +9,7 @@ use num::{Complex, Float};
 // Complex multiplication has edge-cases around Inf/NaN - handling those
 // properly makes std::complex non-inlineable, so we use our own
 #[inline]
-pub fn complexMul<const CONJUGATE_SECOND: bool, V>(a: &Complex<V>, b: &Complex<V>) -> Complex<V>
+pub fn complex_mul<const CONJUGATE_SECOND: bool, V>(a: &Complex<V>, b: &Complex<V>) -> Complex<V>
 where
     V: Float,
 {
@@ -20,7 +21,7 @@ where
 }
 
 #[inline]
-pub fn complexAddI<const FLIPPED: bool, V>(a: &Complex<V>, b: &Complex<V>) -> Complex<V>
+pub fn complex_add_i<const FLIPPED: bool, V>(a: &Complex<V>, b: &Complex<V>) -> Complex<V>
 where
     V: Float,
 {
@@ -76,7 +77,7 @@ where
     }
 }
 
-impl<'a, Data, Element> Index<usize> for IndexOffset<'a, Data, Element>
+impl<Data, Element> Index<usize> for IndexOffset<'_, Data, Element>
 where
     Data: Index<usize, Output = Element>,
 {
@@ -104,7 +105,7 @@ where
     }
 }
 
-impl<'a, Data, Element> IndexMut<usize> for IndexOffsetMut<'a, Data, Element>
+impl<Data, Element> IndexMut<usize> for IndexOffsetMut<'_, Data, Element>
 where
     Data: IndexMut<usize, Output = Element>,
 {
@@ -113,7 +114,7 @@ where
     }
 }
 
-impl<'a, Data, Element> Index<usize> for IndexOffsetMut<'a, Data, Element>
+impl<Data, Element> Index<usize> for IndexOffsetMut<'_, Data, Element>
 where
     Data: IndexMut<usize, Output = Element>,
 {

@@ -1,7 +1,7 @@
 pub mod io;
 
 use num::{Complex, Float};
-use rand::rngs::ThreadRng;
+use rand::rngs::SmallRng;
 use rand_distr::{Distribution, Uniform};
 
 use crate::{
@@ -111,7 +111,7 @@ where
     formant_multiplier: Sample,     // = 1
     inv_formant_multiplier: Sample, // = 1;
 
-    stft: DynamicSTFT<Sample, false, 1>, // STFT_SPECTRUM_MODIFIED
+    stft: DynamicSTFT<Sample, false, 1, true>, // STFT_SPECTRUM_MODIFIED
     stashed_input: Input<Sample>,
     stashed_output: Output<Sample>,
 
@@ -133,7 +133,7 @@ where
 
     channel_predictions: Vec<Prediction<Sample>>,
 
-    random_engine: ThreadRng,
+    random_engine: SmallRng,
 
     process_spectrum_steps: usize, // = 0;
     smooth_energy_state: Sample,   // = 0;
@@ -256,14 +256,14 @@ where
 }
 
 impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
-    type Complex = Self::Complex;
-    type Sample = Self::Sample;
+    type Complex = Complex<f32>;
+    type Sample = f32;
 
     const MAX_CLEAN_STRETCH: f32 = 2.0;
     const NOISE_FLOOR: f32 = 1e-15;
 
     fn new() -> Self {
-        let stft = DynamicSTFT::<f32, false, 1>::new();
+        let stft = DynamicSTFT::<f32, false, 1, true>::new();
         let stashed_input = stft.input.clone();
         let stashed_output = stft.output.clone();
 
@@ -303,7 +303,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
             smoothed_energy: Vec::new(),
             output_map: Vec::new(),
             channel_predictions: Vec::new(),
-            random_engine: rand::rng(),
+            random_engine: rand::make_rng(),
             process_spectrum_steps: 0,
             smooth_energy_state: 0.0,
             freq_estimate_weighted: 0.0,
@@ -355,12 +355,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 
     // Configures using a default preset
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-    fn preset_default(
-        &mut self,
-        n_channels: usize,
-        sample_rate: Self::Sample,
-        split_computation: bool,
-    ) {
+    fn preset_default(&mut self, n_channels: usize, sample_rate: f32, split_computation: bool) {
         self.configure(
             n_channels,
             (sample_rate * 0.12) as usize,
@@ -370,12 +365,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
     }
 
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-    fn preset_cheaper(
-        &mut self,
-        n_channels: usize,
-        sample_rate: Self::Sample,
-        split_computation: bool,
-    ) {
+    fn preset_cheaper(&mut self, n_channels: usize, sample_rate: f32, split_computation: bool) {
         self.configure(
             n_channels,
             (sample_rate * 0.1) as usize,
@@ -470,7 +460,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 
     /// Frequency multiplier, and optional tonality limit (as multiple of
     /// sample-rate)
-    fn set_tanspose_factor(&mut self, multiplier: Self::Sample, tonality_limit: Self::Sample) {
+    fn set_tanspose_factor(&mut self, multiplier: f32, tonality_limit: f32) {
         self.freq_multiplier = multiplier;
 
         if tonality_limit > 0.0 {
@@ -482,7 +472,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         self.custom_freq_map = None;
     }
 
-    fn set_transpose_semitones(&mut self, semitones: Self::Sample, tonality_limit: Self::Sample) {
+    fn set_transpose_semitones(&mut self, semitones: f32, tonality_limit: f32) {
         self.set_tanspose_factor((semitones / 12.0).powi(2), tonality_limit);
     }
 
@@ -491,19 +481,19 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         self.custom_freq_map = Some(input_to_output);
     }
 
-    fn set_formant_factor(&mut self, multiplier: Self::Sample, compensate_pitch: bool) {
+    fn set_formant_factor(&mut self, multiplier: f32, compensate_pitch: bool) {
         self.formant_multiplier = multiplier;
         self.inv_formant_multiplier = 1.0 / multiplier;
         self.formant_compensation = compensate_pitch;
     }
 
-    fn set_formant_semitones(&mut self, semitones: Self::Sample, compensate_pitch: bool) {
+    fn set_formant_semitones(&mut self, semitones: f32, compensate_pitch: bool) {
         self.set_formant_factor((semitones / 12.0).powi(2), compensate_pitch);
     }
 
     // Rough guesstimate of the fundamental frequency, used for formant analysis. 0
     // means attempting to detect the pitch
-    fn set_formant_base(&mut self, base_freq: Self::Sample) {
+    fn set_formant_base(&mut self, base_freq: f32) {
         self.formant_base_freq = base_freq;
     }
 
@@ -557,9 +547,9 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         self.did_seek = true;
 
         self.seek_time_factor = if playback_rate * self.stft.default_interval() as f64 > 1.0 {
-            (1.0 / playback_rate) as Self::Sample
+            (1.0 / playback_rate) as f32
         } else {
-            self.stft.default_interval() as Self::Sample
+            self.stft.default_interval() as f32
         };
     }
 
@@ -640,8 +630,8 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         clippy::cast_possible_truncation,
         clippy::cast_precision_loss
     )]
-    fn output_seek_length(&self, playback_rate: Self::Sample) -> usize {
-        self.input_latency() + (playback_rate * self.output_latency() as Self::Sample) as usize
+    fn output_seek_length(&self, playback_rate: f32) -> usize {
+        self.input_latency() + (playback_rate * self.output_latency() as f32) as usize
     }
 
     #[allow(
@@ -740,8 +730,8 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
                 self.block_process.samples_since_last = 0;
 
                 // Time to process a spectrum!  Where should it come from in the input?
-                let input_offset = (output_index as Self::Sample * input_samples as Self::Sample
-                    / output_samples as Self::Sample)
+                let input_offset = (output_index as f32 * input_samples as f32
+                    / output_samples as f32)
                     .round() as i32;
                 let input_interval = input_offset - self.prev_input_offset;
                 self.prev_input_offset = input_offset;
@@ -757,7 +747,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 
                 self.block_process.new_spectrum = self.did_seek || (input_interval > 0);
                 self.block_process.mapped_frequencies = self.custom_freq_map.is_some()
-                    || (self.formant_multiplier - 1.0).abs() <= Self::Sample::EPSILON;
+                    || (self.formant_multiplier - 1.0).abs() <= f32::EPSILON;
                 if self.block_process.new_spectrum {
                     // make sure the previous input is the correct distance in the past (give or
                     // take 1 sample)
@@ -773,14 +763,13 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
                 }
 
                 self.block_process.process_formants = (self.formant_multiplier - 1.0).abs()
-                    <= Self::Sample::EPSILON
+                    <= f32::EPSILON
                     || (self.formant_compensation && self.block_process.mapped_frequencies);
 
                 self.block_process.time_factor = if self.did_seek {
                     self.seek_time_factor
                 } else {
-                    self.stft.default_interval() as Self::Sample
-                        / (i32::max(1, input_interval)) as Self::Sample
+                    self.stft.default_interval() as f32 / (i32::max(1, input_interval)) as f32
                 };
                 self.did_seek = false;
 
@@ -797,12 +786,12 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
             };
 
             if self.internal_split_computation {
-                let process_ratio = (self.block_process.samples_since_last + 1) as Self::Sample
-                    / self.stft.default_interval() as Self::Sample;
+                let process_ratio = (self.block_process.samples_since_last + 1) as f32
+                    / self.stft.default_interval() as f32;
 
                 process_to_step = usize::min(
                     self.block_process.steps,
-                    ((self.block_process.steps as Self::Sample + 0.999) * process_ratio) as usize,
+                    ((self.block_process.steps as f32 + 0.999) * process_ratio) as usize,
                 );
             }
 
@@ -937,12 +926,8 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         clippy::needless_range_loop,
         clippy::indexing_slicing
     )]
-    fn flush<Output>(
-        &mut self,
-        outputs: &mut Output,
-        output_samples: i32,
-        playback_rate: Self::Sample,
-    ) where
+    fn flush<Output>(&mut self, outputs: &mut Output, output_samples: i32, playback_rate: f32)
+    where
         Output: IoBufferMut<f32>,
     {
         // If we're asked for more than an interval of extra output, then zero-pad the
@@ -953,7 +938,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 
             self.process(
                 &zero_io,
-                (output_block as Self::Sample * playback_rate) as i32,
+                (output_block as f32 * playback_rate) as i32,
                 outputs,
                 output_block,
             );
@@ -991,9 +976,9 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         for c in 0..self.channels {
             for b in 0..self.bands {
                 self.internal_channel_bands[(c * self.bands) + b].prev_input =
-                    Self::Complex::new(0.0, 0.0);
+                    Complex::<f32>::new(0.0, 0.0);
                 self.internal_channel_bands[(c * self.bands) + b].output =
-                    Self::Complex::new(0.0, 0.0);
+                    Complex::<f32>::new(0.0, 0.0);
             }
         }
     }
@@ -1018,7 +1003,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         Input: IoBuffer<f32>,
         Output: IoBufferMut<f32>,
     {
-        let playback_rate = input_samples as Self::Sample / output_samples as Self::Sample;
+        let playback_rate = input_samples as f32 / output_samples as f32;
         let seek_length = self.output_seek_length(playback_rate);
 
         if input_samples < seek_length as i32 {
@@ -1033,7 +1018,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 
         self.output_seek(inputs, seek_length as i32);
 
-        let output_index = output_samples - (seek_length as Self::Sample / playback_rate) as i32;
+        let output_index = output_samples - (seek_length as f32 / playback_rate) as i32;
 
         let offset_input = IoBufferOffsetIo::new(inputs, seek_length);
         self.process(
@@ -1055,9 +1040,6 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
 }
 
 impl SignalsmithStretch<f32> {
-    pub type Complex = Complex<f32>;
-    pub type Sample = f32;
-
     #[allow(
         clippy::cast_sign_loss,
         clippy::cast_possible_truncation,
@@ -1071,7 +1053,7 @@ impl SignalsmithStretch<f32> {
         to_index: i32,
         prev_copied_input: &mut i32,
     ) where
-        Input: IoBuffer<Self::Sample>,
+        Input: IoBuffer<f32>,
     {
         let length = i32::min(
             (self.stft.block_samples() + self.stft.default_interval()) as i32,
@@ -1096,16 +1078,16 @@ impl SignalsmithStretch<f32> {
         *prev_copied_input = to_index;
     }
 
-    fn band_to_freq(&self, b: Self::Sample) -> Self::Sample {
+    fn band_to_freq(&self, b: f32) -> f32 {
         self.stft.bin_to_freq(b)
     }
 
-    fn freq_to_band(&self, f: Self::Sample) -> Self::Sample {
+    fn freq_to_band(&self, f: f32) -> f32 {
         self.stft.freq_to_bin(f)
     }
 
     // not implementing this due to borrow checker restrictions
-    // fn bandsForChannel(&mut self, channel: i32) -> &mut Band<Self::Sample> {
+    // fn bandsForChannel(&mut self, channel: i32) -> &mut Band<f32> {
     //     &mut self._channelBands[(c * self.bands)..]
     // }
 
@@ -1115,9 +1097,9 @@ impl SignalsmithStretch<f32> {
         clippy::cast_possible_wrap,
         clippy::indexing_slicing
     )]
-    fn get_band_input(&self, channel: usize, index: i32) -> Self::Complex {
+    fn get_band_input(&self, channel: usize, index: i32) -> Complex<f32> {
         if index < 0 || index >= self.bands as i32 {
-            return Self::Complex::new(0.0, 0.0);
+            return Complex::<f32>::new(0.0, 0.0);
         }
 
         self.internal_channel_bands[index as usize + channel * self.bands].input
@@ -1129,9 +1111,9 @@ impl SignalsmithStretch<f32> {
         clippy::cast_possible_wrap,
         clippy::indexing_slicing
     )]
-    fn get_band_prev_input(&self, channel: usize, index: i32) -> Self::Complex {
+    fn get_band_prev_input(&self, channel: usize, index: i32) -> Complex<f32> {
         if index < 0 || index >= self.bands as i32 {
-            return Self::Complex::new(0.0, 0.0);
+            return Complex::<f32>::new(0.0, 0.0);
         }
 
         self.internal_channel_bands[index as usize + channel * self.bands].prev_input
@@ -1143,9 +1125,9 @@ impl SignalsmithStretch<f32> {
         clippy::cast_possible_wrap,
         clippy::indexing_slicing
     )]
-    fn get_band_output(&self, channel: usize, index: i32) -> Self::Complex {
+    fn get_band_output(&self, channel: usize, index: i32) -> Complex<f32> {
         if index < 0 || index >= self.bands as i32 {
-            return Self::Complex::new(0.0, 0.0);
+            return Complex::<f32>::new(0.0, 0.0);
         }
 
         self.internal_channel_bands[index as usize + channel * self.bands].output
@@ -1157,7 +1139,7 @@ impl SignalsmithStretch<f32> {
         clippy::cast_possible_wrap,
         clippy::indexing_slicing
     )]
-    fn get_band_input_energy(&self, channel: usize, index: i32) -> Self::Sample {
+    fn get_band_input_energy(&self, channel: usize, index: i32) -> f32 {
         if index < 0 || index >= self.bands as i32 {
             return 0.0;
         }
@@ -1169,8 +1151,8 @@ impl SignalsmithStretch<f32> {
         &self,
         channel: usize,
         low_index: i32,
-        fractional: Self::Sample,
-    ) -> Self::Complex {
+        fractional: f32,
+    ) -> Complex<f32> {
         let low = self.get_band_input(channel, low_index);
         let high = self.get_band_input(channel, low_index + 1);
 
@@ -1181,8 +1163,8 @@ impl SignalsmithStretch<f32> {
         &self,
         channel: usize,
         low_index: i32,
-        fractional: Self::Sample,
-    ) -> Self::Complex {
+        fractional: f32,
+    ) -> Complex<f32> {
         let low = self.get_band_prev_input(channel, low_index);
         let high = self.get_band_prev_input(channel, low_index + 1);
 
@@ -1194,8 +1176,8 @@ impl SignalsmithStretch<f32> {
         &self,
         channel: usize,
         low_index: i32,
-        fractional: Self::Sample,
-    ) -> Self::Complex {
+        fractional: f32,
+    ) -> Complex<f32> {
         let low = self.get_band_output(channel, low_index);
         let high = self.get_band_output(channel, low_index + 1);
 
@@ -1206,8 +1188,8 @@ impl SignalsmithStretch<f32> {
         &self,
         channel: usize,
         low_index: i32,
-        fractional: Self::Sample,
-    ) -> Self::Sample {
+        fractional: f32,
+    ) -> f32 {
         let low = self.get_band_input_energy(channel, low_index);
         let high = self.get_band_input_energy(channel, low_index + 1);
 
@@ -1215,48 +1197,40 @@ impl SignalsmithStretch<f32> {
     }
 
     #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
-    fn get_fractional_input(&self, channel: usize, input_index: Self::Sample) -> Self::Complex {
-        let low_index = Self::Sample::floor(input_index) as i32;
-        let frac_index = input_index - low_index as Self::Sample;
+    fn get_fractional_input(&self, channel: usize, input_index: f32) -> Complex<f32> {
+        let low_index = f32::floor(input_index) as i32;
+        let frac_index = input_index - low_index as f32;
 
         self.get_split_fractional_input(channel, low_index, frac_index)
     }
 
     #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss, unused)]
-    fn get_fractional_prev_input(
-        &self,
-        channel: usize,
-        input_index: Self::Sample,
-    ) -> Self::Complex {
-        let low_index = Self::Sample::floor(input_index) as i32;
-        let frac_index = input_index - low_index as Self::Sample;
+    fn get_fractional_prev_input(&self, channel: usize, input_index: f32) -> Complex<f32> {
+        let low_index = f32::floor(input_index) as i32;
+        let frac_index = input_index - low_index as f32;
 
         self.get_split_fractional_prev_input(channel, low_index, frac_index)
     }
 
     #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss, unused)]
-    fn get_fractional_output(&self, channel: usize, input_index: Self::Sample) -> Self::Complex {
-        let low_index = Self::Sample::floor(input_index) as i32;
-        let frac_index = input_index - low_index as Self::Sample;
+    fn get_fractional_output(&self, channel: usize, input_index: f32) -> Complex<f32> {
+        let low_index = f32::floor(input_index) as i32;
+        let frac_index = input_index - low_index as f32;
 
         self.get_split_fractional_output(channel, low_index, frac_index)
     }
 
     #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss, unused)]
-    fn get_fractional_input_energy(
-        &self,
-        channel: usize,
-        input_index: Self::Sample,
-    ) -> Self::Sample {
-        let low_index = Self::Sample::floor(input_index) as i32;
-        let frac_index = input_index - low_index as Self::Sample;
+    fn get_fractional_input_energy(&self, channel: usize, input_index: f32) -> f32 {
+        let low_index = f32::floor(input_index) as i32;
+        let frac_index = input_index - low_index as f32;
 
         self.get_split_fractional_input_energy(channel, low_index, frac_index)
     }
 
     // not implementing this due to borrow checker restrictions
     // fn predictionsForChannel(&mut self, channel: i32) -> &mut
-    // Prediction<Self::Sample> {     &mut self.channelPredictions[(c *
+    // Prediction<f32> {     &mut self.channelPredictions[(c *
     // self.bands)..] }
 
     fn update_process_spectrum_steps(&mut self) {
@@ -1294,12 +1268,12 @@ impl SignalsmithStretch<f32> {
         clippy::too_many_lines
     )]
     fn process_spectrum(&mut self, mut step: usize) {
-        let smoothing_bins = (self.stft.fft_samples() as Self::Sample)
-            / (self.stft.default_interval() as Self::Sample);
+        let smoothing_bins =
+            (self.stft.fft_samples() as f32) / (self.stft.default_interval() as f32);
         let long_vertical_step = (smoothing_bins).round() as i32;
 
         let mut time_factor = self.block_process.time_factor;
-        time_factor = Self::Sample::max(time_factor, 1.0 / Self::MAX_CLEAN_STRETCH);
+        time_factor = f32::max(time_factor, 1.0 / Self::MAX_CLEAN_STRETCH);
 
         let random_time_factor = time_factor > Self::MAX_CLEAN_STRETCH;
 
@@ -1314,7 +1288,7 @@ impl SignalsmithStretch<f32> {
             if step < self.channels {
                 let channel = step as i32;
 
-                let mut rot = Self::Complex::from_polar(
+                let mut rot = Complex::<f32>::from_polar(
                     1.0,
                     self.band_to_freq(0.0)
                         * self.stft.default_interval() as f32
@@ -1322,7 +1296,7 @@ impl SignalsmithStretch<f32> {
                         * std::f32::consts::PI,
                 );
                 let freq_step = self.band_to_freq(1.0) - self.band_to_freq(0.0);
-                let rot_step = Self::Complex::from_polar(
+                let rot_step = Complex::<f32>::from_polar(
                     1.0,
                     freq_step * self.stft.default_interval() as f32 * 2.0 * std::f32::consts::PI,
                 );
@@ -1352,7 +1326,7 @@ impl SignalsmithStretch<f32> {
             step -= Self::SMOOTH_ENERGY_STEPS;
 
             let step_check = step;
-            step -= 1;
+            step = step.saturating_sub(1);
 
             if step_check == 0 {
                 self.find_peaks();
@@ -1362,7 +1336,7 @@ impl SignalsmithStretch<f32> {
         }
 
         let step_check = step;
-        step -= 1;
+        step = step.saturating_sub(1);
 
         if step_check == 0 {
             if self.block_process.mapped_frequencies {
@@ -1418,7 +1392,7 @@ impl SignalsmithStretch<f32> {
                 let prev_energy = prediction.energy;
 
                 prediction.energy = new_prediction_energy;
-                prediction.energy *= Self::Sample::max(0.0, map_point.freq_grad); // scale the energy according to local stretch factor
+                prediction.energy *= f32::max(0.0, map_point.freq_grad); // scale the energy according to local stretch factor
                 prediction.input = new_prediction_input;
 
                 let output_bin = &mut self.internal_channel_bands[(c as usize * self.bands) + b];
@@ -1426,7 +1400,7 @@ impl SignalsmithStretch<f32> {
                 let phase = mul::<false, _>(&output_bin.output, &freq_twist);
 
                 output_bin.output =
-                    phase / (Self::Sample::max(prev_energy, prediction.energy) + Self::NOISE_FLOOR);
+                    phase / (f32::max(prev_energy, prediction.energy) + Self::NOISE_FLOOR);
             }
 
             return;
@@ -1479,8 +1453,7 @@ impl SignalsmithStretch<f32> {
                     if b >= long_vertical_step {
                         let long_down_input = self.get_fractional_input(
                             max_channel,
-                            map_point.input_bin
-                                - long_vertical_step as Self::Sample * bin_time_factor,
+                            map_point.input_bin - long_vertical_step as f32 * bin_time_factor,
                         );
                         let long_vertical_twist =
                             mul::<true, _>(&prediction.input, &long_down_input);
@@ -1522,7 +1495,7 @@ impl SignalsmithStretch<f32> {
                         let long_down_input = self.get_fractional_input(
                             max_channel,
                             long_up_map_point.input_bin
-                                - long_vertical_step as Self::Sample * bin_time_factor,
+                                - long_vertical_step as f32 * bin_time_factor,
                         );
                         let long_vertical_twist =
                             mul::<true, _>(&long_up_prediction.input, &long_down_input);
@@ -1571,7 +1544,7 @@ impl SignalsmithStretch<f32> {
 
     // Produces smoothed energy across all channels
     #[allow(clippy::needless_range_loop, clippy::indexing_slicing)]
-    fn smooth_energy(&mut self, step: usize, smoothing_bins: Self::Sample) {
+    fn smooth_energy(&mut self, step: usize, smoothing_bins: f32) {
         let smoothing_slew = 1.0 / (1.0 + smoothing_bins * 0.5);
 
         if step == 0 {
@@ -1618,7 +1591,7 @@ impl SignalsmithStretch<f32> {
         self.smooth_energy_state = e;
     }
 
-    fn map_freq(&self, freq: Self::Sample) -> Self::Sample {
+    fn map_freq(&self, freq: f32) -> f32 {
         if let Some(custom_freq_map) = self.custom_freq_map {
             return custom_freq_map(freq);
         }
@@ -1645,7 +1618,7 @@ impl SignalsmithStretch<f32> {
                 let mut energy_sum = 0.0;
 
                 while end < self.bands && self.energy[end] > self.smoothed_energy[end] {
-                    band_sum += end as Self::Sample * self.energy[end];
+                    band_sum += end as f32 * self.energy[end];
 
                     energy_sum += self.energy[end];
 
@@ -1678,7 +1651,7 @@ impl SignalsmithStretch<f32> {
         if self.peaks.is_empty() {
             for b in 0..self.bands {
                 self.output_map[b] = PitchMapPoint {
-                    input_bin: b as Self::Sample,
+                    input_bin: b as f32,
                     freq_grad: 1.0,
                 };
             }
@@ -1690,7 +1663,7 @@ impl SignalsmithStretch<f32> {
 
         for b in 0..i32::min(self.bands as i32, self.peaks[0].output.ceil() as i32) {
             self.output_map[b as usize] = PitchMapPoint {
-                input_bin: b as Self::Sample + bottom_offset,
+                input_bin: b as f32 + bottom_offset,
                 freq_grad: 1.0,
             };
         }
@@ -1708,9 +1681,9 @@ impl SignalsmithStretch<f32> {
             let end_bin = i32::min(self.bands as i32, next.output.ceil() as i32);
 
             for b in start_bin..end_bin {
-                let r = (b as Self::Sample - prev.output) * range_scale;
+                let r = (b as f32 - prev.output) * range_scale;
                 let h = r * r * (3.0 - 2.0 * r);
-                let out_b = b as Self::Sample + out_offset + h * out_scale;
+                let out_b = b as f32 + out_offset + h * out_scale;
 
                 let grad_h = 6.0 * r * (1.0 - r);
                 let grad_b = 1.0 + grad_h * grad_scale;
@@ -1726,14 +1699,14 @@ impl SignalsmithStretch<f32> {
 
         for b in i32::max(0, self.peaks.last().unwrap().output as i32)..(self.bands as i32) {
             self.output_map[b as usize] = PitchMapPoint {
-                input_bin: b as Self::Sample + top_offset,
+                input_bin: b as f32 + top_offset,
                 freq_grad: 1.0,
             };
         }
     }
 
     // If we mapped formants the same way as mapFreq(), this would be the inverse
-    fn inv_map_formant(&self, freq: Self::Sample) -> Self::Sample {
+    fn inv_map_formant(&self, freq: f32) -> f32 {
         if freq * self.inv_formant_multiplier > self.freq_tonality_limit {
             return freq + (1.0 - self.formant_multiplier) * self.freq_tonality_limit;
         }
@@ -1749,7 +1722,7 @@ impl SignalsmithStretch<f32> {
         clippy::needless_range_loop,
         clippy::indexing_slicing
     )]
-    fn estimate_frequency(&mut self) -> Self::Sample {
+    fn estimate_frequency(&mut self) -> f32 {
         // 3 highest peaks in the input
         let mut peak_indices: [i32; 3] = [0, 0, 0];
 
@@ -1800,7 +1773,7 @@ impl SignalsmithStretch<f32> {
 
         // Smooth it out a bit
         self.freq_estimate_weighted +=
-            (peak_estimate as Self::Sample * weight - self.freq_estimate_weighted) * 0.25;
+            (peak_estimate as f32 * weight - self.freq_estimate_weighted) * 0.25;
         self.freq_estimate_weight += (weight - self.freq_estimate_weight) * 0.25;
 
         self.freq_estimate_weighted / (self.freq_estimate_weight + 1e-30)
@@ -1812,12 +1785,12 @@ impl SignalsmithStretch<f32> {
         clippy::cast_precision_loss,
         clippy::indexing_slicing
     )]
-    fn update_formants_get_formant(&self, mut band: Self::Sample) -> Self::Sample {
+    fn update_formants_get_formant(&self, mut band: f32) -> f32 {
         if band < 0.0 {
             return 0.0;
         }
 
-        band = Self::Sample::min(band, self.bands as Self::Sample);
+        band = f32::min(band, self.bands as f32);
 
         let floor_band = band.floor();
         let frac_band = band - floor_band;
@@ -1835,7 +1808,7 @@ impl SignalsmithStretch<f32> {
     )]
     fn update_formants(&mut self, mut step: usize) {
         let step_check = step;
-        step -= 1;
+        step = step.saturating_sub(1);
 
         if step_check == 0 {
             for e in &mut self.formant_metric {
@@ -1860,13 +1833,13 @@ impl SignalsmithStretch<f32> {
 
             for _ in 0..2 {
                 for b in (0..self.bands).rev() {
-                    e = Self::Sample::max(self.formant_metric[b], e * decay);
+                    e = f32::max(self.formant_metric[b], e * decay);
 
                     self.formant_metric[b] = e;
                 }
 
                 for b in 0..self.bands {
-                    e = Self::Sample::max(self.formant_metric[b], e * decay);
+                    e = f32::max(self.formant_metric[b], e * decay);
 
                     self.formant_metric[b] = e;
                 }
@@ -1876,20 +1849,20 @@ impl SignalsmithStretch<f32> {
 
             for _ in 0..2 {
                 for b in (0..self.bands).rev() {
-                    e = Self::Sample::min(self.formant_metric[b], e * decay);
+                    e = f32::min(self.formant_metric[b], e * decay);
 
                     self.formant_metric[b] = e;
                 }
 
                 for b in 0..self.bands {
-                    e = Self::Sample::min(self.formant_metric[b], e * decay);
+                    e = f32::min(self.formant_metric[b], e * decay);
 
                     self.formant_metric[b] = e;
                 }
             }
         } else {
             for b in 0..self.bands {
-                let input_f = self.band_to_freq(b as Self::Sample);
+                let input_f = self.band_to_freq(b as f32);
                 let mut output_f = if self.formant_compensation {
                     self.map_freq(input_f)
                 } else {

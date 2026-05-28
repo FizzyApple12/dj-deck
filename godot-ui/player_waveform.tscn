@@ -1,0 +1,114 @@
+[gd_scene format=3 uid="uid://br0a73x66ts2j"]
+
+[ext_resource type="Theme" uid="uid://d05qtmsvetwx2" path="res://theme.tres" id="1_l3yhg"]
+[ext_resource type="Shader" uid="uid://dthtnm7jg64no" path="res://waveform.gdshader" id="2_v0kty"]
+[ext_resource type="Texture2D" uid="uid://d2b5lypda4ld6" path="res://test-waveform-1.8656616.png" id="3_v0kty"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_t2xic"]
+resource_local_to_scene = true
+shader = ExtResource("2_v0kty")
+shader_parameter/WAVEFORM = ExtResource("3_v0kty")
+shader_parameter/STRIDE = 1.866
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ug1gp"]
+bg_color = Color(1, 1, 1, 0)
+corner_detail = 1
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_v0kty"]
+color = Color(1, 0, 0, 1)
+vertical = true
+
+[node name="Player 1 Waveform" type="PlayerWaveformContainer" unique_id=2122337419 node_paths=PackedStringArray("player_number_label", "waveform")]
+player_number_label = NodePath("Deck Number/Number")
+waveform = NodePath("Waveform Container/CenterContainer/Container/Waveform")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 3
+
+[node name="Deck Number" type="VBoxContainer" parent="." unique_id=570880795]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+size_flags_vertical = 4
+theme = ExtResource("1_l3yhg")
+theme_override_constants/separation = -8
+
+[node name="Label" type="Label" parent="Deck Number" unique_id=160142674]
+layout_mode = 2
+theme = ExtResource("1_l3yhg")
+theme_override_font_sizes/font_size = 12
+text = "PLAYER"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="Number" type="Label" parent="Deck Number" unique_id=1461107449]
+layout_mode = 2
+theme = ExtResource("1_l3yhg")
+theme_override_font_sizes/font_size = 32
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="Waveform Container" type="VBoxContainer" parent="." unique_id=1329875551]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = -24
+
+[node name="Bars" type="HBoxContainer" parent="Waveform Container" unique_id=1893630578]
+visible = false
+z_index = 1
+custom_minimum_size = Vector2(98, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="Number" type="Label" parent="Waveform Container/Bars" unique_id=2139779684]
+layout_mode = 2
+theme = ExtResource("1_l3yhg")
+theme_override_font_sizes/font_size = 16
+text = "42.4"
+horizontal_alignment = 2
+vertical_alignment = 2
+
+[node name="Units" type="Label" parent="Waveform Container/Bars" unique_id=481406198]
+layout_mode = 2
+theme = ExtResource("1_l3yhg")
+theme_override_font_sizes/font_size = 16
+text = "BARS"
+vertical_alignment = 2
+
+[node name="CenterContainer" type="HBoxContainer" parent="Waveform Container" unique_id=1527049758]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
+
+[node name="Container" type="Control" parent="Waveform Container/CenterContainer" unique_id=2136453111]
+layout_mode = 2
+
+[node name="Waveform" type="PanelContainer" parent="Waveform Container/CenterContainer/Container" unique_id=1447976600]
+material = SubResource("ShaderMaterial_t2xic")
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 50000.0
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0, 0.5)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_ug1gp")
+
+[node name="Panel" type="Panel" parent="Waveform Container/CenterContainer/Container" unique_id=86420536]
+layout_mode = 1
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_right = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxLine_v0kty")

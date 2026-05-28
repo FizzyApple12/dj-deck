@@ -1,22 +1,23 @@
 pub mod audio_loader;
 pub mod dsp_pipeline;
 
-use std::{cell::RefCell, f32, mem};
+use std::{cell::RefCell, f32};
 
 use cpal::{
     Device, Host, Stream, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
 use midir::{MidiInput, MidiInputConnection, MidiOutput};
-use tokio::{sync::mpsc::UnboundedReceiver, task::JoinHandle};
+use tokio::task::JoinHandle;
 
 use crate::{
     AUDIO_CHANNELS,
     audio_system::{audio_loader::TrackAudioData, dsp_pipeline::deck::DeckDSP},
     types::{
-        deck::{DeckState, DeckUpdate},
+        audio_system::{AudioSystemEvent, DeckUpdate},
+        deck::DeckState,
         midi::MidiMessage,
-        timecode::Timecode,
+        timecode::{Duration, Timecode},
     },
 };
 
@@ -27,7 +28,8 @@ struct FullAudioPipelineStreamData {
 
     deck_state: DeckState,
 
-    deck_update_receiver: UnboundedReceiver<DeckUpdate>,
+    deck_update_receiver: tokio::sync::mpsc::UnboundedReceiver<DeckUpdate>,
+    audio_system_event_sender: tokio::sync::mpsc::UnboundedSender<AudioSystemEvent>,
     deck_state_sender: tokio::sync::watch::Sender<DeckState>,
 
     last_process_timecode: Timecode,
@@ -75,8 +77,8 @@ impl AudioManager {
         #[allow(deprecated)]
         let mut valid_devices = self.host.output_devices()?.filter(|device| {
             device
-                .name()
-                .unwrap_or(String::new())
+                .description()
+                .map_or(String::new(), |description| description.name().to_string())
                 .contains(name_substring)
         });
 
@@ -85,7 +87,8 @@ impl AudioManager {
 
     pub fn create_full_audio_pipeline(
         &mut self,
-        deck_update_receiver: UnboundedReceiver<DeckUpdate>,
+        deck_update_receiver: tokio::sync::mpsc::UnboundedReceiver<DeckUpdate>,
+        audio_system_event_sender: tokio::sync::mpsc::UnboundedSender<AudioSystemEvent>,
         deck_state_sender: tokio::sync::watch::Sender<DeckState>,
         loaded_track_receiver: tokio::sync::mpsc::UnboundedReceiver<(
             usize,
@@ -118,6 +121,7 @@ impl AudioManager {
             deck_state: DeckState::default(),
 
             deck_update_receiver,
+            audio_system_event_sender,
             deck_state_sender,
 
             last_process_timecode: Timecode::zero(),
@@ -130,7 +134,7 @@ impl AudioManager {
 
         let stream = device.build_output_stream(
             stream_config,
-            move |data: &mut [f32], info: &cpal::OutputCallbackInfo| {
+            move |data: &mut [f32], _info: &cpal::OutputCallbackInfo| {
                 let mut audio_stream_data = audio_stream_data.borrow_mut();
 
                 let FullAudioPipelineStreamData {
@@ -141,6 +145,7 @@ impl AudioManager {
                     deck_state,
 
                     deck_update_receiver,
+                    audio_system_event_sender,
                     deck_state_sender,
 
                     last_process_timecode,
@@ -155,16 +160,26 @@ impl AudioManager {
                     return;
                 };
 
+                let number_channels = stream_config.channels as usize;
+                let available_samples = data.len() / number_channels;
+                let sample_rate = stream_config.sample_rate;
+
                 while let Ok((channel_index, track_data)) = loaded_track_receiver.try_recv() {
                     deck_dsp.assign_track_data(channel_index, track_data);
                 }
 
-                #[allow(clippy::cast_possible_truncation)]
-                let current_timecode =
-                    Timecode::from_nanoseconds(info.timestamp().playback.as_nanos() as i64);
+                // #[allow(clippy::cast_possible_truncation)]
+                // let current_timecode =
+                //     Timecode::from_nanoseconds(info.timestamp().callback.as_nanos() as i64);
+                #[allow(clippy::cast_possible_truncation, clippy::cast_lossless)]
+                let current_timecode = *last_process_timecode
+                    + Duration::from_nanoseconds(
+                        ((available_samples as i128 * 1_000_000_000) / sample_rate as i128) as i64,
+                    );
 
                 let update_results = deck_state.update(
                     deck_update_receiver,
+                    audio_system_event_sender,
                     *last_process_timecode,
                     current_timecode,
                 );
@@ -172,11 +187,6 @@ impl AudioManager {
                 *last_process_timecode = current_timecode;
 
                 let _ = deck_state_sender.send_replace(deck_state.clone());
-
-                let number_channels = stream_config.channels as usize;
-                let stride = mem::size_of::<f32>() * number_channels;
-
-                let available_samples = data.len() / stride;
 
                 deck_dsp.generate_samples(
                     deck_state,
@@ -188,21 +198,19 @@ impl AudioManager {
 
                 // we need max performance here
                 #[allow(clippy::indexing_slicing)]
-                for channel_index in 0..number_channels {
-                    for sample_index in 0..available_samples {
-                        match channel_index {
+                for (sample_index, sample_buffer) in
+                    data.chunks_mut(stream_config.channels as usize).enumerate()
+                {
+                    for (channel_index, sample) in sample_buffer.iter_mut().enumerate() {
+                        *sample = match channel_index {
                             channel_number @ (0 | 1) => {
-                                data[channel_index * available_samples + sample_index] =
-                                    master_output_buffers[channel_number][sample_index];
+                                master_output_buffers[channel_number][sample_index]
                             }
                             channel_number @ (2 | 3) => {
-                                data[channel_index * available_samples + sample_index] =
-                                    cue_output_buffers[channel_number - 2][sample_index];
+                                cue_output_buffers[channel_number - 2][sample_index]
                             }
-                            _ => {
-                                data[channel_index * available_samples + sample_index] = 0.0;
-                            }
-                        }
+                            _ => 0.0,
+                        };
                     }
                 }
             },
@@ -279,7 +287,7 @@ impl AudioManager {
         let connection = tokio::task::spawn(async move {
             while let Some(message) = &midi_receiver.recv().await {
                 if let Err(e) = connection.send(message) {
-                    eprintln!("[midi-sender] Send error: {e}");
+                    println!("[midi-sender] Send error: {e}");
                 }
             }
         });

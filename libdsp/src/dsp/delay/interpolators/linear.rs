@@ -5,27 +5,25 @@ use num::Float;
 use crate::dsp::delay::interpolators::InterpolatorTrait;
 
 /// Linear interpolator
-pub struct InterpolatorLinear<Data, Sample>
+pub struct InterpolatorLinear<Sample>
 where
     Sample: Float,
 {
-    phantom_data: PhantomData<Data>,
     phantom_sample: PhantomData<Sample>,
 }
 
-impl<Data, Sample> Default for InterpolatorLinear<Data, Sample>
+impl<Sample> Default for InterpolatorLinear<Sample>
 where
     Sample: Float,
 {
     fn default() -> Self {
         Self {
-            phantom_data: PhantomData,
             phantom_sample: PhantomData,
         }
     }
 }
 
-impl InterpolatorTrait<&[f32], f32> for InterpolatorLinear<&[f32], f32> {
+impl InterpolatorTrait<f32> for InterpolatorLinear<f32> {
     const INPUT_LENGTH: usize = 2;
     const LATENCY: f32 = 0.0;
 

@@ -4,19 +4,12 @@ use godot::{
     prelude::*,
 };
 use libdj::types::library::PlaylistTreeNodeID;
+use libui::types::ui::UIMenu;
 
 use crate::{
     browser::{device::DeviceListEntry, track::TrackListEntry},
     ipc::IPC,
 };
-
-#[derive(Debug, Clone, Copy)]
-pub enum MenuState {
-    Players,
-    BrowseDevices,
-    BrowsePlaylist,
-    BrowseTracks,
-}
 
 #[derive(GodotClass)]
 #[class(base=Node)]
@@ -51,7 +44,7 @@ pub struct Menu {
     #[export]
     browser_track_entry: OnEditor<Gd<PackedScene>>,
 
-    state: MenuState,
+    state: UIMenu,
 
     current_device: Option<u32>,
     _current_playlist: Option<PlaylistTreeNodeID>,
@@ -84,7 +77,7 @@ impl INode for Menu {
             browser_playlist_entry: OnEditor::default(),
             browser_track_entry: OnEditor::default(),
 
-            state: MenuState::Players,
+            state: UIMenu::None,
 
             current_device: None,
             _current_playlist: None,
@@ -107,7 +100,7 @@ impl INode for Menu {
         }
 
         match self.state {
-            MenuState::Players => {
+            UIMenu::None => {
                 self.players.set_visible(true);
 
                 self.browser.set_visible(false);
@@ -115,7 +108,7 @@ impl INode for Menu {
                 self.browser_playlist.set_visible(false);
                 self.browser_tracks.set_visible(false);
             }
-            MenuState::BrowseDevices => {
+            UIMenu::Devices => {
                 if self.ipc.bind().devices_changed {
                     self.refresh_device_list();
                 }
@@ -127,7 +120,7 @@ impl INode for Menu {
                 self.browser_playlist.set_visible(false);
                 self.browser_tracks.set_visible(false);
             }
-            MenuState::BrowsePlaylist => {
+            UIMenu::Playlists => {
                 self.players.set_visible(false);
 
                 self.browser.set_visible(true);
@@ -135,7 +128,7 @@ impl INode for Menu {
                 self.browser_playlist.set_visible(true);
                 self.browser_tracks.set_visible(false);
             }
-            MenuState::BrowseTracks => {
+            UIMenu::Tracks => {
                 self.players.set_visible(false);
 
                 self.browser.set_visible(true);
@@ -174,11 +167,11 @@ impl Menu {
         self.current_device = Some(device);
 
         self.refresh_tracks_list();
-        self.state = MenuState::BrowseTracks;
+        self.state = UIMenu::Tracks;
     }
 
     pub fn go_to_players(&mut self) {
-        self.state = MenuState::Players;
+        self.state = UIMenu::None;
     }
 
     #[allow(clippy::cast_possible_truncation, clippy::unused_self)]
@@ -210,7 +203,7 @@ impl Menu {
                 self.browser_tracks_list.push(new_track_entry);
             }
         } else {
-            self.state = MenuState::BrowseDevices;
+            self.state = UIMenu::Devices;
         }
     }
 }
@@ -219,52 +212,52 @@ impl Menu {
 impl Menu {
     #[func]
     fn source_pressed(&mut self) {
-        if let MenuState::BrowseDevices = self.state {
-            self.state = MenuState::Players;
+        if let UIMenu::Devices = self.state {
+            self.state = UIMenu::None;
 
             return;
         }
 
         self.refresh_device_list();
-        self.state = MenuState::BrowseDevices;
+        self.state = UIMenu::Devices;
     }
 
     #[func]
     fn browse_pressed(&mut self) {
-        if let MenuState::BrowseTracks = self.state {
-            self.state = MenuState::Players;
+        if let UIMenu::Tracks = self.state {
+            self.state = UIMenu::None;
 
             return;
         }
 
         if self.current_device.is_none() {
             self.refresh_device_list();
-            self.state = MenuState::BrowseDevices;
+            self.state = UIMenu::Devices;
 
             return;
         }
 
         self.refresh_tracks_list();
-        self.state = MenuState::BrowseTracks;
+        self.state = UIMenu::Tracks;
     }
 
     #[func]
     fn playlist_pressed(&mut self) {
-        if let MenuState::BrowsePlaylist = self.state {
-            self.state = MenuState::Players;
+        if let UIMenu::Playlists = self.state {
+            self.state = UIMenu::None;
 
             return;
         }
 
         if self.current_device.is_none() {
             self.refresh_device_list();
-            self.state = MenuState::BrowseDevices;
+            self.state = UIMenu::Devices;
 
             return;
         }
 
         self.refresh_playlist_list();
-        self.state = MenuState::BrowsePlaylist;
+        self.state = UIMenu::Playlists;
     }
 }
 

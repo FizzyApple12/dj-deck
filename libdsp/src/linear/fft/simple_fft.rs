@@ -41,8 +41,8 @@ where
 }
 
 impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
-    type Complex = Self::Complex;
-    type Sample = Self::Sample;
+    type Complex = Complex<f32>;
+    type Sample = f32;
 
     fn new(size: usize) -> Self {
         let mut new = Self {
@@ -58,21 +58,21 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
     #[allow(clippy::indexing_slicing, clippy::cast_precision_loss)]
     fn resize(&mut self, size: usize) {
         self.twiddles
-            .resize(size * 3 / 4, Self::Complex { re: 0.0, im: 0.0 });
+            .resize(size * 3 / 4, Complex::<f32> { re: 0.0, im: 0.0 });
 
         for i in 0..(size * 3 / 4) {
-            self.twiddles[i] = Self::Complex::from_polar(
+            self.twiddles[i] = Complex::<f32>::from_polar(
                 1.0,
-                -2.0 * std::f32::consts::PI * i as Self::Sample / size as Self::Sample,
+                -2.0 * std::f32::consts::PI * i as f32 / size as f32,
             );
         }
 
         self.working
-            .resize(size, Self::Complex { re: 0.0, im: 0.0 });
+            .resize(size, Complex::<f32> { re: 0.0, im: 0.0 });
     }
 
     #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
-    fn fft(&mut self, time: &[Self::Complex], freq: &mut [Self::Complex]) {
+    fn fft(&mut self, time: &[Complex<f32>], freq: &mut [Complex<f32>]) {
         let size = self.working.len();
 
         if size < 1 {
@@ -91,10 +91,10 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
     #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
     fn fft_split_complex(
         &mut self,
-        in_r: &[Self::Sample],
-        in_i: &[Self::Sample],
-        out_r: &mut [Self::Sample],
-        out_i: &mut [Self::Sample],
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
     ) {
         let size = self.working.len();
 
@@ -117,7 +117,7 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
     }
 
     #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
-    fn ifft(&mut self, freq: &[Self::Complex], time: &mut [Self::Complex]) {
+    fn ifft(&mut self, freq: &[Complex<f32>], time: &mut [Complex<f32>]) {
         let size = self.working.len();
 
         if size < 1 {
@@ -136,10 +136,10 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
     #[allow(clippy::indexing_slicing, clippy::undocumented_unsafe_blocks)]
     fn ifft_split_complex(
         &mut self,
-        in_r: &[Self::Sample],
-        in_i: &[Self::Sample],
-        out_r: &mut [Self::Sample],
-        out_i: &mut [Self::Sample],
+        in_r: &[f32],
+        in_i: &[f32],
+        out_r: &mut [f32],
+        out_i: &mut [f32],
     ) {
         let size = self.working.len();
 
@@ -163,14 +163,11 @@ impl SimpleFFTTrait<f32> for SimpleFFT<f32> {
 }
 
 impl SimpleFFT<f32> {
-    pub type Complex = Complex<f32>;
-    pub type Sample = f32;
-
-    fn mul<const CONJ_B: bool>(a: Self::Complex, b: Self::Complex) -> Self::Complex {
+    fn mul<const CONJ_B: bool>(a: Complex<f32>, b: Complex<f32>) -> Complex<f32> {
         if CONJ_B {
-            Self::Complex::new(a.re * b.re + a.im * b.im, a.im * b.re - a.re * b.im)
+            Complex::<f32>::new(a.re * b.re + a.im * b.im, a.im * b.re - a.re * b.im)
         } else {
-            Self::Complex::new(a.re * b.re - a.im * b.im, a.im * b.re + a.re * b.im)
+            Complex::<f32>::new(a.re * b.re - a.im * b.im, a.im * b.re + a.re * b.im)
         }
     }
 
@@ -179,9 +176,9 @@ impl SimpleFFT<f32> {
         &self,
         size: usize,
         stride: usize,
-        input: &[Self::Complex],
-        output: &mut [Self::Complex],
-        working: &mut [Self::Complex],
+        input: &[Complex<f32>],
+        output: &mut [Complex<f32>],
+        working: &mut [Complex<f32>],
     ) {
         if size / 4 > 1 {
             // Calculate four quarter-size FFTs
@@ -207,8 +204,8 @@ impl SimpleFFT<f32> {
         &self,
         size: usize,
         stride: usize,
-        input: &[Self::Complex],
-        output: &mut [Self::Complex],
+        input: &[Complex<f32>],
+        output: &mut [Complex<f32>],
     ) {
         let twiddle_step = self.working.len() / size;
 
@@ -228,7 +225,7 @@ impl SimpleFFT<f32> {
                 let bd0 = b + d;
                 let bd1 = if INVERSE { b - d } else { d - b };
 
-                let bd1i = Self::Complex::new(-bd1.im, bd1.re);
+                let bd1i = Complex::<f32>::new(-bd1.im, bd1.re);
 
                 output[i * stride + s] = ac0 + bd0;
                 output[(i + size / 4) * stride + s] = ac1 + bd1i;
@@ -244,12 +241,12 @@ impl SimpleFFT<f32> {
         &self,
         size: usize,
         stride: usize,
-        input_r: &[Self::Sample],
-        input_i: &[Self::Sample],
-        output_r: &mut [Self::Sample],
-        output_i: &mut [Self::Sample],
-        working_r: &mut [Self::Sample],
-        working_i: &mut [Self::Sample],
+        input_r: &[f32],
+        input_i: &[f32],
+        output_r: &mut [f32],
+        output_i: &mut [f32],
+        working_r: &mut [f32],
+        working_i: &mut [f32],
     ) {
         if size / 4 > 1 {
             // Calculate four quarter-size FFTs
@@ -290,10 +287,10 @@ impl SimpleFFT<f32> {
         &self,
         size: usize,
         stride: usize,
-        input_r: &[Self::Sample],
-        input_i: &[Self::Sample],
-        output_r: &mut [Self::Sample],
-        output_i: &mut [Self::Sample],
+        input_r: &[f32],
+        input_i: &[f32],
+        output_r: &mut [f32],
+        output_i: &mut [f32],
     ) {
         let twiddle_step = self.working.len() / size;
 
@@ -304,23 +301,23 @@ impl SimpleFFT<f32> {
 
             for s in 0..stride {
                 let a =
-                    Self::Complex::new(input_r[4 * i * stride + s], input_i[4 * i * stride + s]);
+                    Complex::<f32>::new(input_r[4 * i * stride + s], input_i[4 * i * stride + s]);
                 let b = Self::mul::<INVERSE>(
-                    Self::Complex::new(
+                    Complex::<f32>::new(
                         input_r[(4 * i + 1) * stride + s],
                         input_i[(4 * i + 1) * stride + s],
                     ),
                     twiddle_b,
                 );
                 let c = Self::mul::<INVERSE>(
-                    Self::Complex::new(
+                    Complex::<f32>::new(
                         input_r[(4 * i + 2) * stride + s],
                         input_i[(4 * i + 2) * stride + s],
                     ),
                     twiddle_c,
                 );
                 let d = Self::mul::<INVERSE>(
-                    Self::Complex::new(
+                    Complex::<f32>::new(
                         input_r[(4 * i + 3) * stride + s],
                         input_i[(4 * i + 3) * stride + s],
                     ),
@@ -332,7 +329,7 @@ impl SimpleFFT<f32> {
                 let bd0 = b + d;
                 let bd1 = if INVERSE { b - d } else { d - b };
 
-                let bd1i = Self::Complex::new(-bd1.im, bd1.re);
+                let bd1i = Complex::<f32>::new(-bd1.im, bd1.re);
 
                 output_r[i * stride + s] = ac0.re + bd0.re;
                 output_i[i * stride + s] = ac0.im + bd0.im;

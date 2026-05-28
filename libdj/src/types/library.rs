@@ -2,7 +2,12 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use rkyv::{Archive, Deserialize, Serialize};
 
-use crate::{PathBufAsString, types::timecode::Timecode};
+use crate::PathBufAsString;
+
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+pub enum OriginDatabase {
+    Rekordbox,
+}
 
 pub type ArtistID = u32;
 pub type ArtworkID = u32;
@@ -32,12 +37,16 @@ pub struct Album {
     pub id: AlbumID,
     pub artist_id: ArtistID,
     pub name: String,
+
+    pub origin: OriginDatabase,
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Artist {
     pub id: ArtistID,
     pub name: String,
+
+    pub origin: OriginDatabase,
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
@@ -46,24 +55,32 @@ pub struct Artwork {
 
     #[rkyv(with = PathBufAsString)]
     pub path: PathBuf,
+
+    pub origin: OriginDatabase,
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Genre {
     pub id: GenreID,
     pub name: String,
+
+    pub origin: OriginDatabase,
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Key {
     pub id: KeyID,
     pub name: String,
+
+    pub origin: OriginDatabase,
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Label {
     pub id: LabelID,
     pub name: String,
+
+    pub origin: OriginDatabase,
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
@@ -90,6 +107,8 @@ pub struct Playlist {
     pub id: PlaylistTreeNodeID,
     pub name: String,
     pub tracks: Vec<TrackID>,
+
+    pub origin: OriginDatabase,
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
@@ -97,11 +116,15 @@ pub struct PlaylistFolder {
     pub id: PlaylistTreeNodeID,
     pub name: String,
     pub children: Vec<PlaylistTreeNodeID>,
+
+    pub origin: OriginDatabase,
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct Track {
     pub id: TrackID,
+
+    pub origin: OriginDatabase,
 
     pub title: String,
 
@@ -121,57 +144,6 @@ pub struct Track {
     #[rkyv(with = PathBufAsString)]
     pub audio_path: PathBuf,
 
-    pub beat_grid: Vec<Beat>,
-    pub hot_cues: Vec<HotCue>,
-    pub memory_cues: Vec<MemoryCue>,
-    pub tiny_preview_waveform: Vec<TinyPreviewWaveformColumn>,
-    pub preview_waveform: Vec<PreviewWaveformColumn>,
-    pub detail_waveform: Vec<WaveformColumn>,
-}
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub struct Beat {
-    pub beat_number: u32,
-    pub bpm: f32,
-    pub time: Timecode,
-}
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub enum CueType {
-    Point,
-    Loop(Timecode),
-}
-
-#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
-pub struct MemoryCue {
-    pub time: Timecode,
-    pub comment: String,
-}
-
-#[derive(Debug, Clone, Archive, Deserialize, Serialize)]
-pub struct HotCue {
-    pub cue_number: u32,
-    pub cue_type: CueType,
-    pub time: Timecode,
-    pub comment: String,
-    pub color_index: u8,
-    pub color_rgb: (u8, u8, u8),
-}
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub struct TinyPreviewWaveformColumn {
-    pub height: u8,
-    pub color_rgb: (u8, u8, u8),
-}
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub struct PreviewWaveformColumn {
-    pub height: u8,
-    pub color_rgb: (u8, u8, u8),
-}
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub struct WaveformColumn {
-    pub height: u8,
-    pub color_rgb: (u8, u8, u8),
+    #[rkyv(with = PathBufAsString)]
+    pub analysis_path: PathBuf,
 }

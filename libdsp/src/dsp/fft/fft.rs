@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use num::{Complex, Float, integer::Roots};
 
-use crate::dsp::fft::{FFTTrait, IndexOffsetMut, complexAddI, complexMul};
+use crate::dsp::fft::{FFTTrait, IndexOffsetMut, complex_add_i, complex_mul};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum StepType {
@@ -13,6 +13,7 @@ pub enum StepType {
 }
 
 #[derive(Clone, Copy, PartialEq)]
+#[allow(clippy::struct_field_names)]
 pub struct Step {
     step_type: StepType,
     factor: usize,
@@ -45,9 +46,9 @@ where
     permutation: Vec<PermutationPair>,
 }
 
-impl FFTTrait<f32, Self::Complex, Self::Complex> for FFT<f32> {
-    type Complex = Self::Complex;
-    type Sample = Self::Sample;
+impl FFTTrait<f32, Complex<f32>, Complex<f32>> for FFT<f32> {
+    type Complex = Complex<f32>;
+    type Sample = f32;
 
     fn fast_size_above(mut size: usize) -> usize {
         let mut power2 = 1;
@@ -130,25 +131,23 @@ impl FFTTrait<f32, Self::Complex, Self::Complex> for FFT<f32> {
 
     fn fft<InputBuffer, OutputBuffer>(&mut self, input: &InputBuffer, output: &mut OutputBuffer)
     where
-        InputBuffer: Index<usize, Output = Self::Complex>,
-        OutputBuffer: IndexMut<usize, Output = Self::Complex>,
+        InputBuffer: Index<usize, Output = Complex<f32>>,
+        OutputBuffer: IndexMut<usize, Output = Complex<f32>>,
     {
-        self.run::<false, InputBuffer, OutputBuffer>(input, output)
+        self.run::<false, InputBuffer, OutputBuffer>(input, output);
     }
 
     fn ifft<InputBuffer, OutputBuffer>(&mut self, input: &InputBuffer, output: &mut OutputBuffer)
     where
-        InputBuffer: Index<usize, Output = Self::Complex>,
-        OutputBuffer: IndexMut<usize, Output = Self::Complex>,
+        InputBuffer: Index<usize, Output = Complex<f32>>,
+        OutputBuffer: IndexMut<usize, Output = Complex<f32>>,
     {
-        self.run::<true, InputBuffer, OutputBuffer>(input, output)
+        self.run::<true, InputBuffer, OutputBuffer>(input, output);
     }
 }
 
 impl FFT<f32> {
-    type Complex = Complex<f32>;
-    type Sample = f32;
-
+    #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
     fn add_plan_steps(
         &mut self,
         mut factor_index: usize,
@@ -161,11 +160,12 @@ impl FFT<f32> {
         }
 
         let mut factor = self.factors[factor_index];
-        if factor_index + 1 < self.factors.len() {
-            if self.factors[factor_index] == 2 && self.factors[factor_index + 1] == 2 {
-                factor_index += 1;
-                factor = 4;
-            }
+        if factor_index + 1 < self.factors.len()
+            && self.factors[factor_index] == 2
+            && self.factors[factor_index + 1] == 2
+        {
+            factor_index += 1;
+            factor = 4;
         }
 
         let sub_length = length / factor;
@@ -206,14 +206,14 @@ impl FFT<f32> {
                 for f in 0..factor {
                     let phase = 2.0 * std::f32::consts::PI * i as f32 * f as f32 / length as f32;
 
-                    let twiddle = Self::Complex::new(phase.cos(), -phase.sin());
+                    let twiddle = Complex::<f32>::new(phase.cos(), -phase.sin());
 
                     self.twiddle_vector.push(twiddle);
                 }
             }
         }
 
-        if repeats == 1 && std::mem::size_of::<Self::Complex>() * sub_length > 65536 {
+        if repeats == 1 && std::mem::size_of::<Complex<f32>>() * sub_length > 65536 {
             for i in 0..factor {
                 self.add_plan_steps(factor_index + 1, start + i * sub_length, sub_length, 1);
             }
@@ -224,13 +224,14 @@ impl FFT<f32> {
         self.plan.push(main_step);
     }
 
+    #[allow(clippy::indexing_slicing)]
     fn set_plan(&mut self) {
         self.factors.clear();
         let mut size = self.inner_size;
         let mut factor = 2;
 
         while size > 1 {
-            if size % factor == 0 {
+            if size.is_multiple_of(factor) {
                 self.factors.push(factor);
                 size /= factor;
             } else if factor > size.sqrt() {
@@ -296,9 +297,14 @@ impl FFT<f32> {
         }
     }
 
-    fn fft_step_generic<const inverse: bool, Buffer>(&mut self, orig_data: &mut Buffer, step: &Step)
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::indexing_slicing,
+        clippy::explicit_counter_loop
+    )]
+    fn fft_step_generic<const INVERSE: bool, Buffer>(&mut self, orig_data: &mut Buffer, step: &Step)
     where
-        Buffer: IndexMut<usize, Output = Self::Complex>,
+        Buffer: IndexMut<usize, Output = Complex<f32>>,
     {
         let stride = step.inner_repeats;
 
@@ -312,7 +318,7 @@ impl FFT<f32> {
 
             for _ in 0..step.inner_repeats {
                 for i in 0..step.factor {
-                    self.working_vector[i] = complexMul::<inverse, Self::Sample>(
+                    self.working_vector[i] = complex_mul::<INVERSE, f32>(
                         &orig_data[data_base + i * stride],
                         &self.twiddle_vector[twiddles_base + i],
                     );
@@ -325,10 +331,9 @@ impl FFT<f32> {
                         let phase =
                             2.0 * std::f32::consts::PI * f as f32 * i as f32 / factor as f32;
 
-                        let twiddle = Self::Complex::new(phase.cos(), -phase.sin());
+                        let twiddle = Complex::<f32>::new(phase.cos(), -phase.sin());
 
-                        sum +=
-                            complexMul::<inverse, Self::Sample>(&self.working_vector[i], &twiddle);
+                        sum += complex_mul::<INVERSE, f32>(&self.working_vector[i], &twiddle);
                     }
 
                     orig_data[data_base + f * stride] = sum;
@@ -344,9 +349,10 @@ impl FFT<f32> {
     }
 
     #[inline]
-    fn fft_step_2<const inverse: bool, Buffer>(&mut self, orig_data: &mut Buffer, step: &Step)
+    #[allow(clippy::indexing_slicing)]
+    fn fft_step_2<const INVERSE: bool, Buffer>(&mut self, orig_data: &mut Buffer, step: &Step)
     where
-        Buffer: IndexMut<usize, Output = Self::Complex>,
+        Buffer: IndexMut<usize, Output = Complex<f32>>,
     {
         let stride = step.inner_repeats;
         let orig_twiddles_base = step.twiddle_index;
@@ -357,13 +363,13 @@ impl FFT<f32> {
             let mut twiddles_base = orig_twiddles_base;
 
             for data_base in orig_data_base..(orig_data_base + stride) {
-                let a = orig_data[data_base + 0];
-                let b = complexMul::<inverse, Self::Sample>(
+                let a = orig_data[data_base];
+                let b = complex_mul::<INVERSE, f32>(
                     &orig_data[data_base + stride],
                     &self.twiddle_vector[twiddles_base + 1],
                 );
 
-                orig_data[data_base + 0] = a + b;
+                orig_data[data_base] = a + b;
                 orig_data[data_base + stride] = a - b;
 
                 twiddles_base += 2;
@@ -373,15 +379,19 @@ impl FFT<f32> {
         }
     }
 
-    #[allow(clippy::unreadable_literal)]
+    #[allow(
+        clippy::unreadable_literal,
+        clippy::excessive_precision,
+        clippy::indexing_slicing
+    )]
     #[inline]
-    fn fft_step_3<const inverse: bool, Buffer>(&mut self, orig_data: &mut Buffer, step: &Step)
+    fn fft_step_3<const INVERSE: bool, Buffer>(&mut self, orig_data: &mut Buffer, step: &Step)
     where
-        Buffer: IndexMut<usize, Output = Self::Complex>,
+        Buffer: IndexMut<usize, Output = Complex<f32>>,
     {
-        let factor3: Self::Complex = Self::Complex::new(
+        let factor3: Complex<f32> = Complex::<f32>::new(
             -0.5,
-            if inverse {
+            if INVERSE {
                 0.8660254037844386
             } else {
                 -0.8660254037844386
@@ -397,12 +407,12 @@ impl FFT<f32> {
             let mut twiddles_base = orig_twiddles_base;
 
             for data_base in orig_data_base..(orig_data_base + stride) {
-                let a = orig_data[data_base + 0];
-                let b = complexMul::<inverse, Self::Sample>(
+                let a = orig_data[data_base];
+                let b = complex_mul::<INVERSE, f32>(
                     &orig_data[data_base + stride],
                     &self.twiddle_vector[twiddles_base + 1],
                 );
-                let c = complexMul::<inverse, Self::Sample>(
+                let c = complex_mul::<INVERSE, f32>(
                     &orig_data[data_base + stride * 2],
                     &self.twiddle_vector[twiddles_base + 2],
                 );
@@ -410,11 +420,10 @@ impl FFT<f32> {
                 let real_sum = a + (b + c) * factor3.re;
                 let imag_sum = (b - c) * factor3.im;
 
-                orig_data[data_base + 0] = a + b + c;
-                orig_data[data_base + stride] =
-                    complexAddI::<false, Self::Sample>(&real_sum, &imag_sum);
+                orig_data[data_base] = a + b + c;
+                orig_data[data_base + stride] = complex_add_i::<false, f32>(&real_sum, &imag_sum);
                 orig_data[data_base + stride * 2] =
-                    complexAddI::<true, Self::Sample>(&real_sum, &imag_sum);
+                    complex_add_i::<true, f32>(&real_sum, &imag_sum);
 
                 twiddles_base += 3;
             }
@@ -423,11 +432,11 @@ impl FFT<f32> {
         }
     }
 
+    #[allow(clippy::indexing_slicing)]
     #[inline]
-    fn fft_step_4<const inverse: bool, Buffer>(&mut self, orig_data: &mut Buffer, step: &Step)
+    fn fft_step_4<const INVERSE: bool, Buffer>(&mut self, orig_data: &mut Buffer, step: &Step)
     where
-        Buffer: IndexMut<usize, Output = Self::Complex>,
-        [(); { !inverse } as usize]:,
+        Buffer: IndexMut<usize, Output = Complex<f32>>,
     {
         let stride = step.inner_repeats;
         let orig_twiddles_base = step.twiddle_index;
@@ -438,16 +447,16 @@ impl FFT<f32> {
             let mut twiddles_base = orig_twiddles_base;
 
             for data_base in orig_data_base..(orig_data_base + stride) {
-                let a = orig_data[data_base + 0];
-                let c = complexMul::<inverse, Self::Sample>(
+                let a = orig_data[data_base];
+                let c = complex_mul::<INVERSE, f32>(
                     &orig_data[data_base + stride],
                     &self.twiddle_vector[twiddles_base + 2],
                 );
-                let b = complexMul::<inverse, Self::Sample>(
+                let b = complex_mul::<INVERSE, f32>(
                     &orig_data[data_base + stride * 2],
                     &self.twiddle_vector[twiddles_base + 1],
                 );
-                let d = complexMul::<inverse, Self::Sample>(
+                let d = complex_mul::<INVERSE, f32>(
                     &orig_data[data_base + stride * 3],
                     &self.twiddle_vector[twiddles_base + 3],
                 );
@@ -457,12 +466,17 @@ impl FFT<f32> {
                 let diff_a_c = a - c;
                 let diff_b_d = b - d;
 
-                orig_data[data_base + 0] = sum_a_c + sum_b_d;
-                orig_data[data_base + stride] =
-                    complexAddI::<{ !inverse }, Self::Sample>(&diff_a_c, &diff_b_d);
+                orig_data[data_base] = sum_a_c + sum_b_d;
+                if INVERSE {
+                    orig_data[data_base + stride] =
+                        complex_add_i::<false, f32>(&diff_a_c, &diff_b_d);
+                } else {
+                    orig_data[data_base + stride] =
+                        complex_add_i::<true, f32>(&diff_a_c, &diff_b_d);
+                }
                 orig_data[data_base + stride * 2] = sum_a_c - sum_b_d;
                 orig_data[data_base + stride * 3] =
-                    complexAddI::<inverse, Self::Sample>(&diff_a_c, &diff_b_d);
+                    complex_add_i::<INVERSE, f32>(&diff_a_c, &diff_b_d);
 
                 twiddles_base += 4;
             }
@@ -482,14 +496,14 @@ impl FFT<f32> {
         }
     }
 
-    fn run<const inverse: bool, InputBuffer, OutputBuffer>(
+    #[allow(clippy::undocumented_unsafe_blocks)]
+    fn run<const INVERSE: bool, InputBuffer, OutputBuffer>(
         &mut self,
         input: &InputBuffer,
         data: &mut OutputBuffer,
     ) where
-        InputBuffer: Index<usize, Output = Self::Complex>,
-        OutputBuffer: IndexMut<usize, Output = Self::Complex>,
-        [(); { !inverse } as usize]:,
+        InputBuffer: Index<usize, Output = Complex<f32>>,
+        OutputBuffer: IndexMut<usize, Output = Complex<f32>>,
     {
         self.permute(input, data);
 
@@ -497,22 +511,22 @@ impl FFT<f32> {
 
         for step in unsafe { &*plan_pointer } {
             match step.step_type {
-                StepType::Generic => self.fft_step_generic::<inverse, _>(
+                StepType::Generic => self.fft_step_generic::<INVERSE, _>(
                     &mut IndexOffsetMut::new(data, step.start_index),
                     step,
                 ),
 
-                StepType::Step2 => self.fft_step_2::<inverse, _>(
+                StepType::Step2 => self.fft_step_2::<INVERSE, _>(
                     &mut IndexOffsetMut::new(data, step.start_index),
                     step,
                 ),
 
-                StepType::Step3 => self.fft_step_3::<inverse, _>(
+                StepType::Step3 => self.fft_step_3::<INVERSE, _>(
                     &mut IndexOffsetMut::new(data, step.start_index),
                     step,
                 ),
 
-                StepType::Step4 => self.fft_step_4::<inverse, _>(
+                StepType::Step4 => self.fft_step_4::<INVERSE, _>(
                     &mut IndexOffsetMut::new(data, step.start_index),
                     step,
                 ),
@@ -520,6 +534,7 @@ impl FFT<f32> {
         }
     }
 
+    #[allow(clippy::indexing_slicing)]
     fn valid_size(size: usize) -> bool {
         const FILTER: [bool; 32] = [
             true, true, true, true, true, false, true, false, true, true, // 0-9

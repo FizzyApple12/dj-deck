@@ -14,10 +14,12 @@ impl JogRPM for f32 {
     fn pitch_bend_time_offset(self, delta_time: Duration) -> Duration {
         // todo: how tf is this actually calculated?
         // this is just a best guess from some testing
-        (self / 10.0) * delta_time * (60.0 / VINYL_RPM)
+        (self / 400.0) * (VINYL_RPM / 60.0) * delta_time
     }
 
     fn jog_time_offset(self, delta_time: Duration) -> Duration {
-        (self / 60.0) * delta_time * (60.0 / VINYL_RPM)
+        // todo: how tf is this actually calculated?
+        // this is just a best guess from some testing
+        (self / VINYL_RPM) * (VINYL_RPM / 60.0) * delta_time
     }
 }

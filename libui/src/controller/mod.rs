@@ -1,13 +1,21 @@
+pub mod actions;
+
 use std::time::Duration;
 
 use libdj::types::{
-    deck::{BeatLoopAdjustMode, BeatSyncMode, DeckState, DeckUpdate, PlayState},
+    audio_system::DeckUpdate,
+    deck::{BeatLoopAdjustMode, BeatSyncMode, DeckState, PlayState},
     midi::MidiMessage,
 };
 use thiserror::Error;
 use tokio::task::JoinHandle;
 
-use crate::types::controller::ControllerMessage;
+use crate::{
+    controller::actions::{
+        beat_jump_release, cue_press, cue_release, jog_distance, jog_release, jog_touch, play_press,
+    },
+    types::{controller::ControllerMessage, ui::UIMessage},
+};
 
 #[derive(Debug)]
 pub struct Controller {
@@ -34,6 +42,7 @@ impl Controller {
         midi_sender: tokio::sync::mpsc::UnboundedSender<MidiMessage>,
         mut midi_receiver: tokio::sync::mpsc::UnboundedReceiver<MidiMessage>,
         deck_update_sender: tokio::sync::mpsc::UnboundedSender<DeckUpdate>,
+        ui_message_sender: tokio::sync::mpsc::UnboundedSender<UIMessage>,
     ) -> Controller {
         let (controller_message_sender, mut controller_message_receiver) =
             tokio::sync::broadcast::channel(16);
@@ -72,7 +81,7 @@ impl Controller {
                         if let Some(midi_message) = midi_message {
                             let (address, value) = midi_to_addr_value(midi_message);
 
-                            process_midi_command(address, value, &deck_update_sender);
+                            process_midi_command(address, value, &deck_update_sender, &ui_message_sender);
                         }
                     }
                     controller_message = controller_message_receiver.recv() => {
@@ -145,163 +154,429 @@ fn process_midi_command(
     address: u16,
     value: u8,
     deck_update_sender: &tokio::sync::mpsc::UnboundedSender<DeckUpdate>,
+    ui_message_sender: &tokio::sync::mpsc::UnboundedSender<UIMessage>,
 ) {
+    // println!("command: {address:x} = {value}");
+
     match (address, value) {
+        // encoder rotation
+        (0xB640 | 0xB664, count) => {
+            if count <= 60 {
+                for _ in 0..count {
+                    let _ = ui_message_sender.send(UIMessage::EncoderDown);
+                }
+            } else {
+                for _ in 0..(128 - count) {
+                    let _ = ui_message_sender.send(UIMessage::EncoderUp);
+                }
+            }
+        }
+        // encoder press
+        #[allow(clippy::unnested_or_patterns)]
+        (0x9646..0x9649, _) | (0x965D | 0x966D | 0x965E | 0x966F, _) => {
+            let _ = ui_message_sender.send(UIMessage::EncoderSelect);
+        }
+        // jog
+        (address, velocity)
+            if address == combine_addr_channel(0xB022, 0)
+                || address == combine_addr_channel(0xB023, 0)
+                || address == combine_addr_channel(0xB021, 0)
+                || address == combine_addr_channel(0xB026, 0) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_distance(deck_state, 0, false, velocity);
+                }))
+                .ok();
+        }
+        (address, velocity)
+            if address == combine_addr_channel(0xB029, 0)
+                || address == combine_addr_channel(0xB01F, 0) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_distance(deck_state, 0, true, velocity);
+                }))
+                .ok();
+        }
+        (address, 127)
+            if address == combine_addr_channel(0x9036, 0)
+                || address == combine_addr_channel(0x9067, 0) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_touch(deck_state, 0);
+                }))
+                .ok();
+        }
+        (address, 0)
+            if address == combine_addr_channel(0x9036, 0)
+                || address == combine_addr_channel(0x9067, 0) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_release(deck_state, 0);
+                }))
+                .ok();
+        }
+        (address, velocity)
+            if address == combine_addr_channel(0xB022, 1)
+                || address == combine_addr_channel(0xB023, 1)
+                || address == combine_addr_channel(0xB021, 1)
+                || address == combine_addr_channel(0xB026, 1) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_distance(deck_state, 1, false, velocity);
+                }))
+                .ok();
+        }
+        (address, velocity)
+            if address == combine_addr_channel(0xB029, 1)
+                || address == combine_addr_channel(0xB01F, 1) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_distance(deck_state, 1, true, velocity);
+                }))
+                .ok();
+        }
+        (address, 127)
+            if address == combine_addr_channel(0x9036, 1)
+                || address == combine_addr_channel(0x9067, 1) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_touch(deck_state, 1);
+                }))
+                .ok();
+        }
+        (address, 0)
+            if address == combine_addr_channel(0x9036, 1)
+                || address == combine_addr_channel(0x9067, 1) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_release(deck_state, 1);
+                }))
+                .ok();
+        }
+        (address, velocity)
+            if address == combine_addr_channel(0xB022, 2)
+                || address == combine_addr_channel(0xB023, 2)
+                || address == combine_addr_channel(0xB021, 2)
+                || address == combine_addr_channel(0xB026, 2) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_distance(deck_state, 2, false, velocity);
+                }))
+                .ok();
+        }
+        (address, velocity)
+            if address == combine_addr_channel(0xB029, 2)
+                || address == combine_addr_channel(0xB01F, 2) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_distance(deck_state, 2, true, velocity);
+                }))
+                .ok();
+        }
+        (address, 127)
+            if address == combine_addr_channel(0x9036, 2)
+                || address == combine_addr_channel(0x9067, 2) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_touch(deck_state, 2);
+                }))
+                .ok();
+        }
+        (address, 0)
+            if address == combine_addr_channel(0x9036, 2)
+                || address == combine_addr_channel(0x9067, 2) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_release(deck_state, 2);
+                }))
+                .ok();
+        }
+        (address, velocity)
+            if address == combine_addr_channel(0xB022, 3)
+                || address == combine_addr_channel(0xB023, 3)
+                || address == combine_addr_channel(0xB021, 3)
+                || address == combine_addr_channel(0xB026, 3) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_distance(deck_state, 3, false, velocity);
+                }))
+                .ok();
+        }
+        (address, velocity)
+            if address == combine_addr_channel(0xB029, 3)
+                || address == combine_addr_channel(0xB01F, 3) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_distance(deck_state, 3, true, velocity);
+                }))
+                .ok();
+        }
+        (address, 127)
+            if address == combine_addr_channel(0x9036, 3)
+                || address == combine_addr_channel(0x9067, 3) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_touch(deck_state, 3);
+                }))
+                .ok();
+        }
+        (address, 0)
+            if address == combine_addr_channel(0x9036, 3)
+                || address == combine_addr_channel(0x9067, 3) =>
+        {
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    jog_release(deck_state, 3);
+                }))
+                .ok();
+        }
         // play
-        (address, 127) if address == combine_addr_channel(0x900B, 0) => {
+        (address, 127)
+            if address == combine_addr_channel(0x900B, 0)
+                || address == combine_addr_channel(0x9047, 0) =>
+        {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    let play_direction = &mut deck_state.mixer_channels[0].player.play_state;
-
-                    match play_direction {
-                        PlayState::Cue | PlayState::Stop => *play_direction = PlayState::Play,
-                        PlayState::Play => *play_direction = PlayState::Stop,
-                    }
-                }))
+                .send(Box::new(|deck_state, _| play_press(deck_state, 0)))
                 .ok();
         }
-        (address, 127) if address == combine_addr_channel(0x900B, 1) => {
+        (address, 127)
+            if address == combine_addr_channel(0x900B, 1)
+                || address == combine_addr_channel(0x9047, 1) =>
+        {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    let play_direction = &mut deck_state.mixer_channels[1].player.play_state;
-
-                    match play_direction {
-                        PlayState::Cue | PlayState::Stop => *play_direction = PlayState::Play,
-                        PlayState::Play => *play_direction = PlayState::Stop,
-                    }
-                }))
+                .send(Box::new(|deck_state, _| play_press(deck_state, 1)))
                 .ok();
         }
-        (address, 127) if address == combine_addr_channel(0x900B, 2) => {
+        (address, 127)
+            if address == combine_addr_channel(0x900B, 2)
+                || address == combine_addr_channel(0x9047, 2) =>
+        {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    let play_direction = &mut deck_state.mixer_channels[2].player.play_state;
-
-                    match play_direction {
-                        PlayState::Cue | PlayState::Stop => *play_direction = PlayState::Play,
-                        PlayState::Play => *play_direction = PlayState::Stop,
-                    }
-                }))
+                .send(Box::new(|deck_state, _| play_press(deck_state, 2)))
                 .ok();
         }
-        (address, 127) if address == combine_addr_channel(0x900B, 3) => {
+        (address, 127)
+            if address == combine_addr_channel(0x900B, 3)
+                || address == combine_addr_channel(0x9047, 3) =>
+        {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    let play_direction = &mut deck_state.mixer_channels[3].player.play_state;
-
-                    match play_direction {
-                        PlayState::Cue | PlayState::Stop => *play_direction = PlayState::Play,
-                        PlayState::Play => *play_direction = PlayState::Stop,
-                    }
-                }))
+                .send(Box::new(|deck_state, _| play_press(deck_state, 3)))
                 .ok();
         }
         // cue
-        (address, 0) if address == combine_addr_channel(0x900C, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state| {
-                    let play_direction = &mut deck_state.mixer_channels[0].player.play_state;
-                    let cue_time = &mut deck_state.mixer_channels[0].player.cue_time;
-
-                    if let PlayState::Cue = play_direction {
-                        *play_direction = PlayState::Stop;
-                        if let Some(position) = cue_time {
-                            deck_state.mixer_channels[0].player.time = *position;
-                        }
-                    }
-                }))
-                .ok();
-        }
         (address, 127) if address == combine_addr_channel(0x900C, 0) => {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    deck_state.mixer_channels[0].player.play_state = PlayState::Cue;
-                    deck_state.mixer_channels[0].player.cue_time =
-                        Some(deck_state.mixer_channels[0].player.time);
-                }))
+                .send(Box::new(|deck_state, _| cue_press(deck_state, 0, false)))
                 .ok();
         }
-        (address, 0) if address == combine_addr_channel(0x900C, 1) => {
+        (address, 127) if address == combine_addr_channel(0x9048, 0) => {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    let play_direction = &mut deck_state.mixer_channels[0].player.play_state;
-                    let cue_time = &mut deck_state.mixer_channels[0].player.cue_time;
-
-                    if let PlayState::Cue = play_direction {
-                        *play_direction = PlayState::Stop;
-                        if let Some(position) = cue_time {
-                            deck_state.mixer_channels[0].player.time = *position;
-                        }
-                    }
-                }))
+                .send(Box::new(|deck_state, _| cue_press(deck_state, 0, true)))
+                .ok();
+        }
+        (address, 0)
+            if address == combine_addr_channel(0x900C, 0)
+                || address == combine_addr_channel(0x9048, 0) =>
+        {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| cue_release(deck_state, 0)))
                 .ok();
         }
         (address, 127) if address == combine_addr_channel(0x900C, 1) => {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    deck_state.mixer_channels[0].player.play_state = PlayState::Cue;
-                    deck_state.mixer_channels[0].player.cue_time =
-                        Some(deck_state.mixer_channels[0].player.time);
-                }))
+                .send(Box::new(|deck_state, _| cue_press(deck_state, 1, false)))
                 .ok();
         }
-        (address, 0) if address == combine_addr_channel(0x900C, 2) => {
+        (address, 127) if address == combine_addr_channel(0x9048, 1) => {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    let play_direction = &mut deck_state.mixer_channels[0].player.play_state;
-                    let cue_time = &mut deck_state.mixer_channels[0].player.cue_time;
-
-                    if let PlayState::Cue = play_direction {
-                        *play_direction = PlayState::Stop;
-                        if let Some(position) = cue_time {
-                            deck_state.mixer_channels[0].player.time = *position;
-                        }
-                    }
-                }))
+                .send(Box::new(|deck_state, _| cue_press(deck_state, 1, true)))
+                .ok();
+        }
+        (address, 0)
+            if address == combine_addr_channel(0x900C, 1)
+                || address == combine_addr_channel(0x9048, 1) =>
+        {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| cue_release(deck_state, 1)))
                 .ok();
         }
         (address, 127) if address == combine_addr_channel(0x900C, 2) => {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    deck_state.mixer_channels[0].player.play_state = PlayState::Cue;
-                    deck_state.mixer_channels[0].player.cue_time =
-                        Some(deck_state.mixer_channels[0].player.time);
-                }))
+                .send(Box::new(|deck_state, _| cue_press(deck_state, 2, false)))
                 .ok();
         }
-        (address, 0) if address == combine_addr_channel(0x900C, 3) => {
+        (address, 127) if address == combine_addr_channel(0x9048, 2) => {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    let play_direction = &mut deck_state.mixer_channels[0].player.play_state;
-                    let cue_time = &mut deck_state.mixer_channels[0].player.cue_time;
-
-                    if let PlayState::Cue = play_direction {
-                        *play_direction = PlayState::Stop;
-                        if let Some(position) = cue_time {
-                            deck_state.mixer_channels[0].player.time = *position;
-                        }
-                    }
-                }))
+                .send(Box::new(|deck_state, _| cue_press(deck_state, 2, true)))
+                .ok();
+        }
+        (address, 0)
+            if address == combine_addr_channel(0x900C, 2)
+                || address == combine_addr_channel(0x9048, 2) =>
+        {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| cue_release(deck_state, 2)))
                 .ok();
         }
         (address, 127) if address == combine_addr_channel(0x900C, 3) => {
             deck_update_sender
-                .send(Box::new(|deck_state| {
-                    deck_state.mixer_channels[0].player.play_state = PlayState::Cue;
-                    deck_state.mixer_channels[0].player.cue_time =
-                        Some(deck_state.mixer_channels[0].player.time);
+                .send(Box::new(|deck_state, _| cue_press(deck_state, 3, false)))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9048, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| cue_press(deck_state, 3, true)))
+                .ok();
+        }
+        (address, 0)
+            if address == combine_addr_channel(0x900C, 3)
+                || address == combine_addr_channel(0x9048, 3) =>
+        {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| cue_release(deck_state, 3)))
+                .ok();
+        }
+        // beat jump
+        (address, 0) if address == combine_addr_channel(0x905E, 0) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 0, false, false);
                 }))
                 .ok();
         }
-        _ => {
-            println!("unknown command: {address:x} = {value}");
+        (address, 0) if address == combine_addr_channel(0x905F, 0) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 0, true, false);
+                }))
+                .ok();
         }
+        (address, 0) if address == combine_addr_channel(0x9061, 0) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 0, false, true);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x9062, 0) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 0, true, true);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x905E, 1) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 1, false, false);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x905F, 1) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 1, true, false);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x9061, 1) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 1, false, true);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x9062, 1) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 1, true, true);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x905E, 2) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 2, false, false);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x905F, 2) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 2, true, false);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x9061, 2) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 2, false, true);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x9062, 2) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 2, true, true);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x905E, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 3, false, false);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x905F, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 3, true, false);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x9061, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 3, false, true);
+                }))
+                .ok();
+        }
+        (address, 0) if address == combine_addr_channel(0x9062, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_jump_release(deck_state, 3, true, true);
+                }))
+                .ok();
+        }
+        _ => {}
     }
 }
 
 // we use the same safe code a lot here, and there's a lot of code here to
 // handle, this is probably cleanupable later
-#[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::too_many_lines,
+    clippy::indexing_slicing,
+    clippy::cast_sign_loss,
+    clippy::bool_to_int_with_if
+)]
 fn set_deck_leds(
     deck_state: &DeckState,
     flash_timers: &ControllerLEDFlashTimers,
@@ -336,19 +611,19 @@ fn set_deck_leds(
 
         // master channel led
         if let Some(master_channel) = deck_state.master_channel {
-            let _ = midi_output.send(addr_channel_value_to_midi(
-                0xB002,
-                channel as u16,
+            let _ = midi_output.send(addr_value_to_midi(
+                [0x9F18, 0x9F19, 0x9F1A, 0x9F1B][channel],
                 if channel == master_channel { 127 } else { 0 },
             ));
         } else {
-            let _ = midi_output.send(addr_channel_value_to_midi(0xB002, channel as u16, 0));
+            let _ = midi_output.send(addr_value_to_midi(
+                [0x9F18, 0x9F19, 0x9F1A, 0x9F1B][channel],
+                0,
+            ));
         }
 
         // vinyl
         let _ = midi_output.send(addr_channel_value_to_midi(0x9017, channel as u16, 127));
-
-        // todo: load indicator
 
         // beat sync
         let _ = midi_output.send(addr_channel_value_to_midi(
@@ -595,11 +870,143 @@ fn set_deck_leds(
             if player_state.tempo_reset { 127 } else { 0 },
         ));
 
+        // --------- jog display stuff ---------
+
+        // display on
+        let _ = midi_output.send(addr_value_to_midi(
+            [0x9F5D, 0x9F5E, 0x9F5F, 0x9F60][channel],
+            0x00,
+            // if player_state.current_track.is_some() {
+            //     0x00
+            // } else {
+            //     0x7F
+            // },
+        ));
+
+        // jog illumination
+        let _ = midi_output.send(addr_value_to_midi(
+            [0xBF09, 0xBF0A, 0xBF0B, 0xBF0C][channel],
+            if player_state.is_loading {
+                if flash_timers.fast { 0x01 } else { 0x00 }
+            } else if player_state.current_track.is_some() {
+                0x01
+            } else {
+                0x00
+            },
+        ));
+
+        // jog position
+        // 1_800_000_000 for 33.3 rpm
+        let jog_position: u16 = (((player_state.time.nanoseconds.rem_euclid(1_800_000_000))
+            / 1_800_000_000)
+            * 0x0267) as u16;
+
+        let _ = midi_output.send(addr_value_to_midi(
+            [0xBF10, 0xBF11, 0xBF12, 0xBF13][channel],
+            ((jog_position >> 8) & 0x00FF) as u8,
+        ));
+        let _ = midi_output.send(addr_value_to_midi(
+            [0xBF30, 0xBF31, 0xBF32, 0xBF33][channel],
+            (jog_position & 0x00FF) as u8,
+        ));
+
+        // cue point
+        if let Some(cue_point) = player_state.cue_time {
+            // 1_800_000_000 for 33.3 rpm
+            let cue_point: u16 = (((cue_point.nanoseconds.rem_euclid(1_800_000_000))
+                / 1_800_000_000)
+                * 0x0267) as u16;
+
+            let _ = midi_output.send(addr_value_to_midi(
+                [0xBF1C, 0xBF1D, 0xBF1E, 0xBF1F][channel],
+                ((cue_point >> 8) & 0x00FF) as u8,
+            ));
+            let _ = midi_output.send(addr_value_to_midi(
+                [0xBF3C, 0xBF3D, 0xBF3E, 0xBF3F][channel],
+                (cue_point & 0x00FF) as u8,
+            ));
+        } else {
+            let _ = midi_output.send(addr_value_to_midi(
+                [0xBF1C, 0xBF1D, 0xBF1E, 0xBF1F][channel],
+                0x7F,
+            ));
+            let _ = midi_output.send(addr_value_to_midi(
+                [0xBF3C, 0xBF3D, 0xBF3E, 0xBF3F][channel],
+                0x7F,
+            ));
+        }
+
+        // time
+        let track_time_seconds = player_state.time.to_nanoseconds() / 1_000_000_000;
+        let track_time_minutes = (track_time_seconds / 60).unsigned_abs() as u8;
+        let track_time_seconds = (track_time_seconds % 60).unsigned_abs() as u8;
+
+        let _ = midi_output.send(addr_value_to_midi(
+            [0xBF42, 0xBF44, 0xBF46, 0xBF48][channel],
+            track_time_minutes,
+        ));
+        let _ = midi_output.send(addr_value_to_midi(
+            [0xBF43, 0xBF45, 0xBF47, 0xBF49][channel],
+            track_time_seconds,
+        ));
+
+        // bpm
+        if let Some(bpm) = player_state.get_current_bpm() {
+            // 19983 == 0x4E0F
+            let cue_point = (bpm.clamp(0.0, 999.9) * 19983.0).floor() as u16;
+
+            let _ = midi_output.send(addr_value_to_midi(
+                [0xBF14, 0xBF15, 0xBF16, 0xBF17][channel],
+                ((cue_point >> 8) & 0x00FF) as u8,
+            ));
+            let _ = midi_output.send(addr_value_to_midi(
+                [0xBF34, 0xBF35, 0xBF36, 0xBF37][channel],
+                (cue_point & 0x00FF) as u8,
+            ));
+        } else {
+            let _ = midi_output.send(addr_value_to_midi(
+                [0xBF14, 0xBF15, 0xBF16, 0xBF17][channel],
+                0,
+            ));
+            let _ = midi_output.send(addr_value_to_midi(
+                [0xBF34, 0xBF35, 0xBF36, 0xBF37][channel],
+                0,
+            ));
+        }
+
+        // tempo percent
+        // 19983 == 0x4E0F
+        let tempo =
+            ((player_state.tempo_percent * (19983.0 / 2.0)) + (19983.0 / 2.0)).floor() as u16;
+        let _ = midi_output.send(addr_value_to_midi(
+            [0xBF18, 0xBF19, 0xBF1A, 0xBF1B][channel],
+            ((tempo >> 8) & 0x00FF) as u8,
+        ));
+        let _ = midi_output.send(addr_value_to_midi(
+            [0xBF38, 0xBF39, 0xBF3A, 0xBF3B][channel],
+            (tempo & 0x00FF) as u8,
+        ));
+
         // master tempo
-        let _ = midi_output.send(addr_channel_value_to_midi(
-            0x901A,
-            channel as u16,
+        let _ = midi_output.send(addr_value_to_midi(
+            [0x9F20, 0x9F21, 0x9F22, 0x9F23][channel],
             if player_state.master_tempo { 127 } else { 0 },
+        ));
+
+        // beat sync
+        let _ = midi_output.send(addr_value_to_midi(
+            [0x9F20, 0x9F21, 0x9F22, 0x9F23][channel],
+            match player_state.beat_sync {
+                BeatSyncMode::Off => 0,
+                BeatSyncMode::BPMSync => {
+                    if flash_timers.mid {
+                        127
+                    } else {
+                        0
+                    }
+                }
+                BeatSyncMode::BeatSync => 127,
+            },
         ));
     }
 }

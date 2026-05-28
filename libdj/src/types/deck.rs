@@ -2,12 +2,10 @@ use rkyv::{Archive, Deserialize, Serialize};
 
 use crate::{
     MIXER_CHANNELS,
-    types::{library::Track, timecode::Timecode},
+    types::{analysis::TrackAnalysis, library::Track, timecode::Timecode},
 };
 
-pub type DeckUpdate = Box<dyn FnOnce(&mut DeckState) + Send>;
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
 pub enum TempoRange {
     SixPercent,
     TenPercent,
@@ -15,42 +13,35 @@ pub enum TempoRange {
     OneHundredPercent,
 }
 
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
 pub enum PlayState {
     Stop,
     Play,
     Cue,
 }
 
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
 pub enum BeatSyncMode {
     Off,
     BPMSync,
     BeatSync,
 }
 
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub enum JogState {
-    Released,
-    PitchBend(f32),
-    Jog(f32),
-}
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
 pub enum BeatLoopAdjustMode {
     None,
     In,
     Out,
 }
 
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
 pub enum CrossFaderSide {
     A,
     B,
     None,
 }
 
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
 pub enum FilterEffect {
     None,
     Space,
@@ -136,6 +127,7 @@ impl Default for ChannelState {
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct PlayerState {
     pub current_track: Option<(u32, Track)>,
+    pub current_track_analysis: Option<TrackAnalysis>,
     pub is_loading: bool,
 
     pub beat_sync: BeatSyncMode,
@@ -143,13 +135,16 @@ pub struct PlayerState {
 
     pub quanitze: bool,
 
-    pub jog_state: JogState,
+    pub jog_hold: bool,
+    pub jog_wait: bool,
+    pub jog_velocity: f32,
+
     pub play_state: PlayState,
     pub time: Timecode,
     pub cue_time: Option<Timecode>,       // timecode/cue not set
     pub touch_cue_time: Option<Timecode>, // timecode/touch cue not active
+
     pub reverse_enabled: bool,
-    pub effective_direction: isize,
 
     pub tempo_range: TempoRange,
     pub tempo_reset: bool,  // tempo reset enabled
@@ -174,6 +169,7 @@ impl Default for PlayerState {
     fn default() -> Self {
         Self {
             current_track: None,
+            current_track_analysis: None,
             is_loading: false,
 
             beat_sync: BeatSyncMode::Off,
@@ -181,19 +177,21 @@ impl Default for PlayerState {
 
             quanitze: true,
 
-            jog_state: JogState::Released,
+            jog_hold: false,
+            jog_wait: false,
+            jog_velocity: 0.0,
+
             play_state: PlayState::Stop,
             time: Timecode::zero(),
             cue_time: None,
             touch_cue_time: None,
             reverse_enabled: false,
-            effective_direction: 0,
 
             tempo_range: TempoRange::TenPercent,
             tempo_reset: false,
             tempo_percent: 0.0,
             tempo_slider_is_accurate: true,
-            master_tempo: true,
+            master_tempo: false,
 
             slip: false,
             slip_playing: false,
@@ -209,7 +207,7 @@ impl Default for PlayerState {
     }
 }
 
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
 pub enum EffectsChannel {
     Channel(usize),
     Master,

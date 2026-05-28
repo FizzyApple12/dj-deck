@@ -2,31 +2,31 @@ use std::ops::{Index, IndexMut};
 
 use num::{Complex, Float};
 
-use crate::dsp::fft::{FFTTrait, complexMul, fft::FFT};
+use crate::dsp::fft::{FFTTrait, complex_mul, fft::FFT};
 
-struct RealFFT<Sample, const HALF_FREQ_SHIFT: bool>
+pub struct RealFFT<Sample, const HALF_FREQ_SHIFT: bool>
 where
     Sample: Float,
 {
-    complexBuffer1: Vec<Complex<Sample>>,
-    complexBuffer2: Vec<Complex<Sample>>,
-    twiddlesMinusI: Vec<Complex<Sample>>,
-    modifiedRotations: Vec<Complex<Sample>>,
-    complexFft: FFT<Sample>,
+    comple_buffer_1: Vec<Complex<Sample>>,
+    complex_buffer_2: Vec<Complex<Sample>>,
+    twiddles_minus_i: Vec<Complex<Sample>>,
+    modified_rotations: Vec<Complex<Sample>>,
+    complex_fft: FFT<Sample>,
 }
 
-impl<const HALF_FREQ_SHIFT: bool> FFTTrait<f32, Self::Sample, Self::Complex>
+impl<const HALF_FREQ_SHIFT: bool> FFTTrait<f32, f32, Complex<f32>>
     for RealFFT<f32, HALF_FREQ_SHIFT>
 {
-    type Complex = Self::Complex;
-    type Sample = Self::Sample;
+    type Complex = Complex<f32>;
+    type Sample = f32;
 
     fn fast_size_above(size: usize) -> usize {
-        FFT::<Self::Sample>::fast_size_above((size + 1) / 2) * 2
+        FFT::<f32>::fast_size_above(size.div_ceil(2)) * 2
     }
 
     fn fast_size_below(size: usize) -> usize {
-        FFT::<Self::Sample>::fast_size_below(size / 2) * 2
+        FFT::<f32>::fast_size_below(size / 2) * 2
     }
 
     fn new(mut size: usize, fast_direction: i32) -> Self {
@@ -38,11 +38,11 @@ impl<const HALF_FREQ_SHIFT: bool> FFTTrait<f32, Self::Sample, Self::Complex>
         }
 
         let mut new = Self {
-            complexBuffer1: Vec::new(),
-            complexBuffer2: Vec::new(),
-            twiddlesMinusI: Vec::new(),
-            modifiedRotations: Vec::new(),
-            complexFft: FFT::new(0, 0),
+            comple_buffer_1: Vec::new(),
+            complex_buffer_2: Vec::new(),
+            twiddles_minus_i: Vec::new(),
+            modified_rotations: Vec::new(),
+            complex_fft: FFT::new(0, 0),
         };
 
         new.set_size(usize::max(size, 2));
@@ -50,41 +50,42 @@ impl<const HALF_FREQ_SHIFT: bool> FFTTrait<f32, Self::Sample, Self::Complex>
         new
     }
 
+    #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
     fn set_size(&mut self, size: usize) -> usize {
-        self.complexBuffer1
-            .resize(size / 2, Self::Complex::new(0.0, 0.0));
-        self.complexBuffer2
-            .resize(size / 2, Self::Complex::new(0.0, 0.0));
+        self.comple_buffer_1
+            .resize(size / 2, Complex::<f32>::new(0.0, 0.0));
+        self.complex_buffer_2
+            .resize(size / 2, Complex::<f32>::new(0.0, 0.0));
 
-        let hhSize = size / 4 + 1;
-        self.twiddlesMinusI
-            .resize(hhSize, Self::Complex::new(0.0, 0.0));
+        let h_h_ize = size / 4 + 1;
+        self.twiddles_minus_i
+            .resize(h_h_ize, Complex::<f32>::new(0.0, 0.0));
 
-        for i in 0..hhSize {
-            let rotPhase = -2.0
+        for i in 0..h_h_ize {
+            let rot_phase = -2.0
                 * std::f32::consts::PI
-                * (if Self::modified {
+                * (if Self::MODIFIED {
                     i as f32 + 0.5
                 } else {
                     i as f32
                 })
                 / size as f32;
 
-            self.twiddlesMinusI[i] = Self::Complex::new(rotPhase.sin(), -rotPhase.cos());
+            self.twiddles_minus_i[i] = Complex::<f32>::new(rot_phase.sin(), -rot_phase.cos());
         }
 
-        if Self::modified {
-            self.modifiedRotations
-                .resize(size / 2, Self::Complex::new(0.0, 0.0));
+        if Self::MODIFIED {
+            self.modified_rotations
+                .resize(size / 2, Complex::<f32>::new(0.0, 0.0));
 
             for i in 0..(size / 2) {
-                let rotPhase = -2.0 * std::f32::consts::PI * i as f32 / size as f32;
+                let rot_phase = -2.0 * std::f32::consts::PI * i as f32 / size as f32;
 
-                self.modifiedRotations[i] = Self::Complex::new(rotPhase.cos(), rotPhase.sin());
+                self.modified_rotations[i] = Complex::<f32>::new(rot_phase.cos(), rot_phase.sin());
             }
         }
 
-        self.complexFft.set_size(size / 2) * 2
+        self.complex_fft.set_size(size / 2) * 2
     }
 
     fn set_fast_size_above(&mut self, size: usize) -> usize {
@@ -96,90 +97,92 @@ impl<const HALF_FREQ_SHIFT: bool> FFTTrait<f32, Self::Sample, Self::Complex>
     }
 
     fn size(&self) -> usize {
-        self.complexFft.size() * 2
+        self.complex_fft.size() * 2
     }
 
+    #[allow(clippy::indexing_slicing, clippy::bool_to_int_with_if)]
     fn fft<InputBuffer, OutputBuffer>(&mut self, input: &InputBuffer, output: &mut OutputBuffer)
     where
-        InputBuffer: Index<usize, Output = Self::Sample>,
-        OutputBuffer: IndexMut<usize, Output = Self::Complex>,
+        InputBuffer: Index<usize, Output = f32>,
+        OutputBuffer: IndexMut<usize, Output = Complex<f32>>,
     {
-        let hSize = self.complexFft.size();
+        let h_size = self.complex_fft.size();
 
-        for i in 0..hSize {
-            if Self::modified {
-                self.complexBuffer1[i] = complexMul::<false, Self::Sample>(
-                    &Self::Complex::new(input[2 * i], input[2 * i + 1]),
-                    &self.modifiedRotations[i],
+        for i in 0..h_size {
+            if Self::MODIFIED {
+                self.comple_buffer_1[i] = complex_mul::<false, f32>(
+                    &Complex::<f32>::new(input[2 * i], input[2 * i + 1]),
+                    &self.modified_rotations[i],
                 );
             } else {
-                self.complexBuffer1[i] = Self::Complex::new(input[2 * i], input[2 * i + 1]);
+                self.comple_buffer_1[i] = Complex::<f32>::new(input[2 * i], input[2 * i + 1]);
             }
         }
 
-        self.complexFft
-            .fft(&self.complexBuffer1, &mut self.complexBuffer2);
+        self.complex_fft
+            .fft(&self.comple_buffer_1, &mut self.complex_buffer_2);
 
-        if !Self::modified {
-            output[0] = Self::Complex::new(
-                self.complexBuffer2[0].re + self.complexBuffer2[0].im,
-                self.complexBuffer2[0].re - self.complexBuffer2[0].im,
+        if !Self::MODIFIED {
+            output[0] = Complex::<f32>::new(
+                self.complex_buffer_2[0].re + self.complex_buffer_2[0].im,
+                self.complex_buffer_2[0].re - self.complex_buffer_2[0].im,
             );
         }
 
-        for i in (if Self::modified { 0 } else { 1 })..(hSize / 2 + 1) {
-            let conjI = if Self::modified {
-                hSize - 1 - i
+        for i in (if Self::MODIFIED { 0 } else { 1 })..=(h_size / 2) {
+            let conj_i = if Self::MODIFIED {
+                h_size - 1 - i
             } else {
-                hSize - i
+                h_size - i
             };
 
-            let odd = (self.complexBuffer2[i] + (self.complexBuffer2[conjI]).conj()) * 0.5;
-            let evenI = (self.complexBuffer2[i] - (self.complexBuffer2[conjI]).conj()) * 0.5;
-            let evenRotMinusI = complexMul::<false, Self::Sample>(&evenI, &self.twiddlesMinusI[i]);
+            let odd = (self.complex_buffer_2[i] + (self.complex_buffer_2[conj_i]).conj()) * 0.5;
+            let even_i = (self.complex_buffer_2[i] - (self.complex_buffer_2[conj_i]).conj()) * 0.5;
+            let even_rot_minus_i = complex_mul::<false, f32>(&even_i, &self.twiddles_minus_i[i]);
 
-            output[i] = odd + evenRotMinusI;
-            output[conjI] = (odd - evenRotMinusI).conj();
+            output[i] = odd + even_rot_minus_i;
+            output[conj_i] = (odd - even_rot_minus_i).conj();
         }
     }
 
+    #[allow(clippy::indexing_slicing, clippy::bool_to_int_with_if)]
     fn ifft<InputBuffer, OutputBuffer>(&mut self, input: &InputBuffer, output: &mut OutputBuffer)
     where
-        InputBuffer: Index<usize, Output = Self::Complex>,
-        OutputBuffer: IndexMut<usize, Output = Self::Sample>,
+        InputBuffer: Index<usize, Output = Complex<f32>>,
+        OutputBuffer: IndexMut<usize, Output = f32>,
     {
-        let hSize = self.complexFft.size();
+        let h_size = self.complex_fft.size();
 
-        if !Self::modified {
-            self.complexBuffer1[0] =
-                Self::Complex::new(input[0].re + input[0].im, input[0].re - input[0].im);
+        if !Self::MODIFIED {
+            self.comple_buffer_1[0] =
+                Complex::<f32>::new(input[0].re + input[0].im, input[0].re - input[0].im);
         }
 
-        for i in (if Self::modified { 0 } else { 1 })..(hSize / 2 + 1) {
-            let conjI = if Self::modified {
-                hSize - 1 - i
+        for i in (if Self::MODIFIED { 0 } else { 1 })..=(h_size / 2) {
+            let conj_i = if Self::MODIFIED {
+                h_size - 1 - i
             } else {
-                hSize - i
+                h_size - i
             };
             let v = input[i];
-            let v2 = input[conjI];
+            let v2 = input[conj_i];
 
             let odd = v + (v2).conj();
-            let evenRotMinusI = v - (v2).conj();
-            let evenI = complexMul::<true, Self::Sample>(&evenRotMinusI, &self.twiddlesMinusI[i]);
+            let even_rot_minus_i = v - (v2).conj();
+            let even_i = complex_mul::<true, f32>(&even_rot_minus_i, &self.twiddles_minus_i[i]);
 
-            self.complexBuffer1[i] = odd + evenI;
-            self.complexBuffer1[conjI] = (odd - evenI).conj();
+            self.comple_buffer_1[i] = odd + even_i;
+            self.comple_buffer_1[conj_i] = (odd - even_i).conj();
         }
 
-        self.complexFft
-            .ifft(&self.complexBuffer1, &mut self.complexBuffer2);
+        self.complex_fft
+            .ifft(&self.comple_buffer_1, &mut self.complex_buffer_2);
 
-        for i in 0..hSize {
-            let mut v = self.complexBuffer2[i];
+        for i in 0..h_size {
+            let mut v = self.complex_buffer_2[i];
 
-            if Self::modified {
-                v = complexMul::<true, Self::Sample>(&v, &self.modifiedRotations[i]);
+            if Self::MODIFIED {
+                v = complex_mul::<true, f32>(&v, &self.modified_rotations[i]);
             }
 
             output[2 * i] = v.re;
@@ -189,10 +192,7 @@ impl<const HALF_FREQ_SHIFT: bool> FFTTrait<f32, Self::Sample, Self::Complex>
 }
 
 impl<const HALF_FREQ_SHIFT: bool> RealFFT<f32, HALF_FREQ_SHIFT> {
-    type Complex = Complex<f32>;
-    type Sample = f32;
-
-    const modified: bool = HALF_FREQ_SHIFT;
+    const MODIFIED: bool = HALF_FREQ_SHIFT;
 }
 
-type ModifiedRealFFT<Sample> = RealFFT<Sample, true>;
+pub type ModifiedRealFFT<Sample> = RealFFT<Sample, true>;

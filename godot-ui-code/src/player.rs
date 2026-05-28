@@ -1,10 +1,12 @@
 use godot::{
-    classes::{CanvasItem, IPanelContainer, Label, PanelContainer, TextureRect},
+    classes::{
+        CanvasItem, Control, IPanelContainer, Label, PanelContainer, ShaderMaterial, TextureRect,
+    },
     prelude::*,
 };
 use libdj::types::{deck::TempoRange, timecode::Timecode};
 
-use crate::ipc::IPC;
+use crate::{ipc::IPC, preview_waveform_to_shader_texture};
 
 #[derive(GodotClass)]
 #[class(base=PanelContainer)]
@@ -71,6 +73,13 @@ pub struct PlayerContainer {
     #[export]
     master_tempo: OnEditor<Gd<CanvasItem>>,
 
+    #[export]
+    waveform_container: OnEditor<Gd<Control>>,
+    #[export]
+    waveform: OnEditor<Gd<Control>>,
+    #[export]
+    playhead: OnEditor<Gd<Control>>,
+
     display_remain: bool,
 }
 
@@ -118,6 +127,10 @@ impl IPanelContainer for PlayerContainer {
             key: OnEditor::default(),
             master_tempo: OnEditor::default(),
 
+            waveform_container: OnEditor::default(),
+            waveform: OnEditor::default(),
+            playhead: OnEditor::default(),
+
             display_remain: true,
         }
     }
@@ -137,6 +150,38 @@ impl IPanelContainer for PlayerContainer {
 
         self.player_number_label
             .set_text(&format!("{}", self.player_number + 1));
+
+        #[allow(clippy::cast_sign_loss)]
+        if let Some(updated) = ipc
+            .preview_waveform_updated
+            .get(self.player_number as usize)
+            && *updated
+        {
+            if let Some(waveform) = &ipc.preview_waveforms.get(self.player_number as usize)
+                && let Some(texture) = preview_waveform_to_shader_texture(waveform)
+            {
+                let mut material = self
+                    .waveform
+                    .get_material()
+                    .unwrap()
+                    .cast::<ShaderMaterial>();
+                material.set_shader_parameter("WAVEFORM", &Variant::from(texture));
+
+                self.waveform_container.set_modulate(Color {
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0,
+                    a: 1.0,
+                });
+            } else {
+                self.waveform_container.set_modulate(Color {
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0,
+                    a: 0.0,
+                });
+            }
+        }
 
         if channel_data.player.is_loading {
             self.player_data.set_modulate(Color {
@@ -270,11 +315,46 @@ impl IPanelContainer for PlayerContainer {
                 a: 1.0,
             }
         });
+        let total_time = if let Some(ref track_analysis) =
+            channel_data.player.current_track_analysis
+            && let Some(last_beat) = track_analysis.beat_grid.last()
+        {
+            #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+            let progress = (channel_data.player.time.nanoseconds as f64
+                / last_beat.time.nanoseconds as f64) as f32;
+
+            let mut material = self
+                .waveform
+                .get_material()
+                .unwrap()
+                .cast::<ShaderMaterial>();
+            material.set_shader_parameter("PROGRESS", &Variant::from(progress));
+
+            let playhead_progress =
+                (self.waveform.get_size().x * progress).clamp(0.0, self.waveform.get_size().x);
+
+            self.playhead.set_position(Vector2 {
+                x: playhead_progress,
+                y: 0.0,
+            });
+
+            last_beat.time
+        } else {
+            let mut material = self
+                .waveform
+                .get_material()
+                .unwrap()
+                .cast::<ShaderMaterial>();
+            material.set_shader_parameter("PROGRESS", &Variant::from(0.0));
+
+            self.playhead.set_position(Vector2 { x: 0.0, y: 0.0 });
+
+            Timecode::from_seconds(i64::from(track.duration))
+        };
+
         self.track_time.set_text(&if self.display_remain {
-            let track_remaining_seconds = (Timecode::from_seconds(i64::from(track.duration))
-                - channel_data.player.time)
-                .to_nanoseconds()
-                / 1_000_000_000;
+            let track_remaining_seconds =
+                (total_time - channel_data.player.time).to_nanoseconds() / 1_000_000_000;
 
             format!(
                 "{:.0}:{:02.0}",
@@ -293,9 +373,7 @@ impl IPanelContainer for PlayerContainer {
         self.track_time_fractional
             .set_text(&if self.display_remain {
                 let track_remaining_milliseconds =
-                    (Timecode::from_seconds(i64::from(track.duration)) - channel_data.player.time)
-                        .to_nanoseconds()
-                        / 1_000_000;
+                    (total_time - channel_data.player.time).to_nanoseconds() / 1_000_000;
 
                 format!(".{:03.0}", (track_remaining_milliseconds % 1000).abs())
             } else {

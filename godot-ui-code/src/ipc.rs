@@ -12,7 +12,14 @@ use interprocess::local_socket::{
     GenericFilePath, Listener, ListenerNonblockingMode, ListenerOptions, RecvHalf, SendHalf,
     prelude::*,
 };
-use libdj::types::{deck::DeckState, library::Library};
+use libdj::{
+    MIXER_CHANNELS,
+    types::{
+        analysis::{PreviewWaveformColumn, WaveformColumn},
+        deck::DeckState,
+        library::Library,
+    },
+};
 use libui::types::ui::{ArchivedUIMessage, InternalUIEvent, SOCKET_NAME, UIMessage};
 
 #[derive(GodotClass)]
@@ -31,6 +38,13 @@ pub struct IPC {
     pub deck_state: DeckState,
 
     pub devices_changed: bool,
+
+    pub waveform_updated: [bool; MIXER_CHANNELS],
+    pub waveforms: [Vec<WaveformColumn>; MIXER_CHANNELS],
+    pub preview_waveform_updated: [bool; MIXER_CHANNELS],
+    pub preview_waveforms: [Vec<PreviewWaveformColumn>; MIXER_CHANNELS],
+
+    pub waveform_pixels_per_second: f64,
 }
 
 impl IPC {}
@@ -62,11 +76,20 @@ impl INode for IPC {
             deck_state: DeckState::default(),
 
             devices_changed: false,
+
+            waveform_updated: [false; MIXER_CHANNELS],
+            waveforms: Default::default(),
+            preview_waveform_updated: [false; MIXER_CHANNELS],
+            preview_waveforms: Default::default(),
+
+            waveform_pixels_per_second: 200.0,
         }
     }
 
     fn process(&mut self, _delta: f64) {
         self.devices_changed = false;
+        self.waveform_updated = [false; MIXER_CHANNELS];
+        self.preview_waveform_updated = [false; MIXER_CHANNELS];
 
         while let Ok(connection) = self.listener.accept() {
             let (receiver, sender) = connection.split();
@@ -80,7 +103,7 @@ impl INode for IPC {
             let Ok(_) = reader.read_until(b'\n', read_buffer) else {
                 continue;
             };
-            read_buffer.remove(read_buffer.len() - 1);
+            read_buffer.remove(read_buffer.len().saturating_sub(1));
 
             if let Ok(serialized_message) = BASE64_STANDARD.decode(&read_buffer)
                 && let Ok(archived) =
@@ -117,6 +140,31 @@ impl INode for IPC {
                         self.devices_changed = true;
 
                         godot_print!("device library");
+                    }
+                    UIMessage::Waveform { player, waveform } => {
+                        if let Some(data) = self.waveforms.get_mut(player) {
+                            *data = waveform;
+                        }
+                        if let Some(data) = self.waveform_updated.get_mut(player) {
+                            *data = true;
+                        }
+                    }
+                    UIMessage::PreviewWaveform { player, waveform } => {
+                        if let Some(data) = self.preview_waveforms.get_mut(player) {
+                            *data = waveform;
+                        }
+                        if let Some(data) = self.preview_waveform_updated.get_mut(player) {
+                            *data = true;
+                        }
+                    }
+                    UIMessage::EncoderUp => {
+                        self.waveform_pixels_per_second *= 2.0;
+                    }
+                    UIMessage::EncoderDown => {
+                        self.waveform_pixels_per_second /= 2.0;
+                    }
+                    UIMessage::EncoderSelect => {
+                        // todo: navigate menus
                     }
                 }
             }

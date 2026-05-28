@@ -5,27 +5,25 @@ use num::Float;
 use crate::dsp::delay::interpolators::InterpolatorTrait;
 
 /// Spline cubic interpolator
-pub struct InterpolatorCubic<Data, Sample>
+pub struct InterpolatorCubic<Sample>
 where
     Sample: Float,
 {
-    phantom_data: PhantomData<Data>,
     phantom_sample: PhantomData<Sample>,
 }
 
-impl<Data, Sample> Default for InterpolatorCubic<Data, Sample>
+impl<Sample> Default for InterpolatorCubic<Sample>
 where
     Sample: Float,
 {
     fn default() -> Self {
         Self {
-            phantom_data: PhantomData,
             phantom_sample: PhantomData,
         }
     }
 }
 
-impl InterpolatorTrait<&[f32], f32> for InterpolatorCubic<&[f32], f32> {
+impl InterpolatorTrait<f32> for InterpolatorCubic<f32> {
     const INPUT_LENGTH: usize = 4;
     const LATENCY: f32 = 1.0;
 

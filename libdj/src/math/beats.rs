@@ -1,45 +1,64 @@
-use crate::types::{deck::PlayerState, library::Beat, timecode::Duration};
+use crate::types::{
+    analysis::Beat,
+    deck::PlayerState,
+    timecode::{Duration, Timecode},
+};
+
+pub fn get_current_beat_index(beat_grid: &[Beat], time: Timecode) -> Option<usize> {
+    if beat_grid.is_empty() {
+        return None;
+    }
+
+    Some(
+        beat_grid
+            .partition_point(|beat| beat.time <= time)
+            .saturating_sub(1),
+    )
+}
+
+pub fn get_current_beat(beat_grid: &[Beat], time: Timecode) -> Option<&Beat> {
+    beat_grid.get(get_current_beat_index(beat_grid, time)?)
+}
 
 impl PlayerState {
     pub fn get_current_beat(&self) -> Option<&Beat> {
-        let (_, current_track) = self.current_track.as_ref()?;
+        get_current_beat(&self.current_track_analysis.as_ref()?.beat_grid, self.time)
+    }
 
-        if current_track.beat_grid.is_empty() {
+    #[allow(clippy::indexing_slicing)]
+    pub fn get_closest_beat(&self) -> Option<&Beat> {
+        let current_track_analysis = self.current_track_analysis.as_ref()?;
+
+        if current_track_analysis.beat_grid.is_empty() {
             return None;
         }
 
-        let mut low = 0;
-        let mut high = current_track.beat_grid.len() - 1;
-        let mut result = current_track.beat_grid.first();
+        let partition = current_track_analysis
+            .beat_grid
+            .partition_point(|beat| beat.time < self.time);
 
-        while low <= high {
-            let mid = low + (high - low) / 2;
+        match partition {
+            0 => current_track_analysis.beat_grid.first(),
+            partition if partition == current_track_analysis.beat_grid.len() => {
+                current_track_analysis.beat_grid.last()
+            }
+            partition => {
+                let before = &current_track_analysis.beat_grid[partition - 1];
+                let after = &current_track_analysis.beat_grid[partition];
 
-            #[allow(clippy::indexing_slicing)]
-            match current_track.beat_grid[mid].time.cmp(&self.time) {
-                std::cmp::Ordering::Equal => return Some(&current_track.beat_grid[mid]),
-                std::cmp::Ordering::Less => {
-                    result = Some(&current_track.beat_grid[mid]);
-
-                    low = mid + 1;
-                }
-                std::cmp::Ordering::Greater => {
-                    if mid == 0 {
-                        break;
-                    }
-
-                    high = mid - 1;
+                if self.time - before.time <= after.time - self.time {
+                    Some(before)
+                } else {
+                    Some(after)
                 }
             }
         }
-
-        result
     }
 
     pub fn get_current_source_bpm(&self) -> Option<f32> {
-        let (_, current_track) = self.current_track.as_ref()?;
+        let current_track_analysis = self.current_track_analysis.as_ref()?;
 
-        if current_track.beat_grid.is_empty() {
+        if current_track_analysis.beat_grid.is_empty() {
             return None;
         }
 
@@ -47,12 +66,12 @@ impl PlayerState {
             return Some(beat.bpm);
         }
 
-        let first_beat = current_track.beat_grid.first()?;
+        let first_beat = current_track_analysis.beat_grid.first()?;
         if self.time < first_beat.time {
             return Some(first_beat.bpm);
         }
 
-        let last_beat = current_track.beat_grid.last()?;
+        let last_beat = current_track_analysis.beat_grid.last()?;
         if self.time > last_beat.time {
             return Some(last_beat.bpm);
         }
