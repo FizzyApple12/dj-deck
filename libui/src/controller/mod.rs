@@ -2,17 +2,22 @@ pub mod actions;
 
 use std::time::Duration;
 
-use libdj::types::{
-    audio_system::DeckUpdate,
-    deck::{BeatLoopAdjustMode, BeatSyncMode, DeckState, PlayState},
-    midi::MidiMessage,
+use libdj::{
+    MIXER_CHANNELS,
+    types::{
+        audio_system::DeckUpdate,
+        deck::{BeatLoopAdjustMode, BeatSyncMode, DeckState, PlayState},
+        midi::MidiMessage,
+    },
 };
 use thiserror::Error;
 use tokio::task::JoinHandle;
 
 use crate::{
     controller::actions::{
-        beat_jump_release, cue_press, cue_release, jog_distance, jog_release, jog_touch, play_press,
+        beat_jump_release, beat_sync, channel_fader, channel_filter, cross_fader, cue_press,
+        cue_release, jog_distance, jog_release, jog_touch, next_tempo_range, play_press,
+        set_master, tempo_reset, tempo_slider,
     },
     types::{controller::ControllerMessage, ui::UIMessage},
 };
@@ -22,6 +27,16 @@ pub struct Controller {
     controller_message_sender: tokio::sync::broadcast::Sender<ControllerMessage>,
 
     midi_task: JoinHandle<()>,
+}
+
+struct ControllerState {
+    tempo_sliders: [(u8, u8); MIXER_CHANNELS],
+
+    filters: [(u8, u8); MIXER_CHANNELS],
+
+    faders: [(u8, u8); MIXER_CHANNELS],
+
+    crossfader: (u8, u8),
 }
 
 struct ControllerLEDFlashTimers {
@@ -49,6 +64,16 @@ impl Controller {
 
         let midi_task = tokio::task::spawn(async move {
             let mut current_deck_state: DeckState = DeckState::default();
+
+            let mut controller_state: ControllerState = ControllerState {
+                tempo_sliders: Default::default(),
+
+                filters: Default::default(),
+
+                faders: Default::default(),
+
+                crossfader: Default::default(),
+            };
 
             let mut led_flash_timers = ControllerLEDFlashTimers {
                 slow: false,
@@ -81,7 +106,7 @@ impl Controller {
                         if let Some(midi_message) = midi_message {
                             let (address, value) = midi_to_addr_value(midi_message);
 
-                            process_midi_command(address, value, &deck_update_sender, &ui_message_sender);
+                            process_midi_command(address, value, &mut controller_state, &deck_update_sender, &ui_message_sender);
                         }
                     }
                     controller_message = controller_message_receiver.recv() => {
@@ -153,6 +178,7 @@ const fn midi_to_addr_value(midi: [u8; 3]) -> (u16, u8) {
 fn process_midi_command(
     address: u16,
     value: u8,
+    controller_state: &mut ControllerState,
     deck_update_sender: &tokio::sync::mpsc::UnboundedSender<DeckUpdate>,
     ui_message_sender: &tokio::sync::mpsc::UnboundedSender<UIMessage>,
 ) {
@@ -342,6 +368,296 @@ fn process_midi_command(
             deck_update_sender
                 .send(Box::new(move |deck_state, _| {
                     jog_release(deck_state, 3);
+                }))
+                .ok();
+        }
+        // tempo
+        (address, value) if address == combine_addr_channel(0xB000, 0) => {
+            controller_state.tempo_sliders[0].0 = value;
+
+            let new_slider_value = controller_state.tempo_sliders[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    tempo_slider(deck_state, 0, new_slider_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB020, 0) => {
+            controller_state.tempo_sliders[0].1 = value;
+
+            let new_slider_value = controller_state.tempo_sliders[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    tempo_slider(deck_state, 0, new_slider_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB000, 1) => {
+            controller_state.tempo_sliders[1].0 = value;
+
+            let new_slider_value = controller_state.tempo_sliders[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    tempo_slider(deck_state, 1, new_slider_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB020, 1) => {
+            controller_state.tempo_sliders[1].1 = value;
+
+            let new_slider_value = controller_state.tempo_sliders[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    tempo_slider(deck_state, 1, new_slider_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB000, 2) => {
+            controller_state.tempo_sliders[2].0 = value;
+
+            let new_slider_value = controller_state.tempo_sliders[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    tempo_slider(deck_state, 2, new_slider_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB020, 2) => {
+            controller_state.tempo_sliders[2].1 = value;
+
+            let new_slider_value = controller_state.tempo_sliders[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    tempo_slider(deck_state, 2, new_slider_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB000, 3) => {
+            controller_state.tempo_sliders[3].0 = value;
+
+            let new_slider_value = controller_state.tempo_sliders[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    tempo_slider(deck_state, 3, new_slider_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB020, 3) => {
+            controller_state.tempo_sliders[3].1 = value;
+
+            let new_slider_value = controller_state.tempo_sliders[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    tempo_slider(deck_state, 3, new_slider_value);
+                }))
+                .ok();
+        }
+        // faders
+        (address, value) if address == combine_addr_channel(0xB013, 0) => {
+            controller_state.faders[0].0 = value;
+
+            let new_fader_value = controller_state.faders[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_fader(deck_state, 0, new_fader_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB033, 0) => {
+            controller_state.faders[0].1 = value;
+
+            let new_fader_value = controller_state.faders[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_fader(deck_state, 0, new_fader_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB013, 1) => {
+            controller_state.faders[1].0 = value;
+
+            let new_fader_value = controller_state.faders[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_fader(deck_state, 1, new_fader_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB033, 1) => {
+            controller_state.faders[1].1 = value;
+
+            let new_fader_value = controller_state.faders[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_fader(deck_state, 1, new_fader_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB013, 2) => {
+            controller_state.faders[2].0 = value;
+
+            let new_fader_value = controller_state.faders[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_fader(deck_state, 2, new_fader_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB033, 2) => {
+            controller_state.faders[2].1 = value;
+
+            let new_fader_value = controller_state.faders[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_fader(deck_state, 2, new_fader_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB013, 3) => {
+            controller_state.faders[3].0 = value;
+
+            let new_fader_value = controller_state.faders[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_fader(deck_state, 3, new_fader_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB033, 3) => {
+            controller_state.faders[3].1 = value;
+
+            let new_fader_value = controller_state.faders[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_fader(deck_state, 3, new_fader_value);
+                }))
+                .ok();
+        }
+        // crossfader
+        (0xB61F, value) => {
+            controller_state.crossfader.0 = value;
+
+            let new_fader_value = controller_state.crossfader;
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    cross_fader(deck_state, new_fader_value);
+                }))
+                .ok();
+        }
+        (0xB03F, value) => {
+            controller_state.crossfader.1 = value;
+
+            let new_fader_value = controller_state.crossfader;
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    cross_fader(deck_state, new_fader_value);
+                }))
+                .ok();
+        }
+        // filter
+        (0xB617, value) => {
+            controller_state.filters[0].0 = value;
+
+            let new_filters_value = controller_state.filters[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_filter(deck_state, 0, new_filters_value);
+                }))
+                .ok();
+        }
+        (0xB637, value) => {
+            controller_state.filters[0].1 = value;
+
+            let new_filters_value = controller_state.filters[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_filter(deck_state, 0, new_filters_value);
+                }))
+                .ok();
+        }
+        (0xB618, value) => {
+            controller_state.filters[1].0 = value;
+
+            let new_filters_value = controller_state.filters[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_filter(deck_state, 1, new_filters_value);
+                }))
+                .ok();
+        }
+        (0xB638, value) => {
+            controller_state.filters[1].1 = value;
+
+            let new_filters_value = controller_state.filters[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_filter(deck_state, 1, new_filters_value);
+                }))
+                .ok();
+        }
+        (0xB619, value) => {
+            controller_state.filters[2].0 = value;
+
+            let new_filters_value = controller_state.filters[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_filter(deck_state, 2, new_filters_value);
+                }))
+                .ok();
+        }
+        (0xB639, value) => {
+            controller_state.filters[2].1 = value;
+
+            let new_filters_value = controller_state.filters[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_filter(deck_state, 2, new_filters_value);
+                }))
+                .ok();
+        }
+        (0xB61A, value) => {
+            controller_state.filters[3].0 = value;
+
+            let new_filters_value = controller_state.filters[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_filter(deck_state, 3, new_filters_value);
+                }))
+                .ok();
+        }
+        (0xB63A, value) => {
+            controller_state.filters[3].1 = value;
+
+            let new_filters_value = controller_state.filters[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_filter(deck_state, 3, new_filters_value);
                 }))
                 .ok();
         }
@@ -561,6 +877,122 @@ fn process_midi_command(
             deck_update_sender
                 .send(Box::new(|deck_state, _| {
                     beat_jump_release(deck_state, 3, true, true);
+                }))
+                .ok();
+        }
+        // beat sync
+        (address, 127) if address == combine_addr_channel(0x9058, 0) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_sync(deck_state, 0);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9058, 1) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_sync(deck_state, 1);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9058, 2) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_sync(deck_state, 2);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9058, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    beat_sync(deck_state, 3);
+                }))
+                .ok();
+        }
+        // master
+        (address, 127) if address == combine_addr_channel(0x905C, 0) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    set_master(deck_state, 0);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x905C, 1) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    set_master(deck_state, 1);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x905C, 2) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    set_master(deck_state, 2);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x905C, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    set_master(deck_state, 3);
+                }))
+                .ok();
+        }
+        // tempo reset
+        (address, 127) if address == combine_addr_channel(0x9041, 0) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    tempo_reset(deck_state, 0);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9041, 1) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    tempo_reset(deck_state, 1);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9041, 2) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    tempo_reset(deck_state, 2);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9041, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    tempo_reset(deck_state, 3);
+                }))
+                .ok();
+        }
+        // tempo range
+        (address, 127) if address == combine_addr_channel(0x9060, 0) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    next_tempo_range(deck_state, 0);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9060, 1) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    next_tempo_range(deck_state, 1);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9060, 2) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    next_tempo_range(deck_state, 2);
+                }))
+                .ok();
+        }
+        (address, 127) if address == combine_addr_channel(0x9060, 3) => {
+            deck_update_sender
+                .send(Box::new(|deck_state, _| {
+                    next_tempo_range(deck_state, 3);
                 }))
                 .ok();
         }
@@ -822,10 +1254,10 @@ fn set_deck_leds(
             }
             (Some(_), Some(_)) => {
                 // in
-                let in_state = if let BeatLoopAdjustMode::In = player_state.beat_loop_adjust_mode {
+                let in_state = if player_state.beat_loop_adjust_mode == BeatLoopAdjustMode::In {
                     if flash_timers.fast { 127 } else { 0 }
                 } else {
-                    if flash_timers.fast { 127 } else { 0 }
+                    if flash_timers.mid { 127 } else { 0 }
                 };
                 let _ =
                     midi_output.send(addr_channel_value_to_midi(0x9010, channel as u16, in_state));
@@ -835,11 +1267,10 @@ fn set_deck_leds(
                     midi_output.send(addr_channel_value_to_midi(0x904C, channel as u16, in_state));
 
                 // out
-                let out_state = if let BeatLoopAdjustMode::Out = player_state.beat_loop_adjust_mode
-                {
+                let out_state = if player_state.beat_loop_adjust_mode == BeatLoopAdjustMode::Out {
                     if flash_timers.fast { 127 } else { 0 }
                 } else {
-                    if flash_timers.fast { 127 } else { 0 }
+                    if flash_timers.mid { 127 } else { 0 }
                 };
                 let _ = midi_output.send(addr_channel_value_to_midi(
                     0x9011,
@@ -870,123 +1301,6 @@ fn set_deck_leds(
             if player_state.tempo_reset { 127 } else { 0 },
         ));
 
-        // --------- jog display stuff ---------
-
-        // display on
-        let _ = midi_output.send(addr_value_to_midi(
-            [0x9F5D, 0x9F5E, 0x9F5F, 0x9F60][channel],
-            0x00,
-            // if player_state.current_track.is_some() {
-            //     0x00
-            // } else {
-            //     0x7F
-            // },
-        ));
-
-        // jog illumination
-        let _ = midi_output.send(addr_value_to_midi(
-            [0xBF09, 0xBF0A, 0xBF0B, 0xBF0C][channel],
-            if player_state.is_loading {
-                if flash_timers.fast { 0x01 } else { 0x00 }
-            } else if player_state.current_track.is_some() {
-                0x01
-            } else {
-                0x00
-            },
-        ));
-
-        // jog position
-        // 1_800_000_000 for 33.3 rpm
-        let jog_position: u16 = (((player_state.time.nanoseconds.rem_euclid(1_800_000_000))
-            / 1_800_000_000)
-            * 0x0267) as u16;
-
-        let _ = midi_output.send(addr_value_to_midi(
-            [0xBF10, 0xBF11, 0xBF12, 0xBF13][channel],
-            ((jog_position >> 8) & 0x00FF) as u8,
-        ));
-        let _ = midi_output.send(addr_value_to_midi(
-            [0xBF30, 0xBF31, 0xBF32, 0xBF33][channel],
-            (jog_position & 0x00FF) as u8,
-        ));
-
-        // cue point
-        if let Some(cue_point) = player_state.cue_time {
-            // 1_800_000_000 for 33.3 rpm
-            let cue_point: u16 = (((cue_point.nanoseconds.rem_euclid(1_800_000_000))
-                / 1_800_000_000)
-                * 0x0267) as u16;
-
-            let _ = midi_output.send(addr_value_to_midi(
-                [0xBF1C, 0xBF1D, 0xBF1E, 0xBF1F][channel],
-                ((cue_point >> 8) & 0x00FF) as u8,
-            ));
-            let _ = midi_output.send(addr_value_to_midi(
-                [0xBF3C, 0xBF3D, 0xBF3E, 0xBF3F][channel],
-                (cue_point & 0x00FF) as u8,
-            ));
-        } else {
-            let _ = midi_output.send(addr_value_to_midi(
-                [0xBF1C, 0xBF1D, 0xBF1E, 0xBF1F][channel],
-                0x7F,
-            ));
-            let _ = midi_output.send(addr_value_to_midi(
-                [0xBF3C, 0xBF3D, 0xBF3E, 0xBF3F][channel],
-                0x7F,
-            ));
-        }
-
-        // time
-        let track_time_seconds = player_state.time.to_nanoseconds() / 1_000_000_000;
-        let track_time_minutes = (track_time_seconds / 60).unsigned_abs() as u8;
-        let track_time_seconds = (track_time_seconds % 60).unsigned_abs() as u8;
-
-        let _ = midi_output.send(addr_value_to_midi(
-            [0xBF42, 0xBF44, 0xBF46, 0xBF48][channel],
-            track_time_minutes,
-        ));
-        let _ = midi_output.send(addr_value_to_midi(
-            [0xBF43, 0xBF45, 0xBF47, 0xBF49][channel],
-            track_time_seconds,
-        ));
-
-        // bpm
-        if let Some(bpm) = player_state.get_current_bpm() {
-            // 19983 == 0x4E0F
-            let cue_point = (bpm.clamp(0.0, 999.9) * 19983.0).floor() as u16;
-
-            let _ = midi_output.send(addr_value_to_midi(
-                [0xBF14, 0xBF15, 0xBF16, 0xBF17][channel],
-                ((cue_point >> 8) & 0x00FF) as u8,
-            ));
-            let _ = midi_output.send(addr_value_to_midi(
-                [0xBF34, 0xBF35, 0xBF36, 0xBF37][channel],
-                (cue_point & 0x00FF) as u8,
-            ));
-        } else {
-            let _ = midi_output.send(addr_value_to_midi(
-                [0xBF14, 0xBF15, 0xBF16, 0xBF17][channel],
-                0,
-            ));
-            let _ = midi_output.send(addr_value_to_midi(
-                [0xBF34, 0xBF35, 0xBF36, 0xBF37][channel],
-                0,
-            ));
-        }
-
-        // tempo percent
-        // 19983 == 0x4E0F
-        let tempo =
-            ((player_state.tempo_percent * (19983.0 / 2.0)) + (19983.0 / 2.0)).floor() as u16;
-        let _ = midi_output.send(addr_value_to_midi(
-            [0xBF18, 0xBF19, 0xBF1A, 0xBF1B][channel],
-            ((tempo >> 8) & 0x00FF) as u8,
-        ));
-        let _ = midi_output.send(addr_value_to_midi(
-            [0xBF38, 0xBF39, 0xBF3A, 0xBF3B][channel],
-            (tempo & 0x00FF) as u8,
-        ));
-
         // master tempo
         let _ = midi_output.send(addr_value_to_midi(
             [0x9F20, 0x9F21, 0x9F22, 0x9F23][channel],
@@ -1008,5 +1322,125 @@ fn set_deck_leds(
                 BeatSyncMode::BeatSync => 127,
             },
         ));
+
+        // --------- jog display stuff ---------
+
+        // display on
+        // let _ = midi_output.send(addr_value_to_midi(
+        //     [0x9F5D, 0x9F5E, 0x9F5F, 0x9F60][channel],
+        //     0x00,
+        //     // if player_state.current_track.is_some() {
+        //     //     0x00
+        //     // } else {
+        //     //     0x7F
+        //     // },
+        // ));
+
+        // jog illumination
+        // let _ = midi_output.send(addr_value_to_midi(
+        //     [0xBF09, 0xBF0A, 0xBF0B, 0xBF0C][channel],
+        //     if player_state.is_loading {
+        //         if flash_timers.fast { 0x01 } else { 0x00 }
+        //     } else if player_state.current_track.is_some() {
+        //         0x01
+        //     } else {
+        //         0x00
+        //     },
+        // ));
+
+        // jog position
+        // 1_800_000_000 for 33.3 rpm
+        // let jog_position: u16 =
+        // (((player_state.time.nanoseconds.rem_euclid(1_800_000_000))
+        //     / 1_800_000_000)
+        //     * 0x0267) as u16;
+
+        // let _ = midi_output.send(addr_value_to_midi(
+        //     [0xBF10, 0xBF11, 0xBF12, 0xBF13][channel],
+        //     ((jog_position >> 8) & 0x00FF) as u8,
+        // ));
+        // let _ = midi_output.send(addr_value_to_midi(
+        //     [0xBF30, 0xBF31, 0xBF32, 0xBF33][channel],
+        //     (jog_position & 0x00FF) as u8,
+        // ));
+
+        // cue point
+        // if let Some(cue_point) = player_state.cue_time {
+        //     // 1_800_000_000 for 33.3 rpm
+        //     let cue_point: u16 =
+        // (((cue_point.nanoseconds.rem_euclid(1_800_000_000))         /
+        // 1_800_000_000)
+        //         * 0x0267) as u16;
+
+        //     let _ = midi_output.send(addr_value_to_midi(
+        //         [0xBF1C, 0xBF1D, 0xBF1E, 0xBF1F][channel],
+        //         ((cue_point >> 8) & 0x00FF) as u8,
+        //     ));
+        //     let _ = midi_output.send(addr_value_to_midi(
+        //         [0xBF3C, 0xBF3D, 0xBF3E, 0xBF3F][channel],
+        //         (cue_point & 0x00FF) as u8,
+        //     ));
+        // } else {
+        //     let _ = midi_output.send(addr_value_to_midi(
+        //         [0xBF1C, 0xBF1D, 0xBF1E, 0xBF1F][channel],
+        //         0x7F,
+        //     ));
+        //     let _ = midi_output.send(addr_value_to_midi(
+        //         [0xBF3C, 0xBF3D, 0xBF3E, 0xBF3F][channel],
+        //         0x7F,
+        //     ));
+        // }
+
+        // time
+        // let track_time_seconds = player_state.time.to_nanoseconds() /
+        // 1_000_000_000; let track_time_minutes = (track_time_seconds /
+        // 60).unsigned_abs() as u8; let track_time_seconds =
+        // (track_time_seconds % 60).unsigned_abs() as u8;
+
+        // let _ = midi_output.send(addr_value_to_midi(
+        //     [0xBF42, 0xBF44, 0xBF46, 0xBF48][channel],
+        //     track_time_minutes,
+        // ));
+        // let _ = midi_output.send(addr_value_to_midi(
+        //     [0xBF43, 0xBF45, 0xBF47, 0xBF49][channel],
+        //     track_time_seconds,
+        // ));
+
+        // bpm
+        // if let Some(bpm) = player_state.get_current_bpm() {
+        //     // 19983 == 0x4E0F
+        //     let cue_point = (bpm.clamp(0.0, 999.9) * 19983.0).floor() as u16;
+
+        //     let _ = midi_output.send(addr_value_to_midi(
+        //         [0xBF14, 0xBF15, 0xBF16, 0xBF17][channel],
+        //         ((cue_point >> 8) & 0x00FF) as u8,
+        //     ));
+        //     let _ = midi_output.send(addr_value_to_midi(
+        //         [0xBF34, 0xBF35, 0xBF36, 0xBF37][channel],
+        //         (cue_point & 0x00FF) as u8,
+        //     ));
+        // } else {
+        //     let _ = midi_output.send(addr_value_to_midi(
+        //         [0xBF14, 0xBF15, 0xBF16, 0xBF17][channel],
+        //         0,
+        //     ));
+        //     let _ = midi_output.send(addr_value_to_midi(
+        //         [0xBF34, 0xBF35, 0xBF36, 0xBF37][channel],
+        //         0,
+        //     ));
+        // }
+
+        // tempo percent
+        // 19983 == 0x4E0F
+        // let tempo = (((player_state.tempo_percent - 1.0) * (19983.0 / 2.0)) +
+        // (19983.0 / 2.0))     .floor() as u16;
+        // let _ = midi_output.send(addr_value_to_midi(
+        //     [0xBF18, 0xBF19, 0xBF1A, 0xBF1B][channel],
+        //     ((tempo >> 8) & 0x00FF) as u8,
+        // ));
+        // let _ = midi_output.send(addr_value_to_midi(
+        //     [0xBF38, 0xBF39, 0xBF3A, 0xBF3B][channel],
+        //     (tempo & 0x00FF) as u8,
+        // ));
     }
 }

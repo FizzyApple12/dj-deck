@@ -149,6 +149,7 @@ pub struct PlayerState {
     pub tempo_range: TempoRange,
     pub tempo_reset: bool,  // tempo reset enabled
     pub tempo_percent: f32, // tempo percent
+    pub tempo_slider_position: f32,
     pub tempo_slider_is_accurate: bool,
     pub master_tempo: bool, // master tempo enabled
 
@@ -189,7 +190,8 @@ impl Default for PlayerState {
 
             tempo_range: TempoRange::TenPercent,
             tempo_reset: false,
-            tempo_percent: 0.0,
+            tempo_percent: 1.0,
+            tempo_slider_position: 0.0,
             tempo_slider_is_accurate: true,
             master_tempo: false,
 

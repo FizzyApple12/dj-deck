@@ -20,6 +20,34 @@ pub fn get_current_beat(beat_grid: &[Beat], time: Timecode) -> Option<&Beat> {
     beat_grid.get(get_current_beat_index(beat_grid, time)?)
 }
 
+#[allow(clippy::indexing_slicing)]
+pub fn get_closest_beat_index(beat_grid: &[Beat], time: Timecode) -> Option<usize> {
+    if beat_grid.is_empty() {
+        return None;
+    }
+
+    let partition = beat_grid.partition_point(|beat| beat.time < time);
+
+    match partition {
+        0 => Some(0),
+        partition if partition == beat_grid.len() => Some(partition - 1),
+        partition => {
+            let before = &beat_grid[partition - 1];
+            let after = &beat_grid[partition];
+
+            if time - before.time <= after.time - time {
+                Some(partition - 1)
+            } else {
+                Some(partition)
+            }
+        }
+    }
+}
+
+pub fn get_closest_beat(beat_grid: &[Beat], time: Timecode) -> Option<&Beat> {
+    beat_grid.get(get_closest_beat_index(beat_grid, time)?)
+}
+
 impl PlayerState {
     pub fn get_current_beat(&self) -> Option<&Beat> {
         get_current_beat(&self.current_track_analysis.as_ref()?.beat_grid, self.time)
@@ -27,32 +55,7 @@ impl PlayerState {
 
     #[allow(clippy::indexing_slicing)]
     pub fn get_closest_beat(&self) -> Option<&Beat> {
-        let current_track_analysis = self.current_track_analysis.as_ref()?;
-
-        if current_track_analysis.beat_grid.is_empty() {
-            return None;
-        }
-
-        let partition = current_track_analysis
-            .beat_grid
-            .partition_point(|beat| beat.time < self.time);
-
-        match partition {
-            0 => current_track_analysis.beat_grid.first(),
-            partition if partition == current_track_analysis.beat_grid.len() => {
-                current_track_analysis.beat_grid.last()
-            }
-            partition => {
-                let before = &current_track_analysis.beat_grid[partition - 1];
-                let after = &current_track_analysis.beat_grid[partition];
-
-                if self.time - before.time <= after.time - self.time {
-                    Some(before)
-                } else {
-                    Some(after)
-                }
-            }
-        }
+        get_closest_beat(&self.current_track_analysis.as_ref()?.beat_grid, self.time)
     }
 
     pub fn get_current_source_bpm(&self) -> Option<f32> {
@@ -80,21 +83,12 @@ impl PlayerState {
     }
 
     pub fn get_current_bpm(&self) -> Option<f32> {
-        self.get_current_source_bpm().map(|bpm| {
-            if self.tempo_reset {
-                bpm
-            } else {
-                bpm * (self.tempo_percent + 1.0).max(0.0)
-            }
-        })
+        self.get_current_source_bpm()
+            .map(|bpm| bpm * self.tempo_percent.max(0.0))
     }
 
     pub fn calculate_track_time_delta(&self, delta_time: Duration) -> Duration {
-        if self.tempo_reset {
-            delta_time
-        } else {
-            delta_time * (self.tempo_percent + 1.0).max(0.0)
-        }
+        delta_time * self.tempo_percent.max(0.0)
     }
 }
 

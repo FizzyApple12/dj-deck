@@ -11,6 +11,17 @@ pub struct TrackAnalysis {
     pub origin: OriginDatabase,
 }
 
+impl Default for TrackAnalysis {
+    fn default() -> Self {
+        Self {
+            beat_grid: Vec::new(),
+            memory_cues: Vec::new(),
+            hot_cues: Vec::new(),
+            origin: OriginDatabase::Rekordbox,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
 pub struct Beat {
     pub beat_number: u32,

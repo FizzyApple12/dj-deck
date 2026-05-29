@@ -315,7 +315,7 @@ impl RekordboxDatabase {
                     rekordcrate::anlz::Content::BeatGrid(beat_grid) => {
                         for beat in beat_grid.beats {
                             beat_grid_cache.push(Beat {
-                                beat_number: u32::from(beat.beat_number),
+                                beat_number: u32::from(beat.beat_number - 1),
                                 bpm: f32::from(beat.tempo) / 100.0,
                                 time: Timecode::from_milliseconds(i64::from(beat.time)),
                             });

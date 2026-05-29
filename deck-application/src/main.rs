@@ -140,11 +140,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                                 // todo: this should be moved to a new thread
                                 if let Ok(track_analysis) = qualified_device.database.load_analysis(id) {
+                                    let cloned_track_analysis = track_analysis.clone();
+
                                     let _ = deck_update_sender.send(Box::new(move |deck_state, _| {
                                         if let Some(mixer_channel) = deck_state.mixer_channels.get_mut(player) {
-                                            mixer_channel.player.current_track_analysis = Some(track_analysis);
+                                            mixer_channel.player.current_track_analysis = Some(cloned_track_analysis);
                                         }
                                     }));
+
+                                    let _ = ui.send(UIMessage::TrackAnalysis { player, analysis: track_analysis });
                                 } else {
                                     // todo: perform track analysis
                                 }

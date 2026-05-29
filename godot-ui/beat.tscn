@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://6u3al370k1ea"]
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_f5cgx"]
+color = Color(1, 1, 1, 0.78431374)
+vertical = true
+
+[node name="Beat" type="Panel" unique_id=1093247740]
+offset_right = 50000.0
+offset_bottom = 1080.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxLine_f5cgx")

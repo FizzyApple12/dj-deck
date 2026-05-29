@@ -15,7 +15,7 @@ use interprocess::local_socket::{
 use libdj::{
     MIXER_CHANNELS,
     types::{
-        analysis::{PreviewWaveformColumn, WaveformColumn},
+        analysis::{PreviewWaveformColumn, TrackAnalysis, WaveformColumn},
         deck::DeckState,
         library::Library,
     },
@@ -39,8 +39,12 @@ pub struct IPC {
 
     pub devices_changed: bool,
 
+    pub track_analysis_updated: [bool; MIXER_CHANNELS],
+    pub track_analyses: [TrackAnalysis; MIXER_CHANNELS],
+
     pub waveform_updated: [bool; MIXER_CHANNELS],
     pub waveforms: [Vec<WaveformColumn>; MIXER_CHANNELS],
+
     pub preview_waveform_updated: [bool; MIXER_CHANNELS],
     pub preview_waveforms: [Vec<PreviewWaveformColumn>; MIXER_CHANNELS],
 
@@ -79,6 +83,10 @@ impl INode for IPC {
 
             waveform_updated: [false; MIXER_CHANNELS],
             waveforms: Default::default(),
+
+            track_analysis_updated: [false; MIXER_CHANNELS],
+            track_analyses: Default::default(),
+
             preview_waveform_updated: [false; MIXER_CHANNELS],
             preview_waveforms: Default::default(),
 
@@ -140,6 +148,14 @@ impl INode for IPC {
                         self.devices_changed = true;
 
                         godot_print!("device library");
+                    }
+                    UIMessage::TrackAnalysis { player, analysis } => {
+                        if let Some(data) = self.track_analyses.get_mut(player) {
+                            *data = analysis;
+                        }
+                        if let Some(data) = self.track_analysis_updated.get_mut(player) {
+                            *data = true;
+                        }
                     }
                     UIMessage::Waveform { player, waveform } => {
                         if let Some(data) = self.waveforms.get_mut(player) {

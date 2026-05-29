@@ -4,6 +4,7 @@ use std::f32;
 use crate::{
     AUDIO_CHANNELS,
     audio_system::{audio_loader::TrackAudioData, dsp_pipeline::player::PlayerDSP},
+    math::fader::SingleFader,
     playback::ChannelUpdateResults,
     types::deck::ChannelState,
 };
@@ -124,8 +125,8 @@ impl ChannelDSP {
 
         for (buffer_index, master_output_buffer) in master_output_buffers.iter_mut().enumerate() {
             for (sample_number, sample) in master_output_buffer.iter_mut().enumerate() {
-                *sample = self.master_output_buffers[buffer_index][sample_number];
-                //.fade(channel_state.fade);
+                *sample = self.master_output_buffers[buffer_index][sample_number]
+                    .fade(channel_state.fade);
             }
         }
 

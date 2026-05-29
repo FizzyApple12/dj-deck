@@ -157,6 +157,13 @@ impl IPanelContainer for PlayerContainer {
             .get(self.player_number as usize)
             && *updated
         {
+            self.waveform_container.set_modulate(Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 0.0,
+            });
+
             if let Some(waveform) = &ipc.preview_waveforms.get(self.player_number as usize)
                 && let Some(texture) = preview_waveform_to_shader_texture(waveform)
             {
@@ -172,13 +179,6 @@ impl IPanelContainer for PlayerContainer {
                     g: 1.0,
                     b: 1.0,
                     a: 1.0,
-                });
-            } else {
-                self.waveform_container.set_modulate(Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: 0.0,
                 });
             }
         }
@@ -382,17 +382,22 @@ impl IPanelContainer for PlayerContainer {
                 format!(".{:03.0}", (track_time_milliseconds % 1000).abs())
             });
 
-        self.tempo_sign
-            .set_text(if channel_data.player.tempo_percent < -f32::EPSILON {
+        self.tempo_sign.set_text(
+            if (channel_data.player.tempo_percent - 1.0) < -f32::EPSILON {
                 "-"
             } else {
                 "+"
-            });
-        self.tempo_percent
-            .set_text(&format!("{:.0}", channel_data.player.tempo_percent.floor()));
+            },
+        );
+        self.tempo_percent.set_text(&format!(
+            "{:.0}",
+            (channel_data.player.tempo_percent - 1.0).abs().floor() * 100.0
+        ));
         self.tempo_percent_fractional.set_text(&format!(
             ".{:02.0}",
-            (channel_data.player.tempo_percent.fract() * 100.0).floor()
+            ((channel_data.player.tempo_percent - 1.0).fract() * 100.0)
+                .abs()
+                .floor()
         ));
         self.tempo_range
             .set_text(match channel_data.player.tempo_range {

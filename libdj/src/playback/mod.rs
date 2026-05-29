@@ -1,10 +1,16 @@
 use crate::{
     MIXER_CHANNELS,
-    math::{beats::closest_bpm_multiple, jog::JogRPM},
+    math::{
+        beats::{closest_bpm_multiple, get_closest_beat_index, get_current_beat_index},
+        jog::JogRPM,
+    },
     types::{
         analysis::Beat,
         audio_system::{AudioSystemEvent, DeckUpdate},
-        deck::{BeatLoopAdjustMode, BeatSyncMode, ChannelState, DeckState, PlayState, PlayerState},
+        deck::{
+            BeatLoopAdjustMode, BeatSyncMode, ChannelState, DeckState, PlayState, PlayerState,
+            TempoRange,
+        },
         timecode::{Duration, Timecode},
     },
 };
@@ -40,6 +46,8 @@ impl DeckState {
                 return;
             }
         }
+
+        self.master_channel = None;
     }
 
     #[allow(clippy::too_many_lines)]
@@ -80,9 +88,13 @@ impl DeckState {
 
             let master_track_bpm: Option<f32> = master_channel.player.get_current_bpm();
 
-            let master_track_beat_grid: Option<&[Beat]> =
+            let master_beat_sync_data: Option<(&[Beat], Timecode, f32)> =
                 if let Some(ref track_analysis) = master_channel.player.current_track_analysis {
-                    Some(&track_analysis.beat_grid)
+                    Some((
+                        &track_analysis.beat_grid,
+                        master_channel.player.time,
+                        master_channel.player.tempo_percent,
+                    ))
                 } else {
                     None
                 };
@@ -94,7 +106,7 @@ impl DeckState {
                         start_time,
                         end_time,
                         master_track_bpm,
-                        master_track_beat_grid,
+                        master_beat_sync_data,
                     ));
                 }
             }
@@ -129,7 +141,7 @@ impl ChannelState {
         start_time: Timecode,
         end_time: Timecode,
         master_track_bpm: Option<f32>,
-        master_beat_grid: Option<&[Beat]>,
+        master_beat_sync_data: Option<(&[Beat], Timecode, f32)>,
     ) -> ChannelUpdateResults {
         ChannelUpdateResults {
             player: self.player.update_playback(
@@ -137,7 +149,7 @@ impl ChannelState {
                 start_time,
                 end_time,
                 master_track_bpm,
-                master_beat_grid,
+                master_beat_sync_data,
             ),
         }
     }
@@ -172,7 +184,7 @@ impl PlayerState {
         start_time: Timecode,
         end_time: Timecode,
         master_track_bpm: Option<f32>,
-        master_beat_grid: Option<&[Beat]>,
+        master_beat_sync_data: Option<(&[Beat], Timecode, f32)>,
     ) -> PlayerUpdateResults {
         let Some(ref _current_track) = self.current_track else {
             self.time = Timecode::zero();
@@ -204,20 +216,55 @@ impl PlayerState {
         // perform bpm sync if needed
 
         if !is_master
-            && let BeatSyncMode::BPMSync = self.beat_sync
+            && self.beat_sync == BeatSyncMode::BPMSync
             && let Some(master_track_bpm) = master_track_bpm
             && let Some(current_source_bpm) = self.get_current_source_bpm()
         {
             let new_tempo = closest_bpm_multiple(
                 master_track_bpm,
-                current_source_bpm * (self.tempo_percent + 1.0).max(0.0),
+                current_source_bpm * self.tempo_percent.max(0.0),
             ) / current_source_bpm;
 
-            if (self.tempo_percent - new_tempo).abs() >= 0.1 {
+            if (self.tempo_percent - new_tempo).abs() >= 0.01 {
                 self.tempo_slider_is_accurate = false;
             }
 
             self.tempo_percent = new_tempo;
+        }
+
+        // run tempo reset check
+
+        if self.tempo_reset && (self.beat_sync == BeatSyncMode::Off || is_master) {
+            if self.tempo_percent.abs() >= 0.01 {
+                self.tempo_slider_is_accurate = false;
+            }
+
+            self.tempo_percent = 1.0;
+        }
+
+        // perform tempo slider math
+
+        let actual_slider_tempo = (self.tempo_slider_position
+            * match self.tempo_range {
+                TempoRange::SixPercent => 6.0,
+                TempoRange::TenPercent => 10.0,
+                TempoRange::SixteenPercent => 16.0,
+                TempoRange::OneHundredPercent => 100.0,
+            }
+            * 100.0)
+            .floor()
+            / 100.0;
+
+        if self.tempo_slider_is_accurate {
+            if self.beat_sync == BeatSyncMode::Off {
+                self.tempo_percent = actual_slider_tempo;
+            } else if (self.tempo_percent - actual_slider_tempo).abs() > 0.1 {
+                self.beat_sync = BeatSyncMode::Off;
+
+                self.tempo_percent = actual_slider_tempo;
+            }
+        } else if (self.tempo_percent - actual_slider_tempo).abs() < 0.01 {
+            self.tempo_slider_is_accurate = true;
         }
 
         // calculate time deltas
@@ -241,7 +288,7 @@ impl PlayerState {
                 self.time += jog_time;
             }
             (PlayState::Play, false) => {
-                if let BeatSyncMode::BeatSync = self.beat_sync
+                if self.beat_sync == BeatSyncMode::BeatSync
                     && !(-f32::EPSILON..=f32::EPSILON).contains(&self.jog_velocity)
                 {
                     self.beat_sync = BeatSyncMode::BPMSync;
@@ -253,14 +300,18 @@ impl PlayerState {
 
                 if self.reverse_enabled {
                     self.time -= track_time_delta + pitch_time;
-                } else if let BeatSyncMode::BeatSync = self.beat_sync
+                } else if self.beat_sync == BeatSyncMode::BeatSync
                     && let Some(ref track_analysis) = self.current_track_analysis
-                    && let Some(master_beat_grid) = master_beat_grid
+                    && let Some((master_beat_grid, master_time, master_tempo_percent)) =
+                        master_beat_sync_data
                 {
                     perform_beat_sync_run(
-                        &mut self.time,
                         track_time_delta,
+                        &mut self.slip_time,
+                        &mut self.tempo_percent,
                         &track_analysis.beat_grid,
+                        master_time,
+                        master_tempo_percent,
                         master_beat_grid,
                     );
                 } else {
@@ -275,7 +326,7 @@ impl PlayerState {
                 self.time += jog_time;
             }
             (PlayState::Cue, false) => {
-                if let BeatSyncMode::BeatSync = self.beat_sync
+                if self.beat_sync == BeatSyncMode::BeatSync
                     && !(-f32::EPSILON..=f32::EPSILON).contains(&self.jog_velocity)
                 {
                     self.beat_sync = BeatSyncMode::BPMSync;
@@ -287,14 +338,18 @@ impl PlayerState {
 
                 if self.reverse_enabled {
                     self.time -= track_time_delta + pitch_time;
-                } else if let BeatSyncMode::BeatSync = self.beat_sync
+                } else if self.beat_sync == BeatSyncMode::BeatSync
                     && let Some(ref track_analysis) = self.current_track_analysis
-                    && let Some(master_beat_grid) = master_beat_grid
+                    && let Some((master_beat_grid, master_time, master_tempo_percent)) =
+                        master_beat_sync_data
                 {
                     perform_beat_sync_run(
-                        &mut self.time,
                         track_time_delta,
+                        &mut self.slip_time,
+                        &mut self.tempo_percent,
                         &track_analysis.beat_grid,
+                        master_time,
+                        master_tempo_percent,
                         master_beat_grid,
                     );
                 } else {
@@ -312,14 +367,18 @@ impl PlayerState {
                 self.reverse_enabled,
             ) {
                 (PlayState::Stop, _, _) | (_, true, _) | (_, _, true) => {
-                    if let BeatSyncMode::BeatSync = self.beat_sync
+                    if self.beat_sync == BeatSyncMode::BeatSync
                         && let Some(ref track_analysis) = self.current_track_analysis
-                        && let Some(master_beat_grid) = master_beat_grid
+                        && let Some((master_beat_grid, master_time, master_tempo_percent)) =
+                            master_beat_sync_data
                     {
                         perform_beat_sync_run(
-                            &mut self.slip_time,
                             track_time_delta,
+                            &mut self.slip_time,
+                            &mut self.tempo_percent,
                             &track_analysis.beat_grid,
+                            master_time,
+                            master_tempo_percent,
                             master_beat_grid,
                         );
                     } else {
@@ -383,16 +442,118 @@ impl PlayerState {
     }
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation
+)]
 fn perform_beat_sync_run(
-    _time: &mut Timecode,
-    _delta_time: Duration,
-    _local_beat_grid: &[Beat],
-    _master_beat_grid: &[Beat],
+    delta_time: Duration,
+    local_time: &mut Timecode,
+    local_tempo_percent: &mut f32,
+    local_beat_grid: &[Beat],
+    master_time: Timecode,
+    master_tempo_percent: f32,
+    master_beat_grid: &[Beat],
 ) {
-    // self.tempo_slider_is_accurate = false;
+    *local_time += delta_time;
 
-    // let (first_beat_time, second_beat_time)
+    let closest_local_beat_index = get_current_beat_index(local_beat_grid, *local_time);
 
-    // todo: sync beat times and tempo with closest
-    // matching beats
+    let last_local_beat_index = local_beat_grid.len() - 1;
+
+    let (local_first_beat, local_second_beat) = match closest_local_beat_index {
+        None => {
+            return;
+        }
+        Some(closest_local_beat_index) if closest_local_beat_index == last_local_beat_index => (
+            local_beat_grid[last_local_beat_index - 1],
+            local_beat_grid[last_local_beat_index],
+        ),
+        Some(closest_local_beat_index) => (
+            local_beat_grid[closest_local_beat_index],
+            local_beat_grid[closest_local_beat_index + 1],
+        ),
+    };
+
+    let first_closest_local_beat_index = get_closest_beat_index(
+        master_beat_grid,
+        map_timestamp(
+            local_first_beat.time,
+            *local_time,
+            *local_tempo_percent,
+            master_time,
+            master_tempo_percent,
+        ),
+    );
+
+    let second_closest_local_beat_index = get_closest_beat_index(
+        master_beat_grid,
+        map_timestamp(
+            local_second_beat.time,
+            *local_time,
+            *local_tempo_percent,
+            master_time,
+            master_tempo_percent,
+        ),
+    );
+
+    let last_master_beat_index = master_beat_grid.len() - 1;
+
+    let (master_first_beat, master_second_beat) = match (
+        first_closest_local_beat_index,
+        second_closest_local_beat_index,
+    ) {
+        (None, _) | (_, None) => {
+            return;
+        }
+        (Some(first_closest_local_beat_index), Some(second_closest_local_beat_index))
+            if first_closest_local_beat_index == second_closest_local_beat_index =>
+        {
+            if first_closest_local_beat_index == last_master_beat_index {
+                (
+                    local_beat_grid[first_closest_local_beat_index - 1],
+                    local_beat_grid[first_closest_local_beat_index],
+                )
+            } else {
+                (
+                    local_beat_grid[first_closest_local_beat_index],
+                    local_beat_grid[first_closest_local_beat_index + 1],
+                )
+            }
+        }
+        (Some(first_closest_local_beat_index), Some(second_closest_local_beat_index)) => (
+            master_beat_grid[first_closest_local_beat_index],
+            master_beat_grid[second_closest_local_beat_index],
+        ),
+    };
+
+    // if this doesn't work, try -master_time.nanoseconds
+
+    let normalised_master_first_beat_time = (master_first_beat.time.nanoseconds as f64
+        * f64::from(master_tempo_percent))
+        - master_time.nanoseconds as f64;
+
+    let normalised_master_second_beat_time = (master_second_beat.time.nanoseconds as f64
+        * f64::from(master_tempo_percent))
+        - master_time.nanoseconds as f64;
+
+    let precise_tempo_percent = (normalised_master_first_beat_time
+        - normalised_master_second_beat_time)
+        / (local_first_beat.time.nanoseconds as f64 - local_second_beat.time.nanoseconds as f64);
+
+    *local_tempo_percent = precise_tempo_percent as f32;
+    local_time.nanoseconds = (normalised_master_first_beat_time
+        - (local_first_beat.time.nanoseconds as f64 * precise_tempo_percent))
+        as i64;
+}
+
+fn map_timestamp(
+    time: Timecode,
+    local_time: Timecode,
+    local_tempo_percent: f32,
+    master_time: Timecode,
+    master_tempo_percent: f32,
+) -> Timecode {
+    master_time + ((time - local_time) * (local_tempo_percent / master_tempo_percent))
 }

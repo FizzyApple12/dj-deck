@@ -1,5 +1,5 @@
 use libdj::types::{
-    analysis::{PreviewWaveformColumn, WaveformColumn},
+    analysis::{PreviewWaveformColumn, TrackAnalysis, WaveformColumn},
     deck::DeckState,
     library::{Library, TrackID},
     timecode::Timecode,
@@ -26,6 +26,11 @@ pub enum UIMessage {
     DeviceLibrary {
         device: u32,
         library: Library,
+    },
+
+    TrackAnalysis {
+        player: usize,
+        analysis: TrackAnalysis,
     },
 
     Waveform {

@@ -6,7 +6,13 @@
 [ext_resource type="PackedScene" uid="uid://bgfjac34nmsfb" path="res://track_list_entry.tscn" id="2_xi870"]
 [ext_resource type="PackedScene" uid="uid://br0a73x66ts2j" path="res://player_waveform.tscn" id="4_fsqqd"]
 
-[node name="Node3D" type="Node3D" unique_id=2110624759]
+[node name="UI Root" type="Control" unique_id=1145945744]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="IPC" type="IPC" parent="." unique_id=1100985734]
 
@@ -22,7 +28,7 @@ browser_playlist_entry = ExtResource("1_eur0n")
 browser_track_entry = ExtResource("2_xi870")
 
 [node name="Deck UI" type="VBoxContainer" parent="." unique_id=3156022]
-anchors_preset = 15
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2

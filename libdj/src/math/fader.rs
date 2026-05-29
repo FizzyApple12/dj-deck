@@ -19,8 +19,8 @@ pub trait CrossFader {
 impl CrossFader for f32 {
     fn crossfade(self, fade_percent: f32, fader_side: CrossFaderSide) -> f32 {
         match fader_side {
-            CrossFaderSide::A => self * (2.0 * (1.0 - fade_percent)).clamp(0.0, 1.0),
-            CrossFaderSide::B => self * (2.0 * fade_percent).clamp(0.0, 1.0),
+            CrossFaderSide::A => self * (1.0 - fade_percent).clamp(0.0, 1.0),
+            CrossFaderSide::B => self * (1.0 + fade_percent).clamp(0.0, 1.0),
             CrossFaderSide::None => self,
         }
     }

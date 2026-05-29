@@ -1,5 +1,5 @@
 use libdj::types::{
-    deck::{DeckState, PlayState},
+    deck::{BeatSyncMode, DeckState, PlayState, TempoRange},
     timecode::{Duration, Timecode},
 };
 
@@ -106,7 +106,7 @@ pub fn cue_release(deck_state: &mut DeckState, channel: usize) {
     let play_direction = &mut deck_state.mixer_channels[channel].player.play_state;
     let cue_time = &mut deck_state.mixer_channels[channel].player.cue_time;
 
-    if let PlayState::Cue = play_direction {
+    if *play_direction == PlayState::Cue {
         *play_direction = PlayState::Stop;
 
         if let Some(position) = cue_time {
@@ -129,4 +129,84 @@ pub fn beat_jump_release(deck_state: &mut DeckState, channel: usize, direction: 
             deck_state.mixer_channels[channel].player.time -= Duration::from_nanoseconds(distance);
         }
     }
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn enable_tempo_reset(deck_state: &mut DeckState, channel: usize) {
+    deck_state.mixer_channels[channel].player.tempo_reset = true;
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn disable_tempo_reset(deck_state: &mut DeckState, channel: usize) {
+    deck_state.mixer_channels[channel].player.tempo_reset = false;
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn beat_sync(deck_state: &mut DeckState, channel: usize) {
+    deck_state.mixer_channels[channel].player.beat_sync =
+        match deck_state.mixer_channels[channel].player.beat_sync {
+            BeatSyncMode::Off => {
+                if deck_state.master_channel.is_none() {
+                    deck_state.master_channel = Some(channel);
+                }
+
+                BeatSyncMode::BeatSync
+            }
+            BeatSyncMode::BPMSync | BeatSyncMode::BeatSync => {
+                if let Some(master_channel) = deck_state.master_channel
+                    && master_channel == channel
+                {
+                    deck_state.find_new_master(&[channel]);
+                }
+
+                BeatSyncMode::Off
+            }
+        };
+}
+
+pub fn set_master(deck_state: &mut DeckState, channel: usize) {
+    deck_state.master_channel = Some(channel);
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn tempo_reset(deck_state: &mut DeckState, channel: usize) {
+    deck_state.mixer_channels[channel].player.tempo_reset =
+        !deck_state.mixer_channels[channel].player.tempo_reset;
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn next_tempo_range(deck_state: &mut DeckState, channel: usize) {
+    deck_state.mixer_channels[channel].player.tempo_range =
+        match deck_state.mixer_channels[channel].player.tempo_range {
+            TempoRange::SixPercent => TempoRange::TenPercent,
+            TempoRange::TenPercent => TempoRange::SixteenPercent,
+            TempoRange::SixteenPercent => TempoRange::OneHundredPercent,
+            TempoRange::OneHundredPercent => TempoRange::SixPercent,
+        };
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn tempo_slider(deck_state: &mut DeckState, channel: usize, position: (u8, u8)) {
+    deck_state.mixer_channels[channel]
+        .player
+        .tempo_slider_position =
+        (f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0) * 2.0 - 1.0;
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn channel_filter(deck_state: &mut DeckState, channel: usize, position: (u8, u8)) {
+    deck_state.mixer_channels[channel].filter =
+        (f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0) * 2.0 - 1.0;
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn channel_fader(deck_state: &mut DeckState, channel: usize, position: (u8, u8)) {
+    deck_state.mixer_channels[channel].fade =
+        f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0;
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn cross_fader(deck_state: &mut DeckState, position: (u8, u8)) {
+    deck_state.crossfade =
+        (f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0) * 2.0 - 1.0;
 }
