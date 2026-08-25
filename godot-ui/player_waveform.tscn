@@ -107,6 +107,7 @@ size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_ug1gp")
 
 [node name="Playhead" type="Panel" parent="Waveform Container/CenterContainer/Container" unique_id=86420536]
+z_index = 2
 layout_mode = 1
 anchors_preset = 13
 anchor_left = 0.5

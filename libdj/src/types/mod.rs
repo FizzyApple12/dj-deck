@@ -4,4 +4,3 @@ pub mod deck;
 pub mod library;
 pub mod midi;
 pub mod settings;
-pub mod timecode;

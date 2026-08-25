@@ -9,4 +9,5 @@ offset_right = 50000.0
 offset_bottom = 1080.0
 grow_horizontal = 2
 grow_vertical = 2
+size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxLine_f5cgx")

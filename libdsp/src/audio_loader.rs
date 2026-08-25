@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use symphonia::core::{
     codecs::{CODEC_TYPE_NULL, DecoderOptions},
     formats::FormatOptions,
@@ -8,11 +10,7 @@ use symphonia::core::{
 use symphonia_core::{audio::AudioBufferRef, conv::FromSample};
 use thiserror::Error;
 
-use crate::{
-    AUDIO_CHANNELS,
-    math::sampling::nanoseconds_to_samples,
-    types::{library::Track, timecode::Timecode},
-};
+use crate::{amplitude_to_db, db_to_amplitude, nanoseconds_to_samples, rms, timecode::Timecode};
 
 #[derive(Error, Debug)]
 pub enum TrackLoadError {
@@ -24,10 +22,15 @@ pub enum TrackLoadError {
 
     #[error("No Valid Codecs")]
     NoValidCodecs,
+
+    #[error("No Valid Gains")]
+    NoValidGains,
 }
 
+#[derive(Clone)]
 pub struct TrackAudioData {
-    pub samples: [Vec<f32>; AUDIO_CHANNELS],
+    pub samples: Vec<Vec<f32>>,
+    pub base_gain: f32,
 
     pub first_sample_time: f32,
     pub sample_rate: u32,
@@ -36,15 +39,14 @@ pub struct TrackAudioData {
 impl TrackAudioData {
     #[allow(clippy::too_many_lines)]
     #[allow(clippy::manual_let_else, clippy::while_let_loop)]
-    pub fn load_from_file(track: &Track) -> Result<TrackAudioData, TrackLoadError> {
-        let source_file =
-            std::fs::File::open(track.audio_path.clone()).map_err(TrackLoadError::FileNotFound)?;
+    pub fn load_from_file(file: &PathBuf) -> Result<TrackAudioData, TrackLoadError> {
+        let source_file = std::fs::File::open(file).map_err(TrackLoadError::FileNotFound)?;
 
         let media_source_stream =
             MediaSourceStream::new(Box::new(source_file), MediaSourceStreamOptions::default());
 
         let mut format_hint = Hint::new();
-        if let Some(extension) = track.audio_path.extension()
+        if let Some(extension) = file.extension()
             && let Some(extension) = extension.to_str()
         {
             format_hint.with_extension(extension);
@@ -76,7 +78,8 @@ impl TrackAudioData {
         let track_id = track.id;
 
         let mut new_track_audio_data = TrackAudioData {
-            samples: Default::default(),
+            samples: Vec::new(),
+            base_gain: 0.0,
 
             // todo: track.codec_params.start_ts as f64,
             first_sample_time: 0.0,
@@ -103,6 +106,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -116,6 +127,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -129,6 +148,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -142,6 +169,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -155,6 +190,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -168,6 +211,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -181,6 +232,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -194,6 +253,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -207,6 +274,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -220,6 +295,14 @@ impl TrackAudioData {
                         for (sample_plane_number, sample_plane) in
                             buffer.planes().planes().iter().enumerate()
                         {
+                            if new_track_audio_data
+                                .samples
+                                .get(sample_plane_number)
+                                .is_none()
+                            {
+                                new_track_audio_data.samples.push(Vec::new());
+                            }
+
                             if let Some(destination_plane) =
                                 new_track_audio_data.samples.get_mut(sample_plane_number)
                             {
@@ -234,6 +317,18 @@ impl TrackAudioData {
             }
         }
 
+        let mut raw_amplitudes: Vec<f32> = new_track_audio_data
+            .samples
+            .iter()
+            .map(|samples| rms(samples))
+            .collect();
+
+        raw_amplitudes.sort_floats();
+
+        let db_gain = amplitude_to_db(*raw_amplitudes.last().ok_or(TrackLoadError::NoValidGains)?);
+
+        new_track_audio_data.base_gain = db_gain;
+
         Ok(new_track_audio_data)
     }
 
@@ -245,13 +340,15 @@ impl TrackAudioData {
         clippy::needless_range_loop,
         clippy::too_many_lines
     )]
-    pub fn read_samples(
+    pub fn read_samples<const AUDIO_CHANNELS: usize>(
         &self,
         start: Timecode,
         end: Timecode,
         wrap: Option<(Timecode, Timecode)>,
         output_buffers: &mut [Vec<f32>; AUDIO_CHANNELS],
     ) -> usize {
+        let total_source_buffers = self.samples.len();
+
         match (start, end, wrap) {
             (start, end, None) => {
                 let start = nanoseconds_to_samples(start.to_nanoseconds(), self.sample_rate);
@@ -271,12 +368,15 @@ impl TrackAudioData {
 
                 if start < end {
                     for buffer_index in 0..AUDIO_CHANNELS {
-                        let max_sample_index = self.samples[buffer_index].len() as i64;
+                        let max_sample_index =
+                            self.samples[buffer_index % total_source_buffers].len() as i64;
 
                         for (target_index, source_index) in (start..end).enumerate() {
                             output_buffers[buffer_index][target_index] =
                                 if source_index >= 0 && source_index < max_sample_index {
-                                    self.samples[buffer_index][source_index as usize]
+                                    self.samples[buffer_index % total_source_buffers]
+                                        [source_index as usize]
+                                        * db_to_amplitude(self.base_gain)
                                 } else {
                                     0.0
                                 };
@@ -284,12 +384,15 @@ impl TrackAudioData {
                     }
                 } else {
                     for buffer_index in 0..AUDIO_CHANNELS {
-                        let max_sample_index = self.samples[buffer_index].len() as i64;
+                        let max_sample_index =
+                            self.samples[buffer_index % total_source_buffers].len() as i64;
 
                         for (target_index, source_index) in (end..start).rev().enumerate() {
                             output_buffers[buffer_index][target_index] =
                                 if source_index >= 0 && source_index < max_sample_index {
-                                    self.samples[buffer_index][source_index as usize]
+                                    self.samples[buffer_index % total_source_buffers]
+                                        [source_index as usize]
+                                        * db_to_amplitude(self.base_gain)
                                 } else {
                                     0.0
                                 };
@@ -326,12 +429,15 @@ impl TrackAudioData {
 
                 if start < wrap_start {
                     for buffer_index in 0..AUDIO_CHANNELS {
-                        let max_sample_index = self.samples[buffer_index].len() as i64;
+                        let max_sample_index =
+                            self.samples[buffer_index % total_source_buffers].len() as i64;
 
                         for (target_index, source_index) in (start..wrap_start).enumerate() {
                             output_buffers[buffer_index][target_index] =
                                 if source_index >= 0 && source_index < max_sample_index {
-                                    self.samples[buffer_index][source_index as usize]
+                                    self.samples[buffer_index % total_source_buffers]
+                                        [source_index as usize]
+                                        * db_to_amplitude(self.base_gain)
                                 } else {
                                     0.0
                                 };
@@ -339,12 +445,15 @@ impl TrackAudioData {
                     }
                 } else {
                     for buffer_index in 0..AUDIO_CHANNELS {
-                        let max_sample_index = self.samples[buffer_index].len() as i64;
+                        let max_sample_index =
+                            self.samples[buffer_index % total_source_buffers].len() as i64;
 
                         for (target_index, source_index) in (wrap_start..start).rev().enumerate() {
                             output_buffers[buffer_index][target_index] =
                                 if source_index >= 0 && source_index < max_sample_index {
-                                    self.samples[buffer_index][source_index as usize]
+                                    self.samples[buffer_index % total_source_buffers]
+                                        [source_index as usize]
+                                        * db_to_amplitude(self.base_gain)
                                 } else {
                                     0.0
                                 };
@@ -354,12 +463,15 @@ impl TrackAudioData {
 
                 if wrap_end < end {
                     for buffer_index in 0..AUDIO_CHANNELS {
-                        let max_sample_index = self.samples[buffer_index].len() as i64;
+                        let max_sample_index =
+                            self.samples[buffer_index % total_source_buffers].len() as i64;
 
                         for (target_index, source_index) in (wrap_end..end).enumerate() {
                             output_buffers[buffer_index][target_index + total_prewrap_samples] =
                                 if source_index >= 0 && source_index < max_sample_index {
-                                    self.samples[buffer_index][source_index as usize]
+                                    self.samples[buffer_index % total_source_buffers]
+                                        [source_index as usize]
+                                        * db_to_amplitude(self.base_gain)
                                 } else {
                                     0.0
                                 };
@@ -367,12 +479,15 @@ impl TrackAudioData {
                     }
                 } else {
                     for buffer_index in 0..AUDIO_CHANNELS {
-                        let max_sample_index = self.samples[buffer_index].len() as i64;
+                        let max_sample_index =
+                            self.samples[buffer_index % total_source_buffers].len() as i64;
 
                         for (target_index, source_index) in (end..wrap_end).rev().enumerate() {
                             output_buffers[buffer_index][target_index + total_prewrap_samples] =
                                 if source_index >= 0 && source_index < max_sample_index {
-                                    self.samples[buffer_index][source_index as usize]
+                                    self.samples[buffer_index % total_source_buffers]
+                                        [source_index as usize]
+                                        * db_to_amplitude(self.base_gain)
                                 } else {
                                     0.0
                                 };

@@ -6,7 +6,11 @@ members = [
     "libdatabase",
     "libdj",
     "libdsp",
+    "libio",
     "libui"
+]
+exclude = [
+	"firmware/mixer-io-application"
 ]
 
 [workspace.package]
@@ -22,6 +26,7 @@ rkyv = "0.8.15"
 base64 = "0.22.1"
 num = "0.4.3"
 num-complex = { version = "0.4.3", features = ["bytemuck"] }
+criterion = "0.8.2"
 
 [workspace.lints.rust]
 async_fn_in_trait = "allow"
@@ -39,3 +44,8 @@ missing_panics_doc = "allow"
 must_use_candidate = "allow"
 result_large_err = "allow"
 zero_sized_map_values = "allow"
+
+# Give me the best optimizations you've got, Rust
+[profile.release]
+codegen-units = 1
+opt-level = 3

@@ -12,6 +12,7 @@ tokio.workspace = true
 tokio-stream.workspace = true
 nix.workspace = true
 libdj = { path = "../libdj" }
+libdsp = { path = "../libdsp" }
 
 [lints]
 workspace = true

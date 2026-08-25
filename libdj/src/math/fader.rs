@@ -1,4 +1,4 @@
-use crate::types::deck::CrossFaderSide;
+use libdsp::pipeline::CrossFaderSide;
 
 pub trait SingleFader {
     #[must_use]

@@ -10,6 +10,7 @@ use tokio::fs;
 
 use crate::database::{Database, OpenDatabaseError};
 
+pub(crate) const MOUNT_CONTAINER: &str = "/tmp";
 pub(crate) const MOUNT_BASE: &str = "/tmp/usb";
 
 const CLASS_MASS_STORAGE: u8 = 0x08;
@@ -212,9 +213,9 @@ async fn mount_disk(disk: &str) -> Result<(PathBuf, u32, String), DiskMountError
         return Err(DiskMountError::MountPointCreationFailed(err));
     }
 
-    let filesystems = [
-        "vfat", "exfat", "ntfs", "ext4", "ext3", "ext2", "btrfs", "xfs",
-    ];
+    // todo: find needed external programs for ntfs and apfs support and re-enable
+    // them
+    let filesystems = ["vfat", "ext4", "ext3"];
 
     for filesystem in filesystems {
         if let Ok(()) = mount(
@@ -320,10 +321,10 @@ pub enum FindMountPointError {
 }
 
 async fn find_free_mount_point() -> Result<(PathBuf, u32), FindMountPointError> {
-    let base = PathBuf::from(MOUNT_BASE);
+    let base = PathBuf::from(MOUNT_CONTAINER);
 
     if !base.exists()
-        && let Err(err) = fs::create_dir(MOUNT_BASE).await
+        && let Err(err) = fs::create_dir(MOUNT_CONTAINER).await
     {
         return Err(FindMountPointError::ParentDirectoryCreationFailed(err));
     }
@@ -331,7 +332,7 @@ async fn find_free_mount_point() -> Result<(PathBuf, u32), FindMountPointError> 
     for disk_number in 0u32.. {
         let candidate = PathBuf::from(format!("{MOUNT_BASE}{disk_number}"));
 
-        if !candidate.exists() || !is_mounted(&candidate).await {
+        if !is_mounted(&candidate).await {
             return Ok((candidate, disk_number));
         }
     }

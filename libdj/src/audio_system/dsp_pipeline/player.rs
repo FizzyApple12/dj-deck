@@ -1,10 +1,10 @@
 use std::f32;
 
+use libdsp::audio_loader::TrackAudioData;
+
 use crate::{
-    AUDIO_CHANNELS,
-    audio_system::{audio_loader::TrackAudioData, dsp_pipeline::track_processor::TrackProcessor},
-    playback::PlayerUpdateResults,
-    types::deck::PlayerState,
+    AUDIO_CHANNELS, audio_system::dsp_pipeline::track_processor::TrackProcessor,
+    playback::PlayerUpdateResults, types::deck::PlayerState,
 };
 
 pub struct PlayerDSP {
@@ -80,9 +80,7 @@ impl PlayerDSP {
     ) {
         let Some(audio_data) = &self.loaded_track else {
             for output_buffer in output_buffers {
-                for sample in output_buffer {
-                    *sample = 0.0;
-                }
+                output_buffer.fill(0.0);
             }
 
             return;
@@ -112,9 +110,7 @@ impl PlayerDSP {
     ) {
         let Some(audio_data) = &self.loaded_track else {
             for output_buffer in output_buffers {
-                for sample in output_buffer {
-                    *sample = 0.0;
-                }
+                output_buffer.fill(0.0);
             }
 
             return;
@@ -124,9 +120,7 @@ impl PlayerDSP {
             player_update_results.touch_cue_playback_times
         else {
             for output_buffer in output_buffers {
-                for sample in output_buffer {
-                    *sample = 0.0;
-                }
+                output_buffer.fill(0.0);
             }
 
             return;

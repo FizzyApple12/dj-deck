@@ -8,10 +8,9 @@ rkyv.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 num.workspace = true
-cpal = { git = "https://github.com/RustAudio/cpal.git", features = [ "pipewire" ] }
+criterion.workspace = true
+cpal = { version = "0.18.2", features = [ "pipewire" ] }
 midir = { version = "0.11.0", features = [ ] }
-symphonia = { version = "0.5.5", features = [ "opt-simd", "all-codecs", "all-formats" ] }
-symphonia-core = "0.5.5"
 libdsp = { path = "../libdsp" }
 
 alsa-sys.version = "0.4.0"
@@ -19,3 +18,7 @@ alsa.version = "0.11"
 
 [lints]
 workspace = true
+
+# [[bench]]
+# name = "audio_pipeline"
+# harness = false

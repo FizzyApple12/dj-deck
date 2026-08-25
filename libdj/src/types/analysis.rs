@@ -1,6 +1,7 @@
+use libdsp::timecode::Timecode;
 use rkyv::{Archive, Deserialize, Serialize};
 
-use crate::types::{library::OriginDatabase, timecode::Timecode};
+use crate::types::library::OriginDatabase;
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct TrackAnalysis {

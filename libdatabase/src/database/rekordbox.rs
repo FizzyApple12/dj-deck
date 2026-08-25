@@ -13,8 +13,8 @@ use libdj::types::{
         Album, Artist, Artwork, Genre, Key, Label, Library, OriginDatabase, Playlist,
         PlaylistFolder, PlaylistTreeNode, Track,
     },
-    timecode::Timecode,
 };
+use libdsp::timecode::Timecode;
 use rekordcrate::{
     anlz::ANLZ,
     pdb::{DatabaseType, Header},

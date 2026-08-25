@@ -1548,9 +1548,7 @@ impl SignalsmithStretch<f32> {
         let smoothing_slew = 1.0 / (1.0 + smoothing_bins * 0.5);
 
         if step == 0 {
-            for e in &mut self.energy {
-                *e = 0.0;
-            }
+            self.energy.fill(0.0);
 
             for c in 0..self.channels {
                 let bins = &mut self.internal_channel_bands[(c * self.bands)..]; //self.bandsForChannel(c);
@@ -1811,9 +1809,7 @@ impl SignalsmithStretch<f32> {
         step = step.saturating_sub(1);
 
         if step_check == 0 {
-            for e in &mut self.formant_metric {
-                *e = 0.0;
-            }
+            self.formant_metric.fill(0.0);
 
             for c in 0..self.channels {
                 let bins = &mut self.internal_channel_bands[(c * self.bands)..]; //self.bandsForChannel(c);

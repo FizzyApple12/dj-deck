@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://b0cqfn1n6qy8n"]
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_x3wve"]
+color = Color(1, 0.41960785, 0, 1)
+vertical = true
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_t2xic"]
+bg_color = Color(1, 0.41960785, 0, 1)
+
+[node name="Cue" type="Panel" unique_id=10913263]
+z_index = 2
+offset_right = 50000.0
+offset_bottom = 1080.0
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxLine_x3wve")
+
+[node name="Cue Label Container" type="Panel" parent="." unique_id=592770283]
+z_index = 2
+layout_mode = 1
+offset_left = -9.5
+offset_right = 9.5
+offset_bottom = 19.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_t2xic")
+
+[node name="Cue Label" type="Label" parent="Cue Label Container" unique_id=1978257975]
+z_index = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.5
+offset_top = -3.0
+offset_right = 0.5
+offset_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "A"
+horizontal_alignment = 1
+vertical_alignment = 1

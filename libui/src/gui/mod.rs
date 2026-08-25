@@ -2,7 +2,8 @@ use base64::{Engine, prelude::BASE64_STANDARD};
 use interprocess::local_socket::{
     GenericFilePath, ToFsName, tokio::Stream, traits::tokio::Stream as _,
 };
-use libdj::types::{audio_system::DeckUpdate, timecode::Duration};
+use libdj::types::audio_system::DeckUpdate;
+use libdsp::timecode::Duration;
 use thiserror::Error;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},

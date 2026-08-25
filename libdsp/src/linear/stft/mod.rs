@@ -367,18 +367,12 @@ impl<const SPLIT_COMPUTATION: bool, const SPECTRUM_TYPE: usize, const HALF_BIN_S
         self.input.pos = self.internal_block_samples;
         self.output.pos = 0;
 
-        for v in &mut self.input.buffer {
-            *v = 0.0;
-        }
-        for v in &mut self.output.buffer {
-            *v = 0.0;
-        }
+        self.input.buffer.fill(0.0);
+        self.output.buffer.fill(0.0);
         for v in &mut self.spectrum_buffer {
             *v = Complex::<f32>::new(0.0, 0.0);
         }
-        for v in &mut self.output.window_products {
-            *v = 0.0;
-        }
+        self.output.window_products.fill(0.0);
 
         self.add_window_product();
 
@@ -724,9 +718,7 @@ impl<const SPLIT_COMPUTATION: bool, const SPECTRUM_TYPE: usize, const HALF_BIN_S
         self.internal_synthesis_offset = self.internal_block_samples / 2;
 
         if self.internal_analysis_channels == 0 {
-            for v in &mut self.internal_analysis_window {
-                *v = 1.0;
-            }
+            self.internal_analysis_window.fill(1.0);
         } else if asymmetry == 0.0 {
             DynamicSTFT::<f32, SPLIT_COMPUTATION, SPECTRUM_TYPE, HALF_BIN_SHIFT>::force_perfect_reconstruction(
                 &mut self.internal_synthesis_window,

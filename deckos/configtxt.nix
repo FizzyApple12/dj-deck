@@ -2,9 +2,14 @@
   hardware.raspberry-pi.config = {
     all = {
       options = {
+        disable_splash = {
+          enable = true;
+          value = 1;
+        };
+
         camera_auto_detect = {
-          enable = lib.mkDefault true;
-          value = lib.mkDefault true;
+          enable = lib.mkForce false;
+          value = lib.mkForce false;
         };
 
         display_auto_detect = {
@@ -71,7 +76,7 @@
       dt-overlays = {
         vc4-kms-v3d = {
           enable = lib.mkDefault true;
-          params = {};
+          params = { };
         };
       };
     };

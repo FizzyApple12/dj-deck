@@ -1,11 +1,10 @@
 use std::f32;
 
+use libdsp::audio_loader::TrackAudioData;
+
 use crate::{
-    AUDIO_CHANNELS, MIXER_CHANNELS,
-    audio_system::{audio_loader::TrackAudioData, dsp_pipeline::channel::ChannelDSP},
-    math::fader::CrossFader,
-    playback::DeckUpdateResults,
-    types::deck::DeckState,
+    AUDIO_CHANNELS, MIXER_CHANNELS, audio_system::dsp_pipeline::channel::ChannelDSP,
+    math::fader::CrossFader, playback::DeckUpdateResults, types::deck::DeckState,
 };
 
 pub struct DeckDSP {

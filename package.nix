@@ -1,6 +1,7 @@
 {
   lib,
-  rustPlatform,
+  system,
+  makeRustPlatform,
   pkg-config,
   systemd,
   openssl,
@@ -16,23 +17,39 @@
   wayland-scanner,
   alsa-lib,
   libjack2,
+  pipewire,
 }:
+let
+  rustToolchain = "nightly-2026-07-19";
+  fenix = import (fetchTarball {
+  	url = "https://github.com/nix-community/fenix/archive/2013c981829bd5e93db06749b5639450c81bece3.tar.gz";
+   	sha256 = "sha256-ZNw7FDQm2PVOIyE9WaLFgK1QYw8vrOchxMYHzDDxlUY=";
+  }) { inherit system; };
+  fenixToolchain = fenix.fromToolchainName { name = rustToolchain; sha256 = "sha256-ziDE7hJrDjZINklZE8gmLwXjmCa2B1aR2Z97NUcA77Y="; };
+  rustPlatform = makeRustPlatform {
+  	rustc = fenixToolchain.rustc;
+    cargo = fenixToolchain.cargo;
+  };
+in
 rustPlatform.buildRustPackage {
   pname = "deck-application";
   version = "1.0.0";
-  cargoLock.lockFile = ./Cargo.lock;
   src = lib.cleanSource ./.;
 
-  nativeBuildInputs = [
-    pkg-config
+  cargoLock = {
+    lockFile = ./Cargo.lock;
+    outputHashes = {
+      "rekordcrate-0.3.0" = "sha256-bOcjGdotVeLDn/0kqlLOR1t5lABuNk401Ky/oP2B4yI=";
+    };
+  };
+
+  buildInputs = [
     systemd
     openssl
-    cmake
-    clang
-    llvmPackages.bintools
 
     fontconfig
     vulkan-loader
+
     libxkbcommon
     xorg.libxcb
     xorg.libX11
@@ -40,14 +57,28 @@ rustPlatform.buildRustPackage {
     xorg.libXi
     xorg.libXrandr
     xorg.libXxf86vm
+
     wayland
     wayland-protocols
     wayland-scanner
+
     alsa-lib
     libjack2
+    pipewire
+    pipewire.jack
   ];
 
-  RUSTC_VERSION = "nightly";
+  nativeBuildInputs = [
+    pkg-config
+    cmake
+
+    clang
+    llvmPackages.bintools
+  ];
+
+  RUSTC_VERSION = rustToolchain;
+
+  LIBCLANG_PATH = lib.makeLibraryPath [llvmPackages.libclang.lib];
 
   meta = {
     description = "DJ Deck Application for Embedded Systems";

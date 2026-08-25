@@ -1,0 +1,18 @@
+[package]
+name = "libio"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+libdj = { path = "../libdj" }
+libdsp = { path = "../libdsp" }
+libui = { path = "../libui" }
+interprocess = { version = "2.4.0", features = ["tokio"] }
+rkyv.workspace = true
+base64.workspace = true
+
+[lints]
+workspace = true

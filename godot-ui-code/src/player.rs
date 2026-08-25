@@ -4,7 +4,8 @@ use godot::{
     },
     prelude::*,
 };
-use libdj::types::{deck::TempoRange, timecode::Timecode};
+use libdj::types::deck::TempoRange;
+use libdsp::timecode::Timecode;
 
 use crate::{ipc::IPC, preview_waveform_to_shader_texture};
 

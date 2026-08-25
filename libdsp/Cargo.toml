@@ -6,9 +6,13 @@ edition.workspace = true
 [dependencies]
 num.workspace = true
 num-complex.workspace = true
+thiserror.workspace = true
+rkyv.workspace = true
 rand = "0.10.1"
 rand_distr = "0.6.0"
 bytemuck = { version = "1", features = ["derive"] }
+symphonia = { version = "0.5.5", features = [ "opt-simd", "all-codecs", "all-formats" ] }
+symphonia-core = "0.5.5"
 
 [lints]
 workspace = true

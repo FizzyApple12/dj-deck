@@ -9,7 +9,9 @@ tokio.workspace = true
 tokio-stream.workspace = true
 libdj = { path = "../libdj" }
 libdatabase = { path = "../libdatabase" }
+libio = { path = "../libio" }
 libui = { path = "../libui" }
+libdsp = { path = "../libdsp" }
 
 [lints]
 workspace = true

@@ -218,10 +218,10 @@ impl<const SPLIT_COMPUTATION: bool, const HALF_BIN_SHIFT: bool>
 
                     let twiddle = self.twiddles[i];
 
-                    let odd_r = (tmp_freq_r[i] + tmp_freq_r[conj_i]) * 0.5;
+                    let odd_r = f32::midpoint(tmp_freq_r[i], tmp_freq_r[conj_i]);
                     let odd_i = (tmp_freq_i[i] - tmp_freq_i[conj_i]) * 0.5;
                     let even_i_r = (tmp_freq_r[i] - tmp_freq_r[conj_i]) * 0.5;
-                    let even_i_i = (tmp_freq_i[i] + tmp_freq_i[conj_i]) * 0.5;
+                    let even_i_i = f32::midpoint(tmp_freq_i[i], tmp_freq_i[conj_i]);
 
                     let even_rot_minus_i_r = even_i_r * twiddle.re - even_i_i * twiddle.im;
                     let even_rot_minus_i_i = even_i_i * twiddle.re + even_i_r * twiddle.im;
@@ -402,10 +402,10 @@ impl<const SPLIT_COMPUTATION: bool, const HALF_BIN_SHIFT: bool>
                 };
                 let twiddle = self.twiddles[i];
 
-                let odd_r = (tmp_freq_r[i] + tmp_freq_r[conj_i]) * 0.5;
+                let odd_r = f32::midpoint(tmp_freq_r[i], tmp_freq_r[conj_i]);
                 let odd_i = (tmp_freq_i[i] - tmp_freq_i[conj_i]) * 0.5;
                 let even_i_r = (tmp_freq_r[i] - tmp_freq_r[conj_i]) * 0.5;
-                let even_i_i = (tmp_freq_i[i] + tmp_freq_i[conj_i]) * 0.5;
+                let even_i_i = f32::midpoint(tmp_freq_i[i], tmp_freq_i[conj_i]);
                 let even_rot_minus_i_r = even_i_r * twiddle.re - even_i_i * twiddle.im;
                 let even_rot_minus_i_i = even_i_i * twiddle.re + even_i_r * twiddle.im;
 

@@ -39,16 +39,13 @@
         };
 
         devShells.default = pkgs.mkShell rec {
-          nativeBuildInputs = [
-            pkgs.pkg-config
+          buildInputs = [
             pkgs.systemd
             pkgs.openssl
-            pkgs.cmake
-            pkgs.git
-            pkgs.rpiboot
-            pkgs.minicom
+
             pkgs.fontconfig
             pkgs.vulkan-loader
+
             pkgs.libxkbcommon
             pkgs.xorg.libxcb
             pkgs.xorg.libX11
@@ -56,6 +53,7 @@
             pkgs.xorg.libXi
             pkgs.xorg.libXrandr
             pkgs.xorg.libXxf86vm
+
             pkgs.wayland
             pkgs.wayland-protocols
             pkgs.wayland-scanner
@@ -65,22 +63,30 @@
             pkgs.pipewire
             pkgs.pipewire.jack
           ];
-          buildInputs = [
+          nativeBuildInputs = [
+            pkgs.bash
+            pkgs.git
+
+            pkgs.pkg-config
+            pkgs.cmake
+            pkgs.rustup
+
             pkgs.clang
             pkgs.llvmPackages.bintools
-            pkgs.rustup
-            pkgs.bash
+
             pkgs.yaml-language-server
+
+            pkgs.rpiboot
+            pkgs.minicom
           ];
 
-          RUSTC_VERSION = "nightly";
+          RUSTC_VERSION = "nightly-2026-07-19";
 
-          LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.llvmPackages_latest.libclang.lib];
+          LIBCLANG_PATH = pkgs.lib.makeLibraryPath [pkgs.llvmPackages.libclang.lib];
 
           shellHook = ''
             export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
             export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin/
-
 
             flashImage() {
               if [ "$#" -eq 0 ]; then

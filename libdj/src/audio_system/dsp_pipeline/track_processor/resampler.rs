@@ -100,8 +100,6 @@ impl Resampler {
     }
 
     pub fn reset(&mut self) {
-        for ch in &mut self.history {
-            *ch = [0.0; 3];
-        }
+        self.history.fill([0.0; 3]);
     }
 }

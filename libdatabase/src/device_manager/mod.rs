@@ -1,13 +1,13 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use nix::mount::{MntFlags, umount2};
 use nusb::{DeviceId, hotplug::HotplugEvent};
 use thiserror::Error;
-use tokio::{fs, task::JoinHandle};
+use tokio::{fs, sync::Mutex, task::JoinHandle};
 use tokio_stream::{Stream, StreamExt};
 
 use crate::device_manager::device::{Device, MOUNT_BASE, OpenDeviceError};
@@ -40,9 +40,7 @@ pub enum DeviceManagerEvent {
 impl DeviceManager {
     #[allow(clippy::too_many_lines)]
     pub fn start() -> Result<DeviceManager, StartDeviceManagerError> {
-        tokio::task::spawn_blocking(async || {
-            unmount_stale_mounts().await;
-        });
+        unmount_stale_mounts_sync();
 
         let device_list = Arc::new(Mutex::new(HashMap::new()));
         let id_to_number_map = Arc::new(Mutex::new(HashMap::new()));
@@ -71,15 +69,14 @@ impl DeviceManager {
                         Ok(open_device) => {
                             let device_number = open_device.number;
 
-                            if let Ok(mut locked_id_to_number_map) = id_to_number_map.lock()
-                                && let Ok(mut locked_device_list) = device_list.lock()
-                            {
-                                locked_id_to_number_map.insert(open_device.id, device_number);
-                                locked_device_list.insert(open_device.number, open_device);
+                            let mut locked_id_to_number_map = id_to_number_map.lock().await;
+                            let mut locked_device_list = device_list.lock().await;
 
-                                drop(locked_device_list);
-                                drop(locked_id_to_number_map);
-                            }
+                            locked_id_to_number_map.insert(open_device.id, device_number);
+                            locked_device_list.insert(open_device.number, open_device);
+
+                            drop(locked_device_list);
+                            drop(locked_id_to_number_map);
 
                             let _ = event_sender
                                 .send(DeviceManagerEvent::DeviceConnected(Ok(device_number)))
@@ -110,16 +107,14 @@ impl DeviceManager {
                                 Ok(open_device) => {
                                     let device_number = open_device.number;
 
-                                    if let Ok(mut locked_id_to_number_map) = id_to_number_map.lock()
-                                        && let Ok(mut locked_device_list) = device_list.lock()
-                                    {
-                                        locked_id_to_number_map
-                                            .insert(open_device.id, device_number);
-                                        locked_device_list.insert(open_device.number, open_device);
+                                    let mut locked_id_to_number_map = id_to_number_map.lock().await;
+                                    let mut locked_device_list = device_list.lock().await;
 
-                                        drop(locked_device_list);
-                                        drop(locked_id_to_number_map);
-                                    }
+                                    locked_id_to_number_map.insert(open_device.id, device_number);
+                                    locked_device_list.insert(open_device.number, open_device);
+
+                                    drop(locked_device_list);
+                                    drop(locked_id_to_number_map);
 
                                     let _ = event_sender
                                         .send(DeviceManagerEvent::DeviceConnected(Ok(
@@ -138,17 +133,16 @@ impl DeviceManager {
                     HotplugEvent::Disconnected(id) => {
                         let mut device_number = Option::None;
 
-                        if let Ok(mut locked_id_to_number_map) = id_to_number_map.lock()
-                            && let Ok(mut locked_device_list) = device_list.lock()
-                        {
-                            if let Some(found_device_number) = locked_id_to_number_map.remove(&id) {
-                                device_number = Some(found_device_number);
+                        let mut locked_id_to_number_map = id_to_number_map.lock().await;
+                        let mut locked_device_list = device_list.lock().await;
 
-                                locked_device_list.remove(&found_device_number);
-                            }
+                        if let Some(found_device_number) = locked_id_to_number_map.remove(&id) {
+                            device_number = Some(found_device_number);
 
-                            drop(locked_device_list);
+                            locked_device_list.remove(&found_device_number);
                         }
+
+                        drop(locked_device_list);
 
                         unmount_stale_mounts().await;
 
@@ -177,10 +171,10 @@ impl DeviceManager {
     // for some reason clippy doesn't recognise that this is fixed
     #[allow(clippy::await_holding_lock)]
     pub async fn eject(&mut self, id: u32) {
-        if let Ok(mut locked_device_database) = self.devices.lock()
-            && let Ok(mut locked_id_to_number_map) = self.id_to_number_map.lock()
-            && let Some(device) = locked_device_database.remove(&id)
-        {
+        let mut locked_device_database = self.devices.lock().await;
+        let mut locked_id_to_number_map = self.id_to_number_map.lock().await;
+
+        if let Some(device) = locked_device_database.remove(&id) {
             locked_id_to_number_map.retain(|_, value| *value != id);
 
             drop(locked_device_database);
@@ -201,13 +195,15 @@ impl DeviceManager {
     pub async fn stop(self: DeviceManager) {
         self.task_handle.abort();
 
-        if let Ok(mut locked_device_list) = self.devices.lock() {
-            for (_, device) in locked_device_list.drain() {
-                device.eject().await;
-            }
+        let mut locked_device_list = self.devices.lock().await;
 
-            drop(locked_device_list);
+        for (_, device) in locked_device_list.drain() {
+            device.eject().await;
         }
+
+        drop(locked_device_list);
+
+        unmount_stale_mounts().await;
     }
 }
 
@@ -219,6 +215,34 @@ impl Stream for DeviceManager {
         context: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         self.event_receiver.poll_recv(context)
+    }
+}
+
+fn unmount_stale_mounts_sync() {
+    let Ok(mounts) = std::fs::read_to_string("/proc/mounts") else {
+        return;
+    };
+
+    for line in mounts.lines() {
+        let mut fields = line.split_whitespace();
+
+        let (Some(device), Some(mount_point)) = (fields.next(), fields.next()) else {
+            continue;
+        };
+
+        if !mount_point.starts_with(MOUNT_BASE) {
+            continue;
+        }
+
+        if Path::new(device).exists() {
+            continue;
+        }
+
+        let mount_point = PathBuf::from(mount_point);
+
+        if let Ok(()) = umount2(&mount_point, MntFlags::MNT_DETACH) {
+            let _ = std::fs::remove_dir(&mount_point);
+        }
     }
 }
 

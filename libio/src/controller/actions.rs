@@ -1,7 +1,7 @@
-use libdj::types::{
-    deck::{BeatSyncMode, DeckState, PlayState, TempoRange},
-    timecode::{Duration, Timecode},
-};
+use libdj::types::deck::{BeatSyncMode, DeckState, PlayState, TempoRange};
+use libdsp::timecode::{Duration, Timecode};
+
+const KNOB_DEADBAND: f32 = 0.001;
 
 #[allow(clippy::cast_lossless)]
 fn jog_2_rpm(jog: u8) -> f32 {
@@ -187,16 +187,83 @@ pub fn next_tempo_range(deck_state: &mut DeckState, channel: usize) {
 
 #[allow(clippy::indexing_slicing)]
 pub fn tempo_slider(deck_state: &mut DeckState, channel: usize, position: (u8, u8)) {
+    let new_slider_position =
+        (f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0) * 2.0 - 1.0;
+
     deck_state.mixer_channels[channel]
         .player
-        .tempo_slider_position =
+        .tempo_slider_position = new_slider_position;
+
+    let tempo_differential = (deck_state.mixer_channels[channel].player.tempo_percent
+        - deck_state.mixer_channels[channel]
+            .player
+            .get_actual_slider_tempo())
+    .abs();
+
+    if deck_state.mixer_channels[channel]
+        .player
+        .tempo_slider_is_accurate
+    {
+        if tempo_differential > 0.1 {
+            deck_state.mixer_channels[channel].player.beat_sync = BeatSyncMode::Off;
+        }
+    } else if tempo_differential < 0.01 {
+        deck_state.mixer_channels[channel]
+            .player
+            .tempo_slider_is_accurate = true;
+    }
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn channel_eq_low(deck_state: &mut DeckState, channel: usize, position: (u8, u8)) {
+    let new_value =
         (f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0) * 2.0 - 1.0;
+
+    deck_state.mixer_channels[channel].eq.0 =
+        if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&new_value) {
+            0.0
+        } else {
+            new_value
+        }
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn channel_eq_mid(deck_state: &mut DeckState, channel: usize, position: (u8, u8)) {
+    let new_value =
+        (f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0) * 2.0 - 1.0;
+
+    deck_state.mixer_channels[channel].eq.1 =
+        if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&new_value) {
+            0.0
+        } else {
+            new_value
+        }
+}
+
+#[allow(clippy::indexing_slicing)]
+pub fn channel_eq_high(deck_state: &mut DeckState, channel: usize, position: (u8, u8)) {
+    let new_value =
+        (f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0) * 2.0 - 1.0;
+
+    deck_state.mixer_channels[channel].eq.2 =
+        if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&new_value) {
+            0.0
+        } else {
+            new_value
+        }
 }
 
 #[allow(clippy::indexing_slicing)]
 pub fn channel_filter(deck_state: &mut DeckState, channel: usize, position: (u8, u8)) {
-    deck_state.mixer_channels[channel].filter =
+    let new_value =
         (f32::from((u16::from(position.0) << 7) | u16::from(position.1)) / 16383.0) * 2.0 - 1.0;
+
+    deck_state.mixer_channels[channel].filter =
+        if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&new_value) {
+            0.0
+        } else {
+            new_value
+        }
 }
 
 #[allow(clippy::indexing_slicing)]

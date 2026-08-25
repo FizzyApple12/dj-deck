@@ -10,16 +10,18 @@ use libdj::{
         midi::MidiMessage,
     },
 };
+use libui::types::ui::UIMessage;
 use thiserror::Error;
 use tokio::task::JoinHandle;
 
 use crate::{
     controller::actions::{
-        beat_jump_release, beat_sync, channel_fader, channel_filter, cross_fader, cue_press,
-        cue_release, jog_distance, jog_release, jog_touch, next_tempo_range, play_press,
-        set_master, tempo_reset, tempo_slider,
+        beat_jump_release, beat_sync, channel_eq_high, channel_eq_low, channel_eq_mid,
+        channel_fader, channel_filter, cross_fader, cue_press, cue_release, jog_distance,
+        jog_release, jog_touch, next_tempo_range, play_press, set_master, tempo_reset,
+        tempo_slider,
     },
-    types::{controller::ControllerMessage, ui::UIMessage},
+    types::controller::ControllerMessage,
 };
 
 #[derive(Debug)]
@@ -31,6 +33,10 @@ pub struct Controller {
 
 struct ControllerState {
     tempo_sliders: [(u8, u8); MIXER_CHANNELS],
+
+    eq_lows: [(u8, u8); MIXER_CHANNELS],
+    eq_mids: [(u8, u8); MIXER_CHANNELS],
+    eq_highs: [(u8, u8); MIXER_CHANNELS],
 
     filters: [(u8, u8); MIXER_CHANNELS],
 
@@ -53,7 +59,7 @@ pub enum ControllerSendError {
 
 impl Controller {
     #[allow(clippy::too_many_lines)]
-    pub fn start_hmi(
+    pub fn start_io(
         midi_sender: tokio::sync::mpsc::UnboundedSender<MidiMessage>,
         mut midi_receiver: tokio::sync::mpsc::UnboundedReceiver<MidiMessage>,
         deck_update_sender: tokio::sync::mpsc::UnboundedSender<DeckUpdate>,
@@ -67,6 +73,10 @@ impl Controller {
 
             let mut controller_state: ControllerState = ControllerState {
                 tempo_sliders: Default::default(),
+
+                eq_lows: Default::default(),
+                eq_mids: Default::default(),
+                eq_highs: Default::default(),
 
                 filters: Default::default(),
 
@@ -572,6 +582,273 @@ fn process_midi_command(
                 }))
                 .ok();
         }
+        // eq low
+        (address, value) if address == combine_addr_channel(0xB00F, 0) => {
+            controller_state.eq_lows[0].0 = value;
+
+            let new_eq_value = controller_state.eq_lows[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_low(deck_state, 0, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB02F, 0) => {
+            controller_state.eq_lows[0].1 = value;
+
+            let new_eq_value = controller_state.eq_lows[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_low(deck_state, 0, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB00F, 1) => {
+            controller_state.eq_lows[1].0 = value;
+
+            let new_eq_value = controller_state.eq_lows[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_low(deck_state, 1, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB02F, 1) => {
+            controller_state.eq_lows[1].1 = value;
+
+            let new_eq_value = controller_state.eq_lows[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_low(deck_state, 1, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB00F, 2) => {
+            controller_state.eq_lows[2].0 = value;
+
+            let new_eq_value = controller_state.eq_lows[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_low(deck_state, 2, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB02F, 2) => {
+            controller_state.eq_lows[2].1 = value;
+
+            let new_eq_value = controller_state.eq_lows[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_low(deck_state, 2, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB00F, 3) => {
+            controller_state.eq_lows[3].0 = value;
+
+            let new_eq_value = controller_state.eq_lows[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_low(deck_state, 3, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB02F, 3) => {
+            controller_state.eq_lows[3].1 = value;
+
+            let new_eq_value = controller_state.eq_lows[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_low(deck_state, 3, new_eq_value);
+                }))
+                .ok();
+        }
+        // eq mid
+        (address, value) if address == combine_addr_channel(0xB00B, 0) => {
+            controller_state.eq_mids[0].0 = value;
+
+            let new_eq_value = controller_state.eq_mids[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_mid(deck_state, 0, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB02B, 0) => {
+            controller_state.eq_mids[0].1 = value;
+
+            let new_eq_value = controller_state.eq_mids[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_mid(deck_state, 0, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB00B, 1) => {
+            controller_state.eq_mids[1].0 = value;
+
+            let new_eq_value = controller_state.eq_mids[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_mid(deck_state, 1, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB02B, 1) => {
+            controller_state.eq_mids[1].1 = value;
+
+            let new_eq_value = controller_state.eq_mids[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_mid(deck_state, 1, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB00B, 2) => {
+            controller_state.eq_mids[2].0 = value;
+
+            let new_eq_value = controller_state.eq_mids[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_mid(deck_state, 2, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB02B, 2) => {
+            controller_state.eq_mids[2].1 = value;
+
+            let new_eq_value = controller_state.eq_mids[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_mid(deck_state, 2, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB00B, 3) => {
+            controller_state.eq_mids[3].0 = value;
+
+            let new_eq_value = controller_state.eq_mids[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_mid(deck_state, 3, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB02B, 3) => {
+            controller_state.eq_mids[3].1 = value;
+
+            let new_eq_value = controller_state.eq_mids[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_mid(deck_state, 3, new_eq_value);
+                }))
+                .ok();
+        }
+        // eq high
+        (address, value) if address == combine_addr_channel(0xB007, 0) => {
+            controller_state.eq_highs[0].0 = value;
+
+            let new_eq_value = controller_state.eq_highs[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_high(deck_state, 0, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB027, 0) => {
+            controller_state.eq_highs[0].1 = value;
+
+            let new_eq_value = controller_state.eq_highs[0];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_high(deck_state, 0, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB007, 1) => {
+            controller_state.eq_highs[1].0 = value;
+
+            let new_eq_value = controller_state.eq_highs[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_high(deck_state, 1, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB027, 1) => {
+            controller_state.eq_highs[1].1 = value;
+
+            let new_eq_value = controller_state.eq_highs[1];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_high(deck_state, 1, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB007, 2) => {
+            controller_state.eq_highs[2].0 = value;
+
+            let new_eq_value = controller_state.eq_highs[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_high(deck_state, 2, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB027, 2) => {
+            controller_state.eq_highs[2].1 = value;
+
+            let new_eq_value = controller_state.eq_highs[2];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_high(deck_state, 2, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB007, 3) => {
+            controller_state.eq_highs[3].0 = value;
+
+            let new_eq_value = controller_state.eq_highs[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_high(deck_state, 3, new_eq_value);
+                }))
+                .ok();
+        }
+        (address, value) if address == combine_addr_channel(0xB027, 3) => {
+            controller_state.eq_highs[3].1 = value;
+
+            let new_eq_value = controller_state.eq_highs[3];
+
+            deck_update_sender
+                .send(Box::new(move |deck_state, _| {
+                    channel_eq_high(deck_state, 3, new_eq_value);
+                }))
+                .ok();
+        }
         // filter
         (0xB617, value) => {
             controller_state.filters[0].0 = value;
@@ -1064,7 +1341,7 @@ fn set_deck_leds(
             match player_state.beat_sync {
                 BeatSyncMode::Off => 0,
                 BeatSyncMode::BPMSync => {
-                    if flash_timers.fast {
+                    if flash_timers.mid {
                         127
                     } else {
                         0
@@ -1305,22 +1582,6 @@ fn set_deck_leds(
         let _ = midi_output.send(addr_value_to_midi(
             [0x9F20, 0x9F21, 0x9F22, 0x9F23][channel],
             if player_state.master_tempo { 127 } else { 0 },
-        ));
-
-        // beat sync
-        let _ = midi_output.send(addr_value_to_midi(
-            [0x9F20, 0x9F21, 0x9F22, 0x9F23][channel],
-            match player_state.beat_sync {
-                BeatSyncMode::Off => 0,
-                BeatSyncMode::BPMSync => {
-                    if flash_timers.mid {
-                        127
-                    } else {
-                        0
-                    }
-                }
-                BeatSyncMode::BeatSync => 127,
-            },
         ));
 
         // --------- jog display stuff ---------

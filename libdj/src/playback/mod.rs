@@ -1,3 +1,5 @@
+use libdsp::timecode::{Duration, Timecode};
+
 use crate::{
     MIXER_CHANNELS,
     math::{
@@ -7,11 +9,7 @@ use crate::{
     types::{
         analysis::Beat,
         audio_system::{AudioSystemEvent, DeckUpdate},
-        deck::{
-            BeatLoopAdjustMode, BeatSyncMode, ChannelState, DeckState, PlayState, PlayerState,
-            TempoRange,
-        },
-        timecode::{Duration, Timecode},
+        deck::{BeatLoopAdjustMode, BeatSyncMode, ChannelState, DeckState, PlayState, PlayerState},
     },
 };
 
@@ -242,25 +240,12 @@ impl PlayerState {
             self.tempo_percent = 1.0;
         }
 
-        // perform tempo slider math
+        // tempo slider sync and accuracy check
 
-        let actual_slider_tempo = (self.tempo_slider_position
-            * match self.tempo_range {
-                TempoRange::SixPercent => 6.0,
-                TempoRange::TenPercent => 10.0,
-                TempoRange::SixteenPercent => 16.0,
-                TempoRange::OneHundredPercent => 100.0,
-            }
-            * 100.0)
-            .floor()
-            / 100.0;
+        let actual_slider_tempo = self.get_actual_slider_tempo();
 
         if self.tempo_slider_is_accurate {
-            if self.beat_sync == BeatSyncMode::Off {
-                self.tempo_percent = actual_slider_tempo;
-            } else if (self.tempo_percent - actual_slider_tempo).abs() > 0.1 {
-                self.beat_sync = BeatSyncMode::Off;
-
+            if self.beat_sync == BeatSyncMode::Off || is_master {
                 self.tempo_percent = actual_slider_tempo;
             }
         } else if (self.tempo_percent - actual_slider_tempo).abs() < 0.01 {
@@ -305,15 +290,17 @@ impl PlayerState {
                     && let Some((master_beat_grid, master_time, master_tempo_percent)) =
                         master_beat_sync_data
                 {
-                    perform_beat_sync_run(
+                    if perform_beat_sync_run(
                         track_time_delta,
-                        &mut self.slip_time,
+                        &mut self.time,
                         &mut self.tempo_percent,
                         &track_analysis.beat_grid,
                         master_time,
                         master_tempo_percent,
                         master_beat_grid,
-                    );
+                    ) {
+                        self.tempo_slider_is_accurate = false;
+                    }
                 } else {
                     self.time += track_time_delta + pitch_time;
                 }
@@ -343,15 +330,17 @@ impl PlayerState {
                     && let Some((master_beat_grid, master_time, master_tempo_percent)) =
                         master_beat_sync_data
                 {
-                    perform_beat_sync_run(
+                    if perform_beat_sync_run(
                         track_time_delta,
-                        &mut self.slip_time,
+                        &mut self.time,
                         &mut self.tempo_percent,
                         &track_analysis.beat_grid,
                         master_time,
                         master_tempo_percent,
                         master_beat_grid,
-                    );
+                    ) {
+                        self.tempo_slider_is_accurate = false;
+                    }
                 } else {
                     self.time += track_time_delta + pitch_time;
                 }
@@ -372,7 +361,7 @@ impl PlayerState {
                         && let Some((master_beat_grid, master_time, master_tempo_percent)) =
                             master_beat_sync_data
                     {
-                        perform_beat_sync_run(
+                        if perform_beat_sync_run(
                             track_time_delta,
                             &mut self.slip_time,
                             &mut self.tempo_percent,
@@ -380,7 +369,9 @@ impl PlayerState {
                             master_time,
                             master_tempo_percent,
                             master_beat_grid,
-                        );
+                        ) {
+                            self.tempo_slider_is_accurate = false;
+                        }
                     } else {
                         self.slip_time += track_time_delta;
                     }
@@ -455,8 +446,12 @@ fn perform_beat_sync_run(
     master_time: Timecode,
     master_tempo_percent: f32,
     master_beat_grid: &[Beat],
-) {
+) -> bool {
     *local_time += delta_time;
+
+    if (-f32::EPSILON..=f32::EPSILON).contains(&master_tempo_percent) {
+        return false;
+    }
 
     let closest_local_beat_index = get_current_beat_index(local_beat_grid, *local_time);
 
@@ -464,7 +459,7 @@ fn perform_beat_sync_run(
 
     let (local_first_beat, local_second_beat) = match closest_local_beat_index {
         None => {
-            return;
+            return false;
         }
         Some(closest_local_beat_index) if closest_local_beat_index == last_local_beat_index => (
             local_beat_grid[last_local_beat_index - 1],
@@ -505,20 +500,20 @@ fn perform_beat_sync_run(
         second_closest_local_beat_index,
     ) {
         (None, _) | (_, None) => {
-            return;
+            return false;
         }
         (Some(first_closest_local_beat_index), Some(second_closest_local_beat_index))
             if first_closest_local_beat_index == second_closest_local_beat_index =>
         {
             if first_closest_local_beat_index == last_master_beat_index {
                 (
-                    local_beat_grid[first_closest_local_beat_index - 1],
-                    local_beat_grid[first_closest_local_beat_index],
+                    master_beat_grid[first_closest_local_beat_index - 1],
+                    master_beat_grid[first_closest_local_beat_index],
                 )
             } else {
                 (
-                    local_beat_grid[first_closest_local_beat_index],
-                    local_beat_grid[first_closest_local_beat_index + 1],
+                    master_beat_grid[first_closest_local_beat_index],
+                    master_beat_grid[first_closest_local_beat_index + 1],
                 )
             }
         }
@@ -528,32 +523,38 @@ fn perform_beat_sync_run(
         ),
     };
 
-    // if this doesn't work, try -master_time.nanoseconds
+    let precise_tempo_percent = (local_second_beat.time.nanoseconds
+        - local_first_beat.time.nanoseconds) as f64
+        / (master_second_beat.time.nanoseconds - master_first_beat.time.nanoseconds) as f64;
 
-    let normalised_master_first_beat_time = (master_first_beat.time.nanoseconds as f64
-        * f64::from(master_tempo_percent))
-        - master_time.nanoseconds as f64;
+    let new_tempo_percent = precise_tempo_percent as f32;
 
-    let normalised_master_second_beat_time = (master_second_beat.time.nanoseconds as f64
-        * f64::from(master_tempo_percent))
-        - master_time.nanoseconds as f64;
+    let invalidate_tempo_slider = (*local_tempo_percent - new_tempo_percent).abs() >= 0.01;
 
-    let precise_tempo_percent = (normalised_master_first_beat_time
-        - normalised_master_second_beat_time)
-        / (local_first_beat.time.nanoseconds as f64 - local_second_beat.time.nanoseconds as f64);
+    *local_tempo_percent = new_tempo_percent;
 
-    *local_tempo_percent = precise_tempo_percent as f32;
-    local_time.nanoseconds = (normalised_master_first_beat_time
-        - (local_first_beat.time.nanoseconds as f64 * precise_tempo_percent))
+    if (-f32::EPSILON..=f32::EPSILON).contains(&new_tempo_percent) {
+        return true;
+    }
+
+    // local_time.nanoseconds = -(normalised_master_first_beat_time
+    //     - (local_first_beat.time.nanoseconds as f64 * precise_tempo_percent))
+    //     as i64;
+
+    local_time.nanoseconds = (local_first_beat.time.nanoseconds as f64
+        - ((master_first_beat.time.nanoseconds - master_time.nanoseconds) as f64
+            * (precise_tempo_percent / f64::from(master_tempo_percent))))
         as i64;
+
+    invalidate_tempo_slider
 }
 
 fn map_timestamp(
     time: Timecode,
-    local_time: Timecode,
-    local_tempo_percent: f32,
-    master_time: Timecode,
-    master_tempo_percent: f32,
+    from_time: Timecode,
+    from_tempo_percent: f32,
+    to_time: Timecode,
+    to_tempo_percent: f32,
 ) -> Timecode {
-    master_time + ((time - local_time) * (local_tempo_percent / master_tempo_percent))
+    to_time + ((time - from_time) * (to_tempo_percent / from_tempo_percent))
 }

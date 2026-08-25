@@ -2,19 +2,14 @@ use std::{thread, time::Duration};
 
 use libdatabase::device_manager::{DeviceManager, DeviceManagerEvent, device::OpenDeviceError};
 use libdj::{
-    audio_system::{AudioManager, audio_loader::TrackAudioData},
-    types::{
-        analysis::WaveformType, audio_system::DeckUpdate, deck::DeckState, library::Track,
-        timecode::Timecode,
-    },
+    audio_system::AudioManager,
+    types::{analysis::WaveformType, audio_system::DeckUpdate, deck::DeckState, library::Track},
 };
+use libdsp::{audio_loader::TrackAudioData, timecode::Timecode};
+use libio::{controller::Controller, types::controller::ControllerMessage};
 use libui::{
-    controller::Controller,
     gui::UI,
-    types::{
-        controller::ControllerMessage,
-        ui::{UIEvent, UIMessage},
-    },
+    types::ui::{UIEvent, UIMessage},
 };
 use tokio_stream::StreamExt;
 
@@ -68,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Starting HMI...");
 
-    let controller = Controller::start_hmi(
+    let controller = Controller::start_io(
         midi_sender,
         midi_receiver,
         deck_update_sender.clone(),
@@ -88,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Some(DeviceManagerEvent::DeviceConnected(Ok(id))) => {
                         println!("Device {id} Connected Successfully");
 
-                        let name = device_manager.devices.lock().unwrap().get(&id).unwrap().name.clone();
+                        let name = device_manager.devices.lock().await.get(&id).unwrap().name.clone();
 
                         let _ = ui.send(UIMessage::DeviceConnected(id, name));
                     }
@@ -116,8 +111,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     match ui_event {
                         UIEvent::LoadTrack { device, id, player } => {
-                            if let Ok(mut locked_device_database) = device_manager.devices.lock()
-                                && let Some(qualified_device) = locked_device_database.get_mut(&device)
+                            let mut locked_device_database = device_manager.devices.lock().await;
+
+                            if let Some(qualified_device) = locked_device_database.get_mut(&device)
                                 && let Some(track) = qualified_device.database.library.tracks.get(&id) {
                                 let _ = loaded_track_sender.send((player, None));
 
@@ -185,8 +181,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let _ = loaded_track_sender.send((player, None));
                         }
                         UIEvent::GetLibrary(id) => {
-                            if let Ok(locked_device_database) = device_manager.devices.lock()
-                                && let Some(device) = locked_device_database.get(&id) {
+                            let locked_device_database = device_manager.devices.lock().await;
+
+                            if let Some(device) = locked_device_database.get(&id) {
                                 let _ = ui.send(UIMessage::DeviceLibrary{
                                     device: id,
                                     library: device.database.library.clone(),
@@ -197,15 +194,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             device_manager.eject(id).await;
                         },
                         UIEvent::GetWaveform { device, id, player } =>  {
-                            if let Ok(mut locked_device_database) = device_manager.devices.lock()
-                                && let Some(qualified_device) = locked_device_database.get_mut(&device)
+                            let mut locked_device_database = device_manager.devices.lock().await;
+
+                            if let Some(qualified_device) = locked_device_database.get_mut(&device)
                                 && let Ok(waveform) = qualified_device.database.load_waveform(id, WaveformType::ThreeBand) {
                                  let _ = ui.send(UIMessage::Waveform { player, waveform });
                             }
                         },
                         UIEvent::GetPreviewWaveform { device, id, player } =>  {
-                            if let Ok(mut locked_device_database) = device_manager.devices.lock()
-                                && let Some(qualified_device) = locked_device_database.get_mut(&device)
+                            let mut locked_device_database = device_manager.devices.lock().await;
+
+                            if let Some(qualified_device) = locked_device_database.get_mut(&device)
                                 && let Ok(waveform) = qualified_device.database.load_preview_waveform(id, WaveformType::ThreeBand) {
                                  let _ = ui.send(UIMessage::PreviewWaveform { player, waveform });
                             }
@@ -253,7 +252,7 @@ pub fn start_load_task(
     loaded_track_sender: tokio::sync::mpsc::UnboundedSender<(usize, Option<Box<TrackAudioData>>)>,
 ) {
     thread::spawn(move || {
-        let audio_data = match TrackAudioData::load_from_file(&track) {
+        let audio_data = match TrackAudioData::load_from_file(&track.audio_path) {
             Ok(audio_data) => audio_data,
             Err(err) => {
                 // todo: build a way to propagate errors to the ui

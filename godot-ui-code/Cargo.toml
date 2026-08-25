@@ -11,6 +11,7 @@ interprocess = "2.4.0"
 godot = "0.5.2"
 thiserror.workspace = true
 libdj = { path = "../libdj" }
+libdsp = { path = "../libdsp" }
 libdatabase = { path = "../libdatabase" }
 libui = { path = "../libui" }
 rkyv.workspace = true

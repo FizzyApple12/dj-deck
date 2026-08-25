@@ -1,8 +1,6 @@
-use crate::types::{
-    analysis::Beat,
-    deck::PlayerState,
-    timecode::{Duration, Timecode},
-};
+use libdsp::timecode::{Duration, Timecode};
+
+use crate::types::{analysis::Beat, deck::PlayerState};
 
 pub fn get_current_beat_index(beat_grid: &[Beat], time: Timecode) -> Option<usize> {
     if beat_grid.is_empty() {
@@ -93,7 +91,6 @@ impl PlayerState {
 }
 
 pub fn closest_bpm_multiple(source_bpm: f32, destination_bpm: f32) -> f32 {
-    // todo: check all bpm multiples
     let half = f32::abs((source_bpm / 2.0) - destination_bpm);
     let full = f32::abs(source_bpm - destination_bpm);
     let double = f32::abs((source_bpm * 2.0) - destination_bpm);

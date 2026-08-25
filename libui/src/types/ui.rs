@@ -2,8 +2,8 @@ use libdj::types::{
     analysis::{PreviewWaveformColumn, TrackAnalysis, WaveformColumn},
     deck::DeckState,
     library::{Library, TrackID},
-    timecode::Timecode,
 };
+use libdsp::timecode::Timecode;
 use rkyv::{Archive, Deserialize, Serialize};
 
 pub const SOCKET_NAME: &str = "/tmp/lib_godot.sock";

@@ -3,18 +3,18 @@ pub mod resampler;
 
 use std::f32;
 
-use libdsp::stretch::{SignalsmithStretch, SignalsmithStretchTrait};
+use libdsp::{
+    audio_loader::TrackAudioData,
+    stretch::{SignalsmithStretch, SignalsmithStretchTrait},
+    timecode::Timecode,
+};
 
 use crate::{
     AUDIO_CHANNELS,
-    audio_system::{
-        audio_loader::TrackAudioData,
-        dsp_pipeline::track_processor::{
-            io::{VecIoBuffer, VecIoBufferMut},
-            resampler::Resampler,
-        },
+    audio_system::dsp_pipeline::track_processor::{
+        io::{VecIoBuffer, VecIoBufferMut},
+        resampler::Resampler,
     },
-    types::timecode::Timecode,
 };
 
 pub struct TrackProcessor {

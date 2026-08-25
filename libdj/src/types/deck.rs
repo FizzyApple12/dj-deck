@@ -1,8 +1,9 @@
+use libdsp::{pipeline::CrossFaderSide, timecode::Timecode};
 use rkyv::{Archive, Deserialize, Serialize};
 
 use crate::{
     MIXER_CHANNELS,
-    types::{analysis::TrackAnalysis, library::Track, timecode::Timecode},
+    types::{analysis::TrackAnalysis, library::Track},
 };
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
@@ -32,13 +33,6 @@ pub enum BeatLoopAdjustMode {
     None,
     In,
     Out,
-}
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
-pub enum CrossFaderSide {
-    A,
-    B,
-    None,
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]

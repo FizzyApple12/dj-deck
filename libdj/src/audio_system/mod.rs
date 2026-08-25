@@ -1,4 +1,3 @@
-pub mod audio_loader;
 pub mod dsp_pipeline;
 
 use std::{cell::RefCell, f32};
@@ -7,17 +6,20 @@ use cpal::{
     Device, Host, Stream, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
+use libdsp::{
+    audio_loader::TrackAudioData,
+    timecode::{Duration, Timecode},
+};
 use midir::{MidiInput, MidiInputConnection, MidiOutput};
 use tokio::task::JoinHandle;
 
 use crate::{
     AUDIO_CHANNELS,
-    audio_system::{audio_loader::TrackAudioData, dsp_pipeline::deck::DeckDSP},
+    audio_system::dsp_pipeline::deck::DeckDSP,
     types::{
         audio_system::{AudioSystemEvent, DeckUpdate},
         deck::DeckState,
         midi::MidiMessage,
-        timecode::{Duration, Timecode},
     },
 };
 
@@ -168,9 +170,6 @@ impl AudioManager {
                     deck_dsp.assign_track_data(channel_index, track_data);
                 }
 
-                // #[allow(clippy::cast_possible_truncation)]
-                // let current_timecode =
-                //     Timecode::from_nanoseconds(info.timestamp().callback.as_nanos() as i64);
                 #[allow(clippy::cast_possible_truncation, clippy::cast_lossless)]
                 let current_timecode = *last_process_timecode
                     + Duration::from_nanoseconds(
