@@ -1,0 +1,29 @@
+# no channel
+0x1234
+
+# channel
+0x1234=0
+
+# channel in address
+0x1n34
+
+# masks
+->b(0x7F) # button, trigger value
+->n(0x7F,1) # numbered button, trigger value, button number
+->a(msb,-1.0,1.0) # absolute position, msb (or lsb), range min, range max
+->r(0x01,0x7F,0x3f,1.0) # relative position, msb (or lsb), range min, range max, distance per tick
+->j() # jog
+
+# mappings
+:PlayPress # Maps to the "PlayPress" action
+
+# mapping terminology
+# * _Press = an action that is triggered one-shot on the rising edge by a control to signal a change
+# * _Release = an action that is triggered one-shot on the falling edge by a control to signal a change
+# note: presses and releases don't have to be buttons. for example, a switch that sends a separate midi command
+#       for each unique position are still press actions
+# * _Set = an action that is used to set the value of a continuously-variable input
+# * _Adjust = an action that is used to adjust the value of a continuously-variable input
+
+# example line, 0x9n47 masked through a button triggering at 0x7F maps to shift + PlayPress
+0x9n47->b(0x7F):PlayPress

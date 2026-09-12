@@ -3,11 +3,18 @@
 https://djl-analysis.deepsymmetry.org/rekordbox-export-analysis/exports.html
 https://djl-analysis.deepsymmetry.org/djl-analysis/packets.html
 
+consider pruning:
+* godot-ui
+* godot-ui-code
+* libui
+
 rc1 todos:
-* rewrite the ui with iced
+* rewrite the ui with qt
+* control quantize system
+* usb-stored settings system
+* finish button bindings
 * rearchitect the audio pipeline
-	* arena, nesting, more?
-	* standard effects architecture
+	* arena, nesting, proc macro
 * build a custom Phase Vocoder around RustFFT
 * fill in filter coefficients based on https://vicanek.de/articles/BiquadFits.pdf
 * effects:
@@ -32,23 +39,22 @@ rc1 todos:
 	* noise
 	* crush
 	* pitch
-* usb-stored settings system
+* usb recording
 * onelibrary support + deduplication with old rekordbox format
-* engine dj library support
 * usb library switching (for multiple libraries)
-* pro dj link
-* separate io logic and mapping logic and move mapping logic to libdj
-* make generic control mapping system
 * switch waveform generation to use an onboard stft for consistency
-* add a global fault management system with graceful degradation and retry logic
 * add graceful error handling for everything
+* screen io board firmware
 * mixer io board firmware
 * player io board firmware
-* make final deckos distribution
 
 1.0 todos:
+* pro dj link
+* engine dj library support
+* onboarding flow
 * track analysis algorithm
 * custom library format for onboard analysis
 * track streaming support
 * stems support
 * stems splitter
+* make final deckos distribution

@@ -4,15 +4,15 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rekordcrate = { git = "https://github.com/FizzyApple12/rekordcrate.git", branch = "djdeck" }
-nusb = { version = "0.2.3", features = [ "tokio" ] }
-binrw = "0.15"
+log.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-tokio-stream.workspace = true
-nix.workspace = true
+netlink-sys = { version = "0.9.0", features = [ "tokio_socket" ] }
+kobject-uevent = "0.2.0"
+rekordcrate = { git = "https://github.com/FizzyApple12/rekordcrate.git", branch = "djdeck" }
+binrw = "0.15"
 libdj = { path = "../libdj" }
-libdsp = { path = "../libdsp" }
+timecode = { path = "../timecode" }
 
 [lints]
 workspace = true

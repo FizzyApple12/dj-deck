@@ -53,7 +53,6 @@ impl IBoxContainer for PlayerWaveformContainer {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     fn process(&mut self, _delta: f64) {
         let ipc = self.ipc.bind();
 

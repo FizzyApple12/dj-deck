@@ -493,8 +493,7 @@ impl<const SPLIT_COMPUTATION: bool> SplitFFT<f32, SPLIT_COMPUTATION> {
     #[allow(
         clippy::indexing_slicing,
         clippy::undocumented_unsafe_blocks,
-        clippy::similar_names,
-        clippy::too_many_lines
+        clippy::similar_names
     )]
     fn fft_step_split_complex_internal<const INVERSE: bool>(
         &mut self,

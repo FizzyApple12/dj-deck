@@ -1,4 +1,4 @@
-use libdsp::timecode::Duration;
+use timecode::Duration;
 
 const VINYL_RPM: f32 = 33.33333;
 

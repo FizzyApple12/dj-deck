@@ -26,19 +26,19 @@ impl<Data> FnOnce<(&Data,)> for DummyExtractorF32 {
     type Output = f32;
 
     extern "rust-call" fn call_once(self, _: (&Data,)) -> f32 {
-        panic!("Tried to call never")
+        unreachable!()
     }
 }
 
 impl<Data> FnMut<(&Data,)> for DummyExtractorF32 {
     extern "rust-call" fn call_mut(&mut self, _: (&Data,)) -> f32 {
-        panic!("Tried to call never")
+        unreachable!()
     }
 }
 
 impl<Data> Fn<(&Data,)> for DummyExtractorF32 {
     extern "rust-call" fn call(&self, _: (&Data,)) -> f32 {
-        panic!("Tried to call never")
+        unreachable!()
     }
 }
 
@@ -48,19 +48,19 @@ impl<Data> FnOnce<(&Data,)> for DummyExtractorF64 {
     type Output = f64;
 
     extern "rust-call" fn call_once(self, _: (&Data,)) -> f64 {
-        panic!("Tried to call never")
+        unreachable!()
     }
 }
 
 impl<Data> FnMut<(&Data,)> for DummyExtractorF64 {
     extern "rust-call" fn call_mut(&mut self, _: (&Data,)) -> f64 {
-        panic!("Tried to call never")
+        unreachable!()
     }
 }
 
 impl<Data> Fn<(&Data,)> for DummyExtractorF64 {
     extern "rust-call" fn call(&self, _: (&Data,)) -> f64 {
-        panic!("Tried to call never")
+        unreachable!()
     }
 }
 

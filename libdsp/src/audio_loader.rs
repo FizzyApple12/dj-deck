@@ -9,8 +9,9 @@ use symphonia::core::{
 };
 use symphonia_core::{audio::AudioBufferRef, conv::FromSample};
 use thiserror::Error;
+use timecode::Timecode;
 
-use crate::{amplitude_to_db, db_to_amplitude, nanoseconds_to_samples, rms, timecode::Timecode};
+use crate::{amplitude_to_db, db_to_amplitude, nanoseconds_to_samples, rms};
 
 #[derive(Error, Debug)]
 pub enum TrackLoadError {
@@ -37,7 +38,6 @@ pub struct TrackAudioData {
 }
 
 impl TrackAudioData {
-    #[allow(clippy::too_many_lines)]
     #[allow(clippy::manual_let_else, clippy::while_let_loop)]
     pub fn load_from_file(file: &PathBuf) -> Result<TrackAudioData, TrackLoadError> {
         let source_file = std::fs::File::open(file).map_err(TrackLoadError::FileNotFound)?;
@@ -337,8 +337,7 @@ impl TrackAudioData {
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         clippy::cast_possible_wrap,
-        clippy::needless_range_loop,
-        clippy::too_many_lines
+        clippy::needless_range_loop
     )]
     pub fn read_samples<const AUDIO_CHANNELS: usize>(
         &self,

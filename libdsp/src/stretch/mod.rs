@@ -640,8 +640,7 @@ impl SignalsmithStretchTrait<f32> for SignalsmithStretch<f32> {
         clippy::cast_possible_wrap,
         clippy::cast_precision_loss,
         clippy::needless_range_loop,
-        clippy::indexing_slicing,
-        clippy::too_many_lines
+        clippy::indexing_slicing
     )]
     fn process<Input, Output>(
         &mut self,
@@ -1264,8 +1263,7 @@ impl SignalsmithStretch<f32> {
         clippy::cast_possible_wrap,
         clippy::cast_precision_loss,
         clippy::needless_range_loop,
-        clippy::indexing_slicing,
-        clippy::too_many_lines
+        clippy::indexing_slicing
     )]
     fn process_spectrum(&mut self, mut step: usize) {
         let smoothing_bins =

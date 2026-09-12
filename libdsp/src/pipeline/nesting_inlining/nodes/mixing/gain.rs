@@ -21,7 +21,7 @@ where
     parent: Parent,
     mode: GainMode<Data, GainAmplitudeExtractor, GainDecibelExtractor>,
 
-    gain: f32,
+    value: f32,
 }
 
 impl<const CHANNELS: usize, Data, Parent, GainAmplitudeExtractor, GainDecibelExtractor>
@@ -40,7 +40,7 @@ where
             parent,
             mode,
 
-            gain: 1.0,
+            value: 1.0,
         }
     }
 }
@@ -54,7 +54,7 @@ where
     GainDecibelExtractor: DataExtractor<Data, f32>,
 {
     fn update(&mut self, data: &Data) {
-        self.gain = match &self.mode {
+        self.value = match &self.mode {
             GainMode::Disabled(_) => 1.0,
             GainMode::Amplitude(gain) => (gain)(data),
             GainMode::Decibel(gain) => db_to_amplitude((gain)(data)),
@@ -69,7 +69,7 @@ where
         let mut parent_data = self.parent.next(clock);
 
         for data in &mut parent_data {
-            *data *= self.gain;
+            *data *= self.value;
         }
 
         parent_data

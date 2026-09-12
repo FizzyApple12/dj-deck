@@ -163,7 +163,6 @@ impl<const COOKBOOK_BANDWIDTH: bool> BiquadStatic<f32, COOKBOOK_BANDWIDTH> {
 
     #[inline]
     #[allow(
-        clippy::too_many_lines,
         clippy::cast_possible_truncation,
         clippy::cast_lossless,
         non_snake_case

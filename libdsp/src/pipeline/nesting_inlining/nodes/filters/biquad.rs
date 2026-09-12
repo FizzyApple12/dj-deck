@@ -211,7 +211,7 @@ where
     GainDataExtractor: DataExtractor<Data, f64>,
     DecibelGainDataExtractor: DataExtractor<Data, f64>,
 {
-    fn update(&mut self, data: &Data) {
+    fn update(&mut self, _data: &Data) {
         match self.configuration {
             FilterConfiguration::Disabled(_) => {}
             FilterConfiguration::LowPass(_, _) => {}

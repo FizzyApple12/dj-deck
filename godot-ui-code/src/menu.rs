@@ -4,7 +4,6 @@ use godot::{
     prelude::*,
 };
 use libdj::types::library::PlaylistTreeNodeID;
-use libui::types::ui::UIMenu;
 
 use crate::{
     browser::{device::DeviceListEntry, track::TrackListEntry},
@@ -44,9 +43,8 @@ pub struct Menu {
     #[export]
     browser_track_entry: OnEditor<Gd<PackedScene>>,
 
-    state: UIMenu,
-
-    current_device: Option<u32>,
+    // state: UIMenu,
+    current_device: Option<usize>,
     _current_playlist: Option<PlaylistTreeNodeID>,
 }
 
@@ -77,8 +75,7 @@ impl INode for Menu {
             browser_playlist_entry: OnEditor::default(),
             browser_track_entry: OnEditor::default(),
 
-            state: UIMenu::None,
-
+            // state: UIMenu::None,
             current_device: None,
             _current_playlist: None,
         }
@@ -99,44 +96,44 @@ impl INode for Menu {
             drop(ipc);
         }
 
-        match self.state {
-            UIMenu::None => {
-                self.players.set_visible(true);
+        // match self.state {
+        //     UIMenu::None => {
+        //         self.players.set_visible(true);
 
-                self.browser.set_visible(false);
-                self.browser_devices.set_visible(false);
-                self.browser_playlist.set_visible(false);
-                self.browser_tracks.set_visible(false);
-            }
-            UIMenu::Devices => {
-                if self.ipc.bind().devices_changed {
-                    self.refresh_device_list();
-                }
+        //         self.browser.set_visible(false);
+        //         self.browser_devices.set_visible(false);
+        //         self.browser_playlist.set_visible(false);
+        //         self.browser_tracks.set_visible(false);
+        //     }
+        //     UIMenu::Devices => {
+        //         if self.ipc.bind().devices_changed {
+        //             self.refresh_device_list();
+        //         }
 
-                self.players.set_visible(false);
+        //         self.players.set_visible(false);
 
-                self.browser.set_visible(true);
-                self.browser_devices.set_visible(true);
-                self.browser_playlist.set_visible(false);
-                self.browser_tracks.set_visible(false);
-            }
-            UIMenu::Playlists => {
-                self.players.set_visible(false);
+        //         self.browser.set_visible(true);
+        //         self.browser_devices.set_visible(true);
+        //         self.browser_playlist.set_visible(false);
+        //         self.browser_tracks.set_visible(false);
+        //     }
+        //     UIMenu::Playlists => {
+        //         self.players.set_visible(false);
 
-                self.browser.set_visible(true);
-                self.browser_devices.set_visible(false);
-                self.browser_playlist.set_visible(true);
-                self.browser_tracks.set_visible(false);
-            }
-            UIMenu::Tracks => {
-                self.players.set_visible(false);
+        //         self.browser.set_visible(true);
+        //         self.browser_devices.set_visible(false);
+        //         self.browser_playlist.set_visible(true);
+        //         self.browser_tracks.set_visible(false);
+        //     }
+        //     UIMenu::Tracks => {
+        //         self.players.set_visible(false);
 
-                self.browser.set_visible(true);
-                self.browser_devices.set_visible(false);
-                self.browser_playlist.set_visible(false);
-                self.browser_tracks.set_visible(true);
-            }
-        }
+        //         self.browser.set_visible(true);
+        //         self.browser_devices.set_visible(false);
+        //         self.browser_playlist.set_visible(false);
+        //         self.browser_tracks.set_visible(true);
+        //     }
+        // }
     }
 }
 
@@ -163,15 +160,15 @@ impl Menu {
         }
     }
 
-    pub fn select_device(&mut self, device: u32) {
+    pub fn select_device(&mut self, device: usize) {
         self.current_device = Some(device);
 
         self.refresh_tracks_list();
-        self.state = UIMenu::Tracks;
+        // self.state = UIMenu::Tracks;
     }
 
     pub fn go_to_players(&mut self) {
-        self.state = UIMenu::None;
+        // self.state = UIMenu::None;
     }
 
     #[allow(clippy::cast_possible_truncation, clippy::unused_self)]
@@ -203,7 +200,7 @@ impl Menu {
                 self.browser_tracks_list.push(new_track_entry);
             }
         } else {
-            self.state = UIMenu::Devices;
+            // self.state = UIMenu::Devices;
         }
     }
 }
@@ -212,52 +209,52 @@ impl Menu {
 impl Menu {
     #[func]
     fn source_pressed(&mut self) {
-        if let UIMenu::Devices = self.state {
-            self.state = UIMenu::None;
+        // if let UIMenu::Devices = self.state {
+        //     self.state = UIMenu::None;
 
-            return;
-        }
+        //     return;
+        // }
 
-        self.refresh_device_list();
-        self.state = UIMenu::Devices;
+        // self.refresh_device_list();
+        // self.state = UIMenu::Devices;
     }
 
     #[func]
     fn browse_pressed(&mut self) {
-        if let UIMenu::Tracks = self.state {
-            self.state = UIMenu::None;
+        // if let UIMenu::Tracks = self.state {
+        //     self.state = UIMenu::None;
 
-            return;
-        }
+        //     return;
+        // }
 
-        if self.current_device.is_none() {
-            self.refresh_device_list();
-            self.state = UIMenu::Devices;
+        // if self.current_device.is_none() {
+        //     self.refresh_device_list();
+        //     self.state = UIMenu::Devices;
 
-            return;
-        }
+        //     return;
+        // }
 
-        self.refresh_tracks_list();
-        self.state = UIMenu::Tracks;
+        // self.refresh_tracks_list();
+        // self.state = UIMenu::Tracks;
     }
 
     #[func]
     fn playlist_pressed(&mut self) {
-        if let UIMenu::Playlists = self.state {
-            self.state = UIMenu::None;
+        // if let UIMenu::Playlists = self.state {
+        //     self.state = UIMenu::None;
 
-            return;
-        }
+        //     return;
+        // }
 
-        if self.current_device.is_none() {
-            self.refresh_device_list();
-            self.state = UIMenu::Devices;
+        // if self.current_device.is_none() {
+        //     self.refresh_device_list();
+        //     self.state = UIMenu::Devices;
 
-            return;
-        }
+        //     return;
+        // }
 
-        self.refresh_playlist_list();
-        self.state = UIMenu::Playlists;
+        // self.refresh_playlist_list();
+        // self.state = UIMenu::Playlists;
     }
 }
 

@@ -1,4 +1,4 @@
-use libdsp::timecode::{Duration, Timecode};
+use timecode::{Duration, Timecode};
 
 use crate::types::{analysis::Beat, deck::PlayerState};
 

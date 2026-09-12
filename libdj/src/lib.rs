@@ -1,4 +1,8 @@
-#![feature(unboxed_closures, fn_traits)]
+#![feature(unboxed_closures)]
+#![feature(nonpoison_rwlock)]
+#![feature(sync_nonpoison)]
+
+pub mod engine;
 
 use std::path::PathBuf;
 
@@ -10,13 +14,18 @@ use rkyv::{
     with::{ArchiveWith, DeserializeWith, SerializeWith},
 };
 
-pub mod audio_system;
+#[cfg(feature = "full")]
+pub mod audio;
+#[cfg(feature = "full")]
+pub mod bindings;
+#[cfg(feature = "full")]
 pub mod math;
+#[cfg(feature = "full")]
 pub mod playback;
 pub mod types;
 
-// pub const PLAYBACK_SAMPLE_RATE: usize = 44100;
-// pub const MAX_BUFFER_SIZE: usize = 128;
+const JOG_DEADBAND: f32 = 0.75;
+const KNOB_DEADBAND: f32 = 0.001;
 
 pub const MIXER_CHANNELS: usize = 4;
 pub const AUDIO_CHANNELS: usize = 2;

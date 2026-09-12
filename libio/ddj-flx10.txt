@@ -1,0 +1,145 @@
+# usb
+# USBEjectPress
+# USBEjectRelease
+
+# browser
+0xB640->r(0x01,0x7F,0x3f,1.0):BrowserEncoderAdjust
+
+0x9646->b(0x7F):BrowserEncoderPress
+0x965D->b(0x7F):BrowserEncoderPress
+0x9647->b(0x7F):BrowserEncoderPress
+0x966D->b(0x7F):BrowserEncoderPress
+0x9648->b(0x7F):BrowserEncoderPress
+0x965E->b(0x7F):BrowserEncoderPress
+0x9649->b(0x7F):BrowserEncoderPress
+0x966F->b(0x7F):BrowserEncoderPress
+
+0x9665->b(0x7F):BrowserBackPress
+0x9666->b(0x7F):BrowserBackPress
+
+0x967A->b(0x7F):BrowserBrowsePress
+0x9667->b(0x7F):BrowserPlaylistPress
+0x9668->b(0x7F):BrowserSourcePress
+
+# mixer
+0xB608->a(msb,0.0,2.0):MixerMasterGainSet
+0xB628->a(lsb,0.0,2.0):MixerMasterGainSet
+0x9663->b(0x7F):MixerMasterCuePress
+0x9414->b(0x7F):MixerMasterMasterFXTargetPress
+0x9415->b(0x7F):MixerMasterMasterFXTargetPress
+0x9416->b(0x7F):MixerMasterMasterFXTargetPress
+
+# MixerMasterFXSelect
+# MixerMasterFXSelectTouchPress
+# MixerMasterFXSelectTouchRelease
+# MixerMasterFXParameterAdjust
+# MixerMasterFXParameterSelectPress
+# MixerMasterFXBPMAdjust
+# MixerMasterFXBPMSelectPress
+0xB402->a(msb,0.0,1.0):MixerMasterFXDepthSet
+0xB422->a(lsb,0.0,1.0):MixerMasterFXDepthSet
+0x9447->b(0x7F):MixerMasterFXEnablePress
+
+0x9600->n(0x7F,0):MixerChannelFXPress
+0x9601->n(0x7F,1):MixerChannelFXPress
+0x9602->n(0x7F,2):MixerChannelFXPress
+0x9603->n(0x7F,3):MixerChannelFXPress
+0x9604->n(0x7F,4):MixerChannelFXPress
+0x9605->n(0x7F,5):MixerChannelFXPress
+# MixerChannelFXProximityPress
+# MixerChannelFXProximityRelease
+
+0xB61F->a(msb,-1.0,1.0):MixerCrossfaderSet
+0xB63F->a(lsb,-1.0,1.0):MixerCrossfaderSet
+
+0xB60C->a(msb,-1.0,1.0):MixerHeadphonesMixSet
+0xB62C->a(lsb,-1.0,1.0):MixerHeadphonesMixSet
+0xB60D->a(msb,0.0,2.0):MixerHeadphonesGainSet
+0xB62D->a(lsb,0.0,2.0):MixerHeadphonesGainSet
+
+# mixer channels
+0xBn04->a(msb,0.0,2.0):MixerChannelGainSet
+0xBn24->a(lsb,0.0,2.0):MixerChannelGainSet
+
+0xBn07->a(msb,-1.0,1.0):MixerChannelEqHighSet
+0xBn27->a(lsb,-1.0,1.0):MixerChannelEqHighSet
+0xBn0B->a(msb,-1.0,1.0):MixerChannelEqMidSet
+0xBn2B->a(lsb,-1.0,1.0):MixerChannelEqMidSet
+0xBn0F->a(msb,-1.0,1.0):MixerChannelEqLowSet
+0xBn2F->a(lsb,-1.0,1.0):MixerChannelEqLowSet
+
+0xB617=0->a(msb,-1.0,1.0):MixerChannelFXSet
+0xB637=0->a(lsb,-1.0,1.0):MixerChannelFXSet
+0xB618=1->a(msb,-1.0,1.0):MixerChannelFXSet
+0xB638=1->a(lsb,-1.0,1.0):MixerChannelFXSet
+0xB619=2->a(msb,-1.0,1.0):MixerChannelFXSet
+0xB639=2->a(lsb,-1.0,1.0):MixerChannelFXSet
+0xB61A=3->a(msb,-1.0,1.0):MixerChannelFXSet
+0xB63A=3->a(lsb,-1.0,1.0):MixerChannelFXSet
+
+0x9n54->b(0x7F):MixerChannelCuePress
+0x9410=0->b(0x7F):MixerChannelMasterFXTargetPress
+0x9411=1->b(0x7F):MixerChannelMasterFXTargetPress
+0x9412=2->b(0x7F):MixerChannelMasterFXTargetPress
+0x9413=3->b(0x7F):MixerChannelMasterFXTargetPress
+
+0xBn13->a(msb,0.0,1.0):MixerChannelFaderSet
+0xBn33->a(lsb,0.0,1.0):MixerChannelFaderSet
+
+0x9n16->b(0x7F):MixerChannelCrossfaderAssignAPress
+0x9n1D->b(0x7F):MixerChannelCrossfaderAssignNonePress
+0x9n18->b(0x7F):MixerChannelCrossfaderAssignBPress
+
+# player
+0xBn21->j():PlayerJogVelocitySet
+0xBn22->j():PlayerJogVelocitySet
+0xBn23->j():PlayerJogVelocitySet
+0xBn29->j():PlayerJogSearchVelocitySet
+0xBn1F->j():PlayerJogSearchVelocitySet
+
+0x9n36->b(0x7F):PlayerJogPress
+0x9n67->b(0x7F):PlayerJogPress
+0x9n36->b(0x00):PlayerJogRelease
+0x9n67->b(0x00):PlayerJogRelease
+
+0x9n35->b(0x7F):PlayerQuantizePress
+0x9n40->b(0x7F):PlayerSlipPress
+
+0x9n0B->b(0x7F):PlayerPlayPress
+0x9n47->b(0x7F):PlayerPlayPress
+
+0x9n15->b(0x7F):PlayerReversePress
+0x9n15->b(0x00):PlayerReverseRelease
+
+0x9n0C->b(0x7F):PlayerCuePress
+0x9n0C->b(0x00):PlayerCueRelease
+0x9n48->b(0x7F):PlayerAltCuePress
+0x9n48->b(0x00):PlayerAltCueRelease
+
+0x9n5E->b(0x00):PlayerBeatJumpBackwardRelease
+0x9n61->b(0x00):PlayerLongBeatJumpBackwardRelease
+0x9n5F->b(0x00):PlayerBeatJumpForwardRelease
+0x9n62->b(0x00):PlayerLongBeatJumpForwardRelease
+
+0x9n58->b(0x7F):PlayerBeatSyncPress
+0x9n78->b(0x7F):PlayerBPMSyncPress
+0x9n65->b(0x7F):PlayerKeySyncPress
+0x9n5C->b(0x7F):PlayerMasterPress
+
+0x9n41->b(0x7F):PlayerTempoResetPress
+0x9n60->b(0x7F):PlayerTempoRangePress
+0x9n1A->b(0x7F):PlayerMasterTempoPress
+
+0xBn00->a(msb,0.0,2.0):PlayerTempoSet
+0xBn05->a(msb,0.0,2.0):PlayerTempoSet
+0xBn20->a(lsb,0.0,2.0):PlayerTempoSet
+0xBn25->a(lsb,0.0,2.0):PlayerTempoSet
+
+0x9n10->b(0x7F):PlayerBeatLoopInPress
+0x9n4C->b(0x7F):PlayerBeatLoopInAdjustPress
+0x9n11->b(0x7F):PlayerBeatLoopOutPress
+0x9n4D->b(0x7F):PlayerBeatLoopOutAdjustPress
+0x9n14->b(0x7F):PlayerReLoopPress
+0x9n50->b(0x7F):PlayerInstantLoopPress
+
+# Pad

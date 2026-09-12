@@ -38,13 +38,20 @@
           deck-application = pkgs.callPackage ./package.nix {};
         };
 
-        devShells.default = pkgs.mkShell rec {
+        devShells.default = let
+            qtEnv = with pkgs.qt6; env "qt-custom-${qtbase.version}" [
+              qtdeclarative
+              qtwayland
+              qtshadertools
+            ];
+          in pkgs.mkShell rec {
           buildInputs = [
             pkgs.systemd
             pkgs.openssl
 
             pkgs.fontconfig
             pkgs.vulkan-loader
+            pkgs.libglvnd
 
             pkgs.libxkbcommon
             pkgs.xorg.libxcb
@@ -62,6 +69,8 @@
             pkgs.libjack2
             pkgs.pipewire
             pkgs.pipewire.jack
+
+            qtEnv
           ];
           nativeBuildInputs = [
             pkgs.bash
@@ -78,6 +87,10 @@
 
             pkgs.rpiboot
             pkgs.minicom
+
+            pkgs.qtcreator
+
+            qtEnv
           ];
 
           RUSTC_VERSION = "nightly-2026-07-19";

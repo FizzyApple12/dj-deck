@@ -1,6 +1,6 @@
 pub mod analysis;
-pub mod audio_system;
+pub mod bindings;
 pub mod deck;
 pub mod library;
-pub mod midi;
+pub mod playback;
 pub mod settings;

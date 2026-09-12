@@ -2,7 +2,6 @@ use godot::{
     classes::{HBoxContainer, IHBoxContainer, Label},
     prelude::*,
 };
-use libui::types::ui::InternalUIEvent;
 
 use crate::{ipc::IPC, menu::Menu};
 
@@ -11,7 +10,7 @@ use crate::{ipc::IPC, menu::Menu};
 pub struct DeviceListEntry {
     base: Base<HBoxContainer>,
 
-    pub device_number: u32,
+    pub device_number: usize,
 
     pub ipc: Option<Gd<IPC>>,
 
@@ -60,8 +59,9 @@ impl DeviceListEntry {
     #[func]
     fn eject(&mut self) {
         if let Some(ipc) = &mut self.ipc {
-            ipc.bind_mut()
-                .send_event(InternalUIEvent::EjectDevice(self.device_number));
+            // ipc.bind_mut()
+            //     .send_event(InternalUIEvent::EjectDevice(self.
+            // device_number));
         }
     }
 

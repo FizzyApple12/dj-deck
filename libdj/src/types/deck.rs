@@ -1,5 +1,5 @@
-use libdsp::{pipeline::CrossFaderSide, timecode::Timecode};
 use rkyv::{Archive, Deserialize, Serialize};
+use timecode::Timecode;
 
 use crate::{
     MIXER_CHANNELS,
@@ -22,6 +22,13 @@ pub enum PlayState {
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
+pub enum CrossFaderSide {
+    A,
+    B,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
 pub enum BeatSyncMode {
     Off,
     BPMSync,
@@ -36,7 +43,7 @@ pub enum BeatLoopAdjustMode {
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
-pub enum FilterEffect {
+pub enum ChannelFXEffect {
     None,
     Space,
     DubEcho,
@@ -50,17 +57,16 @@ pub enum FilterEffect {
 pub struct DeckState {
     pub mixer_channels: [ChannelState; MIXER_CHANNELS],
 
-    pub filter_effect: FilterEffect,
-
     pub master_channel: Option<usize>,
 
-    pub effects: Effects,
+    pub master_fx: MasterFX,
 
     pub crossfade: f32,
 
     pub master_cue: bool,
     pub master_gain: f32, // decibels
-    pub booth_gain: f32,  // decibels
+
+    pub channel_fx_effect: ChannelFXEffect,
 }
 
 impl Default for DeckState {
@@ -68,9 +74,7 @@ impl Default for DeckState {
         Self {
             mixer_channels: Default::default(),
 
-            filter_effect: FilterEffect::None,
-
-            effects: Effects::default(),
+            master_fx: MasterFX::default(),
 
             crossfade: 0.5,
 
@@ -78,7 +82,8 @@ impl Default for DeckState {
 
             master_cue: false,
             master_gain: 0.0,
-            booth_gain: 0.0,
+
+            channel_fx_effect: ChannelFXEffect::None,
         }
     }
 }
@@ -88,15 +93,15 @@ impl Default for DeckState {
 pub struct ChannelState {
     pub player: PlayerState,
 
-    pub fade: f32, // percent
-
     pub gain: f32,           // decibels
     pub eq: (f32, f32, f32), // decibels
-    pub filter: f32,         // percent
-
-    pub cross_fader_side: CrossFaderSide,
+    pub fx: f32,             // percent
 
     pub cue: bool, // cue enabled
+
+    pub fade: f32, // percent
+
+    pub cross_fader_side: CrossFaderSide,
 }
 
 impl Default for ChannelState {
@@ -104,15 +109,15 @@ impl Default for ChannelState {
         Self {
             player: PlayerState::default(),
 
-            fade: 1.0,
-
             gain: 0.0,
             eq: (0.0, 0.0, 0.0),
-            filter: 0.0,
-
-            cross_fader_side: CrossFaderSide::None,
+            fx: 0.0,
 
             cue: false,
+
+            fade: 1.0,
+
+            cross_fader_side: CrossFaderSide::None,
         }
     }
 }
@@ -120,7 +125,7 @@ impl Default for ChannelState {
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
 pub struct PlayerState {
-    pub current_track: Option<(u32, Track)>,
+    pub current_track: Option<(usize, Track)>,
     pub current_track_analysis: Option<TrackAnalysis>,
     pub is_loading: bool,
 
@@ -204,50 +209,58 @@ impl Default for PlayerState {
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
-pub enum EffectsChannel {
+pub enum MasterFXChannel {
     Channel(usize),
     Master,
 }
 
 #[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize)]
-pub enum EffectsChannelEffect {
-    LowCutEcho { length: f32 },
-    Echo { length: f32 },
-    Delay { length: f32 },
-    Spiral { length: f32 },
-    Reverb { percent: f32 },
-    Transgate { length: f32 },
-    EnigmaJet { length: f32 },
-    Flanger { length: f32 },
-    Phaser { length: f32 },
-    Stretch { length: f32 },
-    SlipRoll { length: f32 },
-    Roll { length: f32 },
+pub enum MasterFXEffect {
+    LowCutEcho,
+    Echo,
+    Delay,
+    Spiral,
+    Reverb,
+    Transgate,
+    EnigmaJet,
+    Flanger,
+    Phaser,
+    Stretch,
+    SlipRoll,
+    Roll,
 }
 
 #[derive(Debug, Clone, Archive, Deserialize, Serialize)]
-pub struct Effects {
-    pub channel: EffectsChannel,
+pub struct MasterFX {
+    pub channel: MasterFXChannel,
 
-    pub effect: EffectsChannelEffect,
+    pub effect: MasterFXEffect,
 
     pub enabled: bool,
 
+    pub length: f32,
+    pub percent: f32,
+
     pub depth: f32,
     pub bpm: f32,
+    pub auto_bpm: bool,
 }
 
-impl Default for Effects {
+impl Default for MasterFX {
     fn default() -> Self {
         Self {
-            channel: EffectsChannel::Master,
+            channel: MasterFXChannel::Master,
 
-            effect: EffectsChannelEffect::Reverb { percent: 0.5 },
+            effect: MasterFXEffect::Reverb,
 
             enabled: false,
 
+            length: 0.0,
+            percent: 0.0,
+
             depth: 0.0,
             bpm: 120.0,
+            auto_bpm: true,
         }
     }
 }

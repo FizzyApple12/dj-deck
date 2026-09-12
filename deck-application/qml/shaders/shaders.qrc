@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/shaders">
+        <file>preview_waveform.vert.qsb</file>
+        <file>preview_waveform.frag.qsb</file>
+        <file>waveform.vert.qsb</file>
+        <file>waveform.frag.qsb</file>
+    </qresource>
+</RCC>

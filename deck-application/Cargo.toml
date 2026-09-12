@@ -4,14 +4,26 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+log.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
+fern = { version = "0.7", features = [ "colored" ] }
+humantime = "2.4.0"
+timecode = { path = "../timecode" }
 libdj = { path = "../libdj" }
 libdatabase = { path = "../libdatabase" }
 libio = { path = "../libio" }
-libui = { path = "../libui" }
 libdsp = { path = "../libdsp" }
+cxx = "1"
+cxx-qt = "0.10"
+cxx-qt-lib = { version = "0.10", features = [ "full" ] }
+
+[build-dependencies]
+cxx-qt-build = { version = "0.10", features = [ "link_qt_object_files" ] }
+
+[features]
+debug_log = []
 
 [lints]
 workspace = true

@@ -3,7 +3,6 @@ use godot::{
     prelude::*,
 };
 use libdj::types::library::TrackID;
-use libui::types::ui::InternalUIEvent;
 
 use crate::{ipc::IPC, menu::Menu};
 
@@ -12,7 +11,7 @@ use crate::{ipc::IPC, menu::Menu};
 pub struct TrackListEntry {
     base: Base<HBoxContainer>,
 
-    pub device_number: u32,
+    pub device_number: usize,
     pub track_id: TrackID,
     pub track_number: u32,
 
@@ -93,11 +92,11 @@ impl TrackListEntry {
     #[allow(clippy::cast_sign_loss)]
     fn load(&mut self, player: i32) {
         if let Some(ipc) = &mut self.ipc {
-            ipc.bind_mut().send_event(InternalUIEvent::LoadTrack {
-                device: self.device_number,
-                id: self.track_id,
-                player: player as usize,
-            });
+            // ipc.bind_mut().send_event(InternalUIEvent::LoadTrack {
+            //     device: self.device_number,
+            //     id: self.track_id,
+            //     player: player as usize,
+            // });
         }
 
         if let Some(menu) = &mut self.menu {

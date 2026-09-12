@@ -5,9 +5,7 @@ pub mod nesting_inlining;
 
 // todo: move to final pipeline's Crossfader node file
 
-use rkyv::{Archive, Deserialize, Serialize};
-
-#[derive(Debug, Clone, Copy, Archive, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CrossFaderSide {
     A,
     B,

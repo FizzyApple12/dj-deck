@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+timecode = { path = "../timecode" }
 num.workspace = true
 num-complex.workspace = true
 thiserror.workspace = true

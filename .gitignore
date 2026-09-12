@@ -2,5 +2,10 @@ result/
 result
 
 *.img
-
 target/
+
+*.log
+
+.qmlls.ini
+Generated/
+*.autosave

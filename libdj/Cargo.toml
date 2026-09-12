@@ -4,20 +4,27 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+log.workspace = true
 rkyv.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, optional = true }
+tokio-stream = { workspace = true, optional = true }
 num.workspace = true
 criterion.workspace = true
-cpal = { version = "0.18.2", features = [ "pipewire" ] }
-midir = { version = "0.11.0", features = [ ] }
-libdsp = { path = "../libdsp" }
+timecode = { path = "../timecode" }
+macro-helpers = { path = "../macro-helpers" }
+cpal = { version = "0.18.2", features = [ "pipewire" ], optional = true }
+libdsp = { path = "../libdsp", optional = true }
 
 alsa-sys.version = "0.4.0"
 alsa.version = "0.11"
 
 [lints]
 workspace = true
+
+[features]
+default = [ "full" ]
+full = [ "dep:tokio", "dep:tokio-stream", "dep:cpal", "dep:libdsp" ]
 
 # [[bench]]
 # name = "audio_pipeline"

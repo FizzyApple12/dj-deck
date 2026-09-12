@@ -1,10 +1,11 @@
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 
+use timecode::Timecode;
+
 use crate::{
     audio_loader::TrackAudioData,
     nanoseconds_to_samples,
     pipeline::nesting_inlining::{DataExtractor, PipelineNode},
-    timecode::Timecode,
 };
 
 #[derive(Clone, Copy)]
@@ -100,12 +101,17 @@ where
         self.has_wrapped = false;
     }
 
-    #[allow(clippy::inline_always)]
+    #[allow(
+        clippy::inline_always,
+        clippy::cast_possible_wrap,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation
+    )]
     #[inline(always)]
     fn next(&mut self, _: usize) -> [f32; CHANNELS] {
         if self.source_timecode.is_none() {
             return [0.0; CHANNELS];
-        };
+        }
 
         let track_data = self.track_audio_data_ref.borrow();
         let Some(track_data) = track_data.as_ref() else {
@@ -115,7 +121,7 @@ where
         let mut returned_sample = [0.0; CHANNELS];
 
         if track_data.samples.len() < CHANNELS {
-            for output in returned_sample.iter_mut() {
+            for output in &mut returned_sample {
                 *output = if let Some(channel) = track_data.samples.first()
                     && self.sample_accumulator >= 0
                     && self.sample_accumulator <= channel.len() as i64

@@ -15,7 +15,6 @@ pub mod dsp;
 pub mod linear;
 pub mod pipeline;
 pub mod stretch;
-pub mod timecode;
 
 pub fn db_to_amplitude(db: f32) -> f32 {
     10.0_f32.powf(db / 20.0)

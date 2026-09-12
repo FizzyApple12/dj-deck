@@ -1,5 +1,5 @@
-use libdsp::timecode::Timecode;
 use rkyv::{Archive, Deserialize, Serialize};
+use timecode::Timecode;
 
 use crate::types::library::OriginDatabase;
 

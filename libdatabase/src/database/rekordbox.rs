@@ -14,12 +14,13 @@ use libdj::types::{
         PlaylistFolder, PlaylistTreeNode, Track,
     },
 };
-use libdsp::timecode::Timecode;
+use log::{debug, info, warn};
 use rekordcrate::{
     anlz::ANLZ,
     pdb::{DatabaseType, Header},
 };
 use thiserror::Error;
+use timecode::Timecode;
 
 use crate::database::relativeify_path_string;
 
@@ -59,10 +60,14 @@ impl RekordboxDatabase {
     pub fn open(device_root: &Path) -> Result<RekordboxDatabase, OpenDatabaseError> {
         let pdb_path = device_root.join(Path::new("PIONEER/rekordbox/export.pdb"));
 
+        info!(target: "libdatabase::database::rekordbox", "Opening rekordbox database at {}", pdb_path.display());
+
         let Ok(mut pdb_file) = File::open(pdb_path) else {
             return Err(OpenDatabaseError::PDBNotFound);
         };
         let Ok(pdb_header) = Header::read_args(&mut pdb_file, (DatabaseType::Plain,)) else {
+            warn!(target: "libdatabase::database::rekordbox", "Rekordbox database corrupt");
+
             return Err(OpenDatabaseError::PDBCorrupt);
         };
 
@@ -74,27 +79,28 @@ impl RekordboxDatabase {
         })
     }
 
-    #[allow(clippy::too_many_lines)]
     pub fn load_base(
         self: &mut RekordboxDatabase,
         existing_library: &mut Library,
     ) -> Result<(), LoadBaseError> {
         for table in &self.pdb_header.tables {
-            for page in self
-                .pdb_header
-                .read_pages(
-                    &mut self.pdb_file,
-                    binrw::Endian::NATIVE,
-                    (&table.first_page, &table.last_page, DatabaseType::Plain),
-                )
-                .unwrap()
-            {
+            let Ok(pages) = self.pdb_header.read_pages(
+                &mut self.pdb_file,
+                binrw::Endian::NATIVE,
+                (&table.first_page, &table.last_page, DatabaseType::Plain),
+            ) else {
+                continue;
+            };
+
+            for page in pages {
                 match page.content {
                     rekordcrate::pdb::PageContent::Data(data_page_content) => {
                         for row_group in data_page_content.rows {
                             match row_group.1 {
                                 rekordcrate::pdb::Row::Plain(plain_row) => match plain_row {
                                     rekordcrate::pdb::PlainRow::Album(album) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{album:?}");
+
                                         existing_library.albums.insert(
                                             album.id.0,
                                             Album {
@@ -107,6 +113,8 @@ impl RekordboxDatabase {
                                         );
                                     }
                                     rekordcrate::pdb::PlainRow::Key(key) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{key:?}");
+
                                         existing_library.keys.insert(
                                             key.id.0,
                                             Key {
@@ -118,6 +126,8 @@ impl RekordboxDatabase {
                                         );
                                     }
                                     rekordcrate::pdb::PlainRow::Artist(artist) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{artist:?}");
+
                                         existing_library.artists.insert(
                                             artist.id.0,
                                             Artist {
@@ -129,6 +139,8 @@ impl RekordboxDatabase {
                                         );
                                     }
                                     rekordcrate::pdb::PlainRow::Artwork(artwork) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{artwork:?}");
+
                                         existing_library.artworks.insert(
                                             artwork.id.0,
                                             Artwork {
@@ -144,6 +156,8 @@ impl RekordboxDatabase {
                                         );
                                     }
                                     rekordcrate::pdb::PlainRow::Genre(genre) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{genre:?}");
+
                                         existing_library.genres.insert(
                                             genre.id.0,
                                             Genre {
@@ -155,6 +169,8 @@ impl RekordboxDatabase {
                                         );
                                     }
                                     rekordcrate::pdb::PlainRow::Label(label) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{label:?}");
+
                                         existing_library.labels.insert(
                                             label.id.0,
                                             Label {
@@ -168,6 +184,8 @@ impl RekordboxDatabase {
                                     rekordcrate::pdb::PlainRow::PlaylistTreeNode(
                                         playlist_tree_node,
                                     ) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{playlist_tree_node:?}");
+
                                         existing_library
                                             .playlist_tree
                                             .entry(playlist_tree_node.id.0)
@@ -227,6 +245,8 @@ impl RekordboxDatabase {
                                             ));
                                     }
                                     rekordcrate::pdb::PlainRow::PlaylistEntry(playlist_entry) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{playlist_entry:?}");
+
                                         if let Some(playlist) = existing_library
                                             .playlist_tree
                                             .get_mut(&playlist_entry.playlist_id.0)
@@ -242,6 +262,8 @@ impl RekordboxDatabase {
                                         }
                                     }
                                     rekordcrate::pdb::PlainRow::Track(track) => {
+                                        debug!(target: "libdatabase::database::rekordbox", "{track:?}");
+
                                         existing_library.tracks.insert(
                                             track.id.0,
                                             Track {
@@ -294,7 +316,6 @@ impl RekordboxDatabase {
         Ok(())
     }
 
-    #[allow(clippy::too_many_lines)]
     pub fn load_analysis(
         self: &RekordboxDatabase,
         track: &Track,
@@ -313,6 +334,8 @@ impl RekordboxDatabase {
             for section in anlz.sections {
                 match section.content {
                     rekordcrate::anlz::Content::BeatGrid(beat_grid) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{beat_grid:?}");
+
                         for beat in beat_grid.beats {
                             beat_grid_cache.push(Beat {
                                 beat_number: u32::from(beat.beat_number - 1),
@@ -322,6 +345,8 @@ impl RekordboxDatabase {
                         }
                     }
                     rekordcrate::anlz::Content::CueList(cue_list) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{cue_list:?}");
+
                         for cue in cue_list.cues {
                             if cue.hot_cue == 0 {
                                 memory_cues_cache.push(MemoryCue {
@@ -346,6 +371,8 @@ impl RekordboxDatabase {
                         }
                     }
                     rekordcrate::anlz::Content::ExtendedCueList(extended_cue_list) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{extended_cue_list:?}");
+
                         for cue in extended_cue_list.cues {
                             if cue.hot_cue == 0 {
                                 memory_cues_cache.push(MemoryCue {
@@ -437,6 +464,8 @@ impl RekordboxDatabase {
                 }
             }
         } else {
+            warn!(target: "libdatabase::database::rekordbox", "Analysis file for Track {} corrupt", track.id);
+
             return Err(LoadAnalysisError::AnalysisCorrupt);
         }
 
@@ -448,7 +477,6 @@ impl RekordboxDatabase {
         })
     }
 
-    #[allow(clippy::too_many_lines)]
     pub fn load_preview_waveform(
         self: &RekordboxDatabase,
         track: &Track,
@@ -474,6 +502,8 @@ impl RekordboxDatabase {
                         WaveformType::Grayscale,
                         rekordcrate::anlz::Content::WaveformColorPreview(waveform),
                     ) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{waveform:?}");
+
                         for waveform_column in waveform.data {
                             waveform_cache.push(PreviewWaveformColumn::Grayscale {
                                 height: u8::max(
@@ -491,6 +521,8 @@ impl RekordboxDatabase {
                         WaveformType::RGB,
                         rekordcrate::anlz::Content::WaveformColorPreview(waveform),
                     ) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{waveform:?}");
+
                         for waveform_column in waveform.data {
                             waveform_cache.push(PreviewWaveformColumn::RGB {
                                 height: u8::max(
@@ -512,6 +544,8 @@ impl RekordboxDatabase {
                         WaveformType::ThreeBand,
                         rekordcrate::anlz::Content::Waveform3BandPreview(waveform),
                     ) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{waveform:?}");
+
                         for waveform_column in waveform.data {
                             waveform_cache.push(PreviewWaveformColumn::ThreeBand {
                                 height: waveform_column
@@ -530,7 +564,7 @@ impl RekordboxDatabase {
                 }
             }
         } else {
-            println!("d");
+            warn!(target: "libdatabase::database::rekordbox", "Analysis file for Track {} corrupt", track.id);
 
             return Err(LoadAnalysisError::AnalysisCorrupt);
         }
@@ -538,7 +572,6 @@ impl RekordboxDatabase {
         Ok(waveform_cache)
     }
 
-    #[allow(clippy::too_many_lines)]
     pub fn load_waveform(
         self: &RekordboxDatabase,
         track: &Track,
@@ -563,6 +596,8 @@ impl RekordboxDatabase {
                         WaveformType::Grayscale,
                         rekordcrate::anlz::Content::WaveformDetail(waveform),
                     ) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{waveform:?}");
+
                         for waveform_column in waveform.data {
                             waveform_cache.push(WaveformColumn::Grayscale {
                                 height: waveform_column.height(),
@@ -574,6 +609,8 @@ impl RekordboxDatabase {
                         WaveformType::RGB,
                         rekordcrate::anlz::Content::WaveformColorDetail(waveform),
                     ) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{waveform:?}");
+
                         for waveform_column in waveform.data {
                             // todo: swap this for the better method of colourising
                             waveform_cache.push(WaveformColumn::RGB {
@@ -590,6 +627,8 @@ impl RekordboxDatabase {
                         WaveformType::ThreeBand,
                         rekordcrate::anlz::Content::Waveform3BandDetail(waveform),
                     ) => {
+                        debug!(target: "libdatabase::database::rekordbox", "{waveform:?}");
+
                         for waveform_column in waveform.data {
                             waveform_cache.push(WaveformColumn::ThreeBand {
                                 height: u8::max(
@@ -613,6 +652,8 @@ impl RekordboxDatabase {
                 }
             }
         } else {
+            warn!(target: "libdatabase::database::rekordbox", "Analysis file for Track {} corrupt", track.id);
+
             return Err(LoadAnalysisError::AnalysisCorrupt);
         }
 
@@ -620,11 +661,15 @@ impl RekordboxDatabase {
     }
 
     pub fn sync(self: &mut RekordboxDatabase) {
+        warn!(target: "libdatabase::database::rekordbox", "Sync not implemented!");
+
         // todo: sync updated data back to disk (will probably need to modify
         // rekordcrate to make this happen)
     }
 
     pub fn close(mut self: RekordboxDatabase) {
         self.sync();
+
+        info!(target: "libdatabase::database::rekordbox", "Rekordbox database closed");
     }
 }

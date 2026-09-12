@@ -12,7 +12,6 @@ use crate::{
     PipelineDeckData, VIRTUAL_BATCH_SIZE,
 };
 
-#[allow(clippy::too_many_lines)]
 pub fn test_arena_inlining(
     criterion: &mut Criterion,
     deck_state: &DeckState,

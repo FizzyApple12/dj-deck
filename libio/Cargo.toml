@@ -8,11 +8,11 @@ thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 libdj = { path = "../libdj" }
-libdsp = { path = "../libdsp" }
-libui = { path = "../libui" }
 interprocess = { version = "2.4.0", features = ["tokio"] }
 rkyv.workspace = true
 base64.workspace = true
+midir = { version = "0.11.0", features = [ ] }
+loop_unwrap = "0.2.0"
 
 [lints]
 workspace = true

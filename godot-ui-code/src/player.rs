@@ -5,7 +5,7 @@ use godot::{
     prelude::*,
 };
 use libdj::types::deck::TempoRange;
-use libdsp::timecode::Timecode;
+use timecode::Timecode;
 
 use crate::{ipc::IPC, preview_waveform_to_shader_texture};
 
@@ -136,7 +136,6 @@ impl IPanelContainer for PlayerContainer {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     fn process(&mut self, _delta: f64) {
         let ipc = self.ipc.bind();
 

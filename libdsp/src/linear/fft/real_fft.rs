@@ -152,7 +152,6 @@ impl<const SPLIT_COMPUTATION: bool, const HALF_BIN_SHIFT: bool>
     }
 
     #[allow(
-        clippy::too_many_lines,
         clippy::indexing_slicing,
         clippy::bool_to_int_with_if,
         clippy::undocumented_unsafe_blocks
@@ -424,7 +423,6 @@ impl<const SPLIT_COMPUTATION: bool, const HALF_BIN_SHIFT: bool>
     }
 
     #[allow(
-        clippy::too_many_lines,
         clippy::indexing_slicing,
         clippy::bool_to_int_with_if,
         clippy::undocumented_unsafe_blocks

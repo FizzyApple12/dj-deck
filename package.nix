@@ -40,6 +40,10 @@ rustPlatform.buildRustPackage {
     lockFile = ./Cargo.lock;
     outputHashes = {
       "rekordcrate-0.3.0" = "sha256-bOcjGdotVeLDn/0kqlLOR1t5lABuNk401Ky/oP2B4yI=";
+      "collections-0.1.0" = "sha256-AAoSoA1jHMFu2x5xcg/DHj2xkc1zi0OG3UEMBXVMVWA=";
+      "wasm_thread-0.3.3" = "sha256-+lRLCIk0S6Y5ORYjDKsYYHia2FtoSoh+rWkQh7mnPBE=";
+      "zed-font-kit-0.14.1-zed" = "sha256-KXygi0olNQi5yM8eaJVykNDtbPMDjT+cWPBF8UrtXR4=";
+      "zed-scap-0.0.8-zed" = "sha256-BihiQHlal/eRsktyf0GI3aSWsUCW7WcICMsC2Xvb7kw=";
     };
   };
 

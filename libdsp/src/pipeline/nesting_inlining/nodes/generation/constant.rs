@@ -22,7 +22,7 @@ impl<const CHANNELS: usize, Data> PipelineNode<CHANNELS, Data> for Constant<CHAN
     #[allow(clippy::inline_always)]
     #[inline(always)]
     fn next(&mut self, _: usize) -> [f32; CHANNELS] {
-        self.constant.clone()
+        self.constant
     }
 
     fn reset(&mut self) {}

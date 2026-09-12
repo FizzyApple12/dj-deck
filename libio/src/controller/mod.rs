@@ -1,48 +1,28 @@
-pub mod actions;
+use std::{collections::BTreeMap, time::Duration};
 
-use std::time::Duration;
-
-use libdj::{
-    MIXER_CHANNELS,
-    types::{
-        audio_system::DeckUpdate,
-        deck::{BeatLoopAdjustMode, BeatSyncMode, DeckState, PlayState},
-        midi::MidiMessage,
-    },
+use libdj::types::{
+    bindings::DeckControlEvent,
+    deck::{BeatLoopAdjustMode, BeatSyncMode, DeckState, PlayState},
 };
-use libui::types::ui::UIMessage;
+use loop_unwrap::{ToOption, unwrap_continue};
+use midir::{MidiInput, MidiInputConnection, MidiOutput};
 use thiserror::Error;
 use tokio::task::JoinHandle;
 
-use crate::{
-    controller::actions::{
-        beat_jump_release, beat_sync, channel_eq_high, channel_eq_low, channel_eq_mid,
-        channel_fader, channel_filter, cross_fader, cue_press, cue_release, jog_distance,
-        jog_release, jog_touch, next_tempo_range, play_press, set_master, tempo_reset,
-        tempo_slider,
-    },
-    types::controller::ControllerMessage,
-};
+use crate::types::controller::ControllerMessage;
 
-#[derive(Debug)]
+pub type MidiMessage = [u8; 3];
+
 pub struct Controller {
-    controller_message_sender: tokio::sync::broadcast::Sender<ControllerMessage>,
+    message_sender: tokio::sync::broadcast::Sender<ControllerMessage>,
 
-    midi_task: JoinHandle<()>,
-}
+    midi_inputs: Vec<MidiInputConnection<()>>,
+    midi_outputs: Vec<JoinHandle<()>>,
 
-struct ControllerState {
-    tempo_sliders: [(u8, u8); MIXER_CHANNELS],
+    midi_sender: tokio::sync::mpsc::UnboundedSender<MidiMessage>,
+    midi_receiver: Option<tokio::sync::mpsc::UnboundedReceiver<MidiMessage>>,
 
-    eq_lows: [(u8, u8); MIXER_CHANNELS],
-    eq_mids: [(u8, u8); MIXER_CHANNELS],
-    eq_highs: [(u8, u8); MIXER_CHANNELS],
-
-    filters: [(u8, u8); MIXER_CHANNELS],
-
-    faders: [(u8, u8); MIXER_CHANNELS],
-
-    crossfader: (u8, u8),
+    midi_task: Option<JoinHandle<()>>,
 }
 
 struct ControllerLEDFlashTimers {
@@ -58,32 +38,96 @@ pub enum ControllerSendError {
 }
 
 impl Controller {
-    #[allow(clippy::too_many_lines)]
-    pub fn start_io(
-        midi_sender: tokio::sync::mpsc::UnboundedSender<MidiMessage>,
-        mut midi_receiver: tokio::sync::mpsc::UnboundedReceiver<MidiMessage>,
-        deck_update_sender: tokio::sync::mpsc::UnboundedSender<DeckUpdate>,
-        ui_message_sender: tokio::sync::mpsc::UnboundedSender<UIMessage>,
-    ) -> Controller {
-        let (controller_message_sender, mut controller_message_receiver) =
-            tokio::sync::broadcast::channel(16);
+    pub fn open_midi_input(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let (midi_sender, midi_receiver) = tokio::sync::mpsc::unbounded_channel::<MidiMessage>();
+
+        let midi_in = MidiInput::new("dj-deck-midi-input")?;
+
+        let ports = midi_in.ports();
+
+        let Some(target_port) = ports.iter().find(|port| {
+            midi_in
+                .port_name(port)
+                .is_ok_and(|name| name.contains("DDJ-FLX10"))
+        }) else {
+            return Err("No port
+                found"
+                .into());
+        };
+
+        let port_name = midi_in.port_name(target_port)?;
+
+        let connection = midi_in.connect(
+            target_port,
+            &port_name,
+            move |_, message, ()| {
+                if let [byte_zero, byte_one, byte_two] = *message {
+                    let _ = midi_sender.send([byte_zero, byte_one, byte_two]);
+                }
+            },
+            (),
+        )?;
+
+        self.midi_inputs.push(connection);
+
+        self.midi_receiver = Some(midi_receiver);
+
+        Ok(())
+    }
+
+    pub fn open_midi_output(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let (midi_sender, mut midi_receiver) =
+            tokio::sync::mpsc::unbounded_channel::<MidiMessage>();
+
+        let midi_out = MidiOutput::new("dj-deck-midi-output")?;
+
+        let ports = midi_out.ports();
+
+        let Some(target_port) = ports.iter().find(|port| {
+            midi_out
+                .port_name(port)
+                .is_ok_and(|name| name.contains("DDJ-FLX10"))
+        }) else {
+            return Err("No port found".into());
+        };
+
+        let port_name = midi_out.port_name(target_port)?;
+
+        let mut connection = midi_out.connect(target_port, &port_name)?;
+
+        let connection = tokio::task::spawn(async move {
+            while let Some(message) = &midi_receiver.recv().await {
+                if let Err(e) = connection.send(message) {
+                    println!("[midi-sender] Send error: {e}");
+                }
+            }
+        });
+
+        self.midi_outputs.push(connection);
+
+        self.midi_sender = midi_sender;
+
+        Ok(())
+    }
+
+    pub fn start(
+        &mut self,
+        deck_control_event_sender: tokio::sync::mpsc::UnboundedSender<DeckControlEvent>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let midi_sender = self.midi_sender.clone();
+        let mut midi_receiver = self
+            .midi_receiver
+            .take()
+            .ok_or("No available midi receiver")?;
+
+        let mut controller_message_receiver = self.message_sender.subscribe();
+
+        let mappings = load_midi_mapping();
 
         let midi_task = tokio::task::spawn(async move {
             let mut current_deck_state: DeckState = DeckState::default();
 
-            let mut controller_state: ControllerState = ControllerState {
-                tempo_sliders: Default::default(),
-
-                eq_lows: Default::default(),
-                eq_mids: Default::default(),
-                eq_highs: Default::default(),
-
-                filters: Default::default(),
-
-                faders: Default::default(),
-
-                crossfader: Default::default(),
-            };
+            let mut controller_state: BTreeMap<(&str, usize), (u8, u8)> = BTreeMap::new();
 
             let mut led_flash_timers = ControllerLEDFlashTimers {
                 slow: false,
@@ -116,7 +160,7 @@ impl Controller {
                         if let Some(midi_message) = midi_message {
                             let (address, value) = midi_to_addr_value(midi_message);
 
-                            process_midi_command(address, value, &mut controller_state, &deck_update_sender, &ui_message_sender);
+                            process_midi_command(address, value, &mappings, &mut controller_state, &deck_control_event_sender);
                         }
                     }
                     controller_message = controller_message_receiver.recv() => {
@@ -143,24 +187,51 @@ impl Controller {
             }
         });
 
-        Controller {
-            controller_message_sender,
+        self.midi_task = Some(midi_task);
 
-            midi_task,
-        }
+        Ok(())
     }
 
     pub fn send(self: &Controller, message: ControllerMessage) -> Result<(), ControllerSendError> {
-        match self.controller_message_sender.send(message) {
+        match self.message_sender.send(message) {
             Ok(_) => Ok(()),
             Err(err) => Err(ControllerSendError::ChannelError(err)),
         }
     }
 }
 
+impl Default for Controller {
+    fn default() -> Self {
+        let (message_sender, _) = tokio::sync::broadcast::channel(16);
+        let (midi_sender, _) = tokio::sync::mpsc::unbounded_channel::<MidiMessage>();
+
+        Self {
+            message_sender,
+
+            midi_inputs: Vec::new(),
+            midi_outputs: Vec::new(),
+
+            midi_sender,
+            midi_receiver: None,
+
+            midi_task: None,
+        }
+    }
+}
+
 impl Drop for Controller {
     fn drop(&mut self) {
-        self.midi_task.abort();
+        if let Some(midi_task) = self.midi_task.take() {
+            midi_task.abort();
+        }
+
+        for midi_input in self.midi_inputs.drain(0..) {
+            midi_input.close();
+        }
+
+        for midi_output in self.midi_outputs.drain(0..) {
+            midi_output.abort();
+        }
     }
 }
 
@@ -184,1104 +255,546 @@ const fn midi_to_addr_value(midi: [u8; 3]) -> (u16, u8) {
     (((midi[0] as u16) << 8) + (midi[1] as u16), midi[2])
 }
 
-#[allow(clippy::too_many_lines)]
-fn process_midi_command(
-    address: u16,
-    value: u8,
-    controller_state: &mut ControllerState,
-    deck_update_sender: &tokio::sync::mpsc::UnboundedSender<DeckUpdate>,
-    ui_message_sender: &tokio::sync::mpsc::UnboundedSender<UIMessage>,
-) {
-    // println!("command: {address:x} = {value}");
+fn midi_split_pair_to_f32_range(msb: u8, lsb: u8, min: f32, max: f32) -> f32 {
+    f32::from((u16::from(msb) << 7) | u16::from(lsb)) / 16383.0 * (max - min) + min
+}
 
-    match (address, value) {
-        // encoder rotation
-        (0xB640 | 0xB664, count) => {
-            if count <= 60 {
-                for _ in 0..count {
-                    let _ = ui_message_sender.send(UIMessage::EncoderDown);
-                }
+#[allow(clippy::cast_lossless)]
+fn midi_rpm_to_f32(jog: u8) -> f32 {
+    if jog >= 0x41 {
+        // +
+        (6.0 * jog as f32) - 390.0
+    } else if jog <= 0x3F {
+        // -
+        (6.0 * jog as f32) - 378.0
+    } else {
+        0.0
+    }
+}
+
+fn midi_ticks_to_relative_ticks(
+    value: u8,
+    clockwise_start: u8,
+    counterclockwise_start: u8,
+    center_threshold: u8,
+) -> f32 {
+    if value <= center_threshold {
+        (f32::from(value) - f32::from(clockwise_start)) + 1.0
+    } else {
+        -((f32::from(counterclockwise_start) - f32::from(value)) + 1.0)
+    }
+}
+
+const MIDI_MAPPING: &str = include_str!("../../ddj-flx10.txt");
+
+#[allow(clippy::type_complexity)]
+#[derive(Debug)]
+pub struct MidiMapping {
+    direct: BTreeMap<u16, Vec<(MappingTarget, DeckControlEvent)>>,
+    direct_equals: BTreeMap<u16, Vec<(usize, MappingTarget, DeckControlEvent)>>,
+    integrated: [BTreeMap<u16, Vec<(MappingTarget, DeckControlEvent)>>; 4],
+}
+
+#[derive(Debug)]
+pub enum MappingTarget {
+    Button(u8),
+    NumberedButton(u8, usize),
+    Absolute(BytePosition, f32, f32),
+    Relative(u8, u8, u8, f32),
+    Jog,
+}
+
+#[derive(Debug)]
+pub enum BytePosition {
+    MSB,
+    LSB,
+}
+
+#[derive(Debug)]
+pub enum ChannelType {
+    Direct,
+    DirectEquals,
+    Integrated,
+}
+
+fn load_midi_mapping() -> MidiMapping {
+    let mut mapping = MidiMapping {
+        direct: BTreeMap::default(),
+        direct_equals: BTreeMap::default(),
+        integrated: [
+            BTreeMap::default(),
+            BTreeMap::default(),
+            BTreeMap::default(),
+            BTreeMap::default(),
+        ],
+    };
+
+    'outer: for line in MIDI_MAPPING.lines() {
+        let mut chars = line.chars();
+
+        if unwrap_continue!(chars.next().map(|c| c != '0'), 'outer)
+            || unwrap_continue!(chars.next().map(|c| c != 'x'), 'outer)
+        {
+            continue 'outer;
+        }
+
+        let mut number_string: String = String::with_capacity(4);
+        let mut channel_type = ChannelType::Direct;
+        let mut channel: usize = 0;
+
+        for i in (0..4).rev() {
+            let character = unwrap_continue!(chars.next(), 'outer);
+
+            if character == 'n' {
+                channel_type = ChannelType::Integrated;
+                channel = i;
+
+                number_string.push('0');
             } else {
-                for _ in 0..(128 - count) {
-                    let _ = ui_message_sender.send(UIMessage::EncoderUp);
+                number_string.push(character);
+            }
+        }
+
+        let address = unwrap_continue!(u16::from_str_radix(&number_string, 16), 'outer);
+
+        let mut character = unwrap_continue!(chars.next(), 'outer);
+
+        if character == '=' {
+            let mut number_string: String = String::with_capacity(1);
+
+            number_string.push(unwrap_continue!(chars.next(), 'outer));
+
+            channel_type = ChannelType::DirectEquals;
+            channel = unwrap_continue!(number_string.parse::<usize>(), 'outer);
+
+            character = unwrap_continue!(chars.next(), 'outer);
+        }
+
+        if character != '-' || unwrap_continue!(chars.next().map(|c| c != '>'), 'outer) {
+            continue 'outer;
+        }
+
+        let character = unwrap_continue!(chars.next(), 'outer);
+
+        if unwrap_continue!(chars.next().map(|c| c != '('), 'outer) {
+            continue 'outer;
+        }
+
+        let mut args: Vec<String> = vec![String::new()];
+
+        'arg_parser: loop {
+            let character = unwrap_continue!(chars.next(), 'outer);
+
+            if character == ' ' || character == '\t' {
+            } else if character == ')' {
+                break 'arg_parser;
+            } else if character == ',' {
+                args.push(String::new());
+            } else if let Some(last_arg) = args.last_mut() {
+                last_arg.push(character);
+            }
+        }
+
+        if let Some(last_arg) = args.last()
+            && last_arg.is_empty()
+        {
+            args.pop();
+        }
+
+        let target = match character {
+            'b' => {
+                if args.len() != 1 {
+                    continue 'outer;
+                }
+
+                let trigger: &String = unwrap_continue!(args.first(), 'outer);
+                let trigger_radix = if trigger.starts_with("0x") { 16 } else { 10 };
+                let trigger = trigger.trim_start_matches("0x");
+                let trigger: u8 =
+                    unwrap_continue!(u8::from_str_radix(trigger, trigger_radix), 'outer);
+
+                MappingTarget::Button(trigger)
+            }
+            'n' => {
+                if args.len() != 2 {
+                    continue 'outer;
+                }
+
+                let trigger: &String = unwrap_continue!(args.first(), 'outer);
+                let trigger_radix = if trigger.starts_with("0x") { 16 } else { 10 };
+                let trigger = trigger.trim_start_matches("0x");
+                let trigger: u8 =
+                    unwrap_continue!(u8::from_str_radix(trigger, trigger_radix), 'outer);
+
+                let number: &String = unwrap_continue!(args.get(1), 'outer);
+                let number_radix = if number.starts_with("0x") { 16 } else { 10 };
+                let number = number.trim_start_matches("0x");
+                let number: usize =
+                    unwrap_continue!(usize::from_str_radix(number, number_radix), 'outer);
+
+                MappingTarget::NumberedButton(trigger, number)
+            }
+            'a' => {
+                if args.len() != 3 {
+                    continue 'outer;
+                }
+
+                let byte_position = match args.first().map(String::as_str) {
+                    Some("msb") => BytePosition::MSB,
+                    Some("lsb") => BytePosition::LSB,
+                    _ => {
+                        continue 'outer;
+                    }
+                };
+
+                let min: &String = unwrap_continue!(args.get(1), 'outer);
+                let min: f32 = unwrap_continue!(min.parse::<f32>(), 'outer);
+
+                let max: &String = unwrap_continue!(args.get(2), 'outer);
+                let max: f32 = unwrap_continue!(max.parse::<f32>(), 'outer);
+
+                MappingTarget::Absolute(byte_position, min, max)
+            }
+            'r' => {
+                if args.len() != 4 {
+                    continue 'outer;
+                }
+
+                let clockwise_start: &String = unwrap_continue!(args.first(), 'outer);
+                let clockwise_start_radix = if clockwise_start.starts_with("0x") {
+                    16
+                } else {
+                    10
+                };
+                let clockwise_start = clockwise_start.trim_start_matches("0x");
+                let clockwise_start: u8 = unwrap_continue!(u8::from_str_radix(clockwise_start, clockwise_start_radix), 'outer);
+
+                let counter_clockwise_start: &String = unwrap_continue!(args.get(1), 'outer);
+                let counter_clockwise_start_radix = if counter_clockwise_start.starts_with("0x") {
+                    16
+                } else {
+                    10
+                };
+                let counter_clockwise_start = counter_clockwise_start.trim_start_matches("0x");
+                let counter_clockwise_start: u8 = unwrap_continue!(u8::from_str_radix(counter_clockwise_start, counter_clockwise_start_radix), 'outer);
+
+                let center_threshold: &String = unwrap_continue!(args.get(2), 'outer);
+                let center_threshold_radix = if center_threshold.starts_with("0x") {
+                    16
+                } else {
+                    10
+                };
+                let center_threshold = center_threshold.trim_start_matches("0x");
+                let center_threshold: u8 = unwrap_continue!(u8::from_str_radix(center_threshold, center_threshold_radix), 'outer);
+
+                let delta: &String = unwrap_continue!(args.get(3), 'outer);
+                let delta: f32 = unwrap_continue!(delta.parse::<f32>(), 'outer);
+
+                MappingTarget::Relative(
+                    clockwise_start,
+                    counter_clockwise_start,
+                    center_threshold,
+                    delta,
+                )
+            }
+            'j' => {
+                if !args.is_empty() {
+                    continue 'outer;
+                }
+
+                MappingTarget::Jog
+            }
+            _ => {
+                continue 'outer;
+            }
+        };
+
+        if unwrap_continue!(chars.next().map(|c| c != ':'), 'outer) {
+            continue 'outer;
+        }
+
+        let mut event_name: String = String::new();
+
+        #[allow(clippy::while_let_on_iterator)]
+        'name_parser: while let Some(character) = chars.next() {
+            if character == ' ' || character == '\t' {
+            } else if character == '#' {
+                break 'name_parser;
+            } else {
+                event_name.push(character);
+            }
+        }
+
+        let event = unwrap_continue!(DeckControlEvent::from_str(&event_name));
+
+        match channel_type {
+            ChannelType::Direct => {
+                if let Some(existing_mappings) = mapping.direct.get_mut(&address) {
+                    existing_mappings.push((target, event));
+                } else {
+                    mapping.direct.insert(address, vec![(target, event)]);
+                }
+            }
+            ChannelType::DirectEquals => {
+                if let Some(existing_mappings) = mapping.direct_equals.get_mut(&address) {
+                    existing_mappings.push((channel, target, event));
+                } else {
+                    mapping
+                        .direct_equals
+                        .insert(address, vec![(channel, target, event)]);
+                }
+            }
+            ChannelType::Integrated => {
+                let map = unwrap_continue!(mapping.integrated.get_mut(channel), 'outer);
+
+                if let Some(existing_mappings) = map.get_mut(&address) {
+                    existing_mappings.push((target, event));
+                } else {
+                    map.insert(address, vec![(target, event)]);
                 }
             }
         }
-        // encoder press
-        #[allow(clippy::unnested_or_patterns)]
-        (0x9646..0x9649, _) | (0x965D | 0x966D | 0x965E | 0x966F, _) => {
-            let _ = ui_message_sender.send(UIMessage::EncoderSelect);
-        }
-        // jog
-        (address, velocity)
-            if address == combine_addr_channel(0xB022, 0)
-                || address == combine_addr_channel(0xB023, 0)
-                || address == combine_addr_channel(0xB021, 0)
-                || address == combine_addr_channel(0xB026, 0) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_distance(deck_state, 0, false, velocity);
-                }))
-                .ok();
-        }
-        (address, velocity)
-            if address == combine_addr_channel(0xB029, 0)
-                || address == combine_addr_channel(0xB01F, 0) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_distance(deck_state, 0, true, velocity);
-                }))
-                .ok();
-        }
-        (address, 127)
-            if address == combine_addr_channel(0x9036, 0)
-                || address == combine_addr_channel(0x9067, 0) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_touch(deck_state, 0);
-                }))
-                .ok();
-        }
-        (address, 0)
-            if address == combine_addr_channel(0x9036, 0)
-                || address == combine_addr_channel(0x9067, 0) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_release(deck_state, 0);
-                }))
-                .ok();
-        }
-        (address, velocity)
-            if address == combine_addr_channel(0xB022, 1)
-                || address == combine_addr_channel(0xB023, 1)
-                || address == combine_addr_channel(0xB021, 1)
-                || address == combine_addr_channel(0xB026, 1) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_distance(deck_state, 1, false, velocity);
-                }))
-                .ok();
-        }
-        (address, velocity)
-            if address == combine_addr_channel(0xB029, 1)
-                || address == combine_addr_channel(0xB01F, 1) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_distance(deck_state, 1, true, velocity);
-                }))
-                .ok();
-        }
-        (address, 127)
-            if address == combine_addr_channel(0x9036, 1)
-                || address == combine_addr_channel(0x9067, 1) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_touch(deck_state, 1);
-                }))
-                .ok();
-        }
-        (address, 0)
-            if address == combine_addr_channel(0x9036, 1)
-                || address == combine_addr_channel(0x9067, 1) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_release(deck_state, 1);
-                }))
-                .ok();
-        }
-        (address, velocity)
-            if address == combine_addr_channel(0xB022, 2)
-                || address == combine_addr_channel(0xB023, 2)
-                || address == combine_addr_channel(0xB021, 2)
-                || address == combine_addr_channel(0xB026, 2) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_distance(deck_state, 2, false, velocity);
-                }))
-                .ok();
-        }
-        (address, velocity)
-            if address == combine_addr_channel(0xB029, 2)
-                || address == combine_addr_channel(0xB01F, 2) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_distance(deck_state, 2, true, velocity);
-                }))
-                .ok();
-        }
-        (address, 127)
-            if address == combine_addr_channel(0x9036, 2)
-                || address == combine_addr_channel(0x9067, 2) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_touch(deck_state, 2);
-                }))
-                .ok();
-        }
-        (address, 0)
-            if address == combine_addr_channel(0x9036, 2)
-                || address == combine_addr_channel(0x9067, 2) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_release(deck_state, 2);
-                }))
-                .ok();
-        }
-        (address, velocity)
-            if address == combine_addr_channel(0xB022, 3)
-                || address == combine_addr_channel(0xB023, 3)
-                || address == combine_addr_channel(0xB021, 3)
-                || address == combine_addr_channel(0xB026, 3) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_distance(deck_state, 3, false, velocity);
-                }))
-                .ok();
-        }
-        (address, velocity)
-            if address == combine_addr_channel(0xB029, 3)
-                || address == combine_addr_channel(0xB01F, 3) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_distance(deck_state, 3, true, velocity);
-                }))
-                .ok();
-        }
-        (address, 127)
-            if address == combine_addr_channel(0x9036, 3)
-                || address == combine_addr_channel(0x9067, 3) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_touch(deck_state, 3);
-                }))
-                .ok();
-        }
-        (address, 0)
-            if address == combine_addr_channel(0x9036, 3)
-                || address == combine_addr_channel(0x9067, 3) =>
-        {
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    jog_release(deck_state, 3);
-                }))
-                .ok();
-        }
-        // tempo
-        (address, value) if address == combine_addr_channel(0xB000, 0) => {
-            controller_state.tempo_sliders[0].0 = value;
-
-            let new_slider_value = controller_state.tempo_sliders[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    tempo_slider(deck_state, 0, new_slider_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB020, 0) => {
-            controller_state.tempo_sliders[0].1 = value;
-
-            let new_slider_value = controller_state.tempo_sliders[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    tempo_slider(deck_state, 0, new_slider_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB000, 1) => {
-            controller_state.tempo_sliders[1].0 = value;
-
-            let new_slider_value = controller_state.tempo_sliders[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    tempo_slider(deck_state, 1, new_slider_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB020, 1) => {
-            controller_state.tempo_sliders[1].1 = value;
-
-            let new_slider_value = controller_state.tempo_sliders[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    tempo_slider(deck_state, 1, new_slider_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB000, 2) => {
-            controller_state.tempo_sliders[2].0 = value;
-
-            let new_slider_value = controller_state.tempo_sliders[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    tempo_slider(deck_state, 2, new_slider_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB020, 2) => {
-            controller_state.tempo_sliders[2].1 = value;
-
-            let new_slider_value = controller_state.tempo_sliders[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    tempo_slider(deck_state, 2, new_slider_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB000, 3) => {
-            controller_state.tempo_sliders[3].0 = value;
-
-            let new_slider_value = controller_state.tempo_sliders[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    tempo_slider(deck_state, 3, new_slider_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB020, 3) => {
-            controller_state.tempo_sliders[3].1 = value;
-
-            let new_slider_value = controller_state.tempo_sliders[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    tempo_slider(deck_state, 3, new_slider_value);
-                }))
-                .ok();
-        }
-        // faders
-        (address, value) if address == combine_addr_channel(0xB013, 0) => {
-            controller_state.faders[0].0 = value;
-
-            let new_fader_value = controller_state.faders[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_fader(deck_state, 0, new_fader_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB033, 0) => {
-            controller_state.faders[0].1 = value;
-
-            let new_fader_value = controller_state.faders[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_fader(deck_state, 0, new_fader_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB013, 1) => {
-            controller_state.faders[1].0 = value;
-
-            let new_fader_value = controller_state.faders[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_fader(deck_state, 1, new_fader_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB033, 1) => {
-            controller_state.faders[1].1 = value;
-
-            let new_fader_value = controller_state.faders[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_fader(deck_state, 1, new_fader_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB013, 2) => {
-            controller_state.faders[2].0 = value;
-
-            let new_fader_value = controller_state.faders[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_fader(deck_state, 2, new_fader_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB033, 2) => {
-            controller_state.faders[2].1 = value;
-
-            let new_fader_value = controller_state.faders[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_fader(deck_state, 2, new_fader_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB013, 3) => {
-            controller_state.faders[3].0 = value;
-
-            let new_fader_value = controller_state.faders[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_fader(deck_state, 3, new_fader_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB033, 3) => {
-            controller_state.faders[3].1 = value;
-
-            let new_fader_value = controller_state.faders[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_fader(deck_state, 3, new_fader_value);
-                }))
-                .ok();
-        }
-        // crossfader
-        (0xB61F, value) => {
-            controller_state.crossfader.0 = value;
-
-            let new_fader_value = controller_state.crossfader;
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    cross_fader(deck_state, new_fader_value);
-                }))
-                .ok();
-        }
-        (0xB03F, value) => {
-            controller_state.crossfader.1 = value;
-
-            let new_fader_value = controller_state.crossfader;
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    cross_fader(deck_state, new_fader_value);
-                }))
-                .ok();
-        }
-        // eq low
-        (address, value) if address == combine_addr_channel(0xB00F, 0) => {
-            controller_state.eq_lows[0].0 = value;
-
-            let new_eq_value = controller_state.eq_lows[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_low(deck_state, 0, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB02F, 0) => {
-            controller_state.eq_lows[0].1 = value;
-
-            let new_eq_value = controller_state.eq_lows[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_low(deck_state, 0, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB00F, 1) => {
-            controller_state.eq_lows[1].0 = value;
-
-            let new_eq_value = controller_state.eq_lows[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_low(deck_state, 1, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB02F, 1) => {
-            controller_state.eq_lows[1].1 = value;
-
-            let new_eq_value = controller_state.eq_lows[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_low(deck_state, 1, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB00F, 2) => {
-            controller_state.eq_lows[2].0 = value;
-
-            let new_eq_value = controller_state.eq_lows[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_low(deck_state, 2, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB02F, 2) => {
-            controller_state.eq_lows[2].1 = value;
-
-            let new_eq_value = controller_state.eq_lows[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_low(deck_state, 2, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB00F, 3) => {
-            controller_state.eq_lows[3].0 = value;
-
-            let new_eq_value = controller_state.eq_lows[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_low(deck_state, 3, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB02F, 3) => {
-            controller_state.eq_lows[3].1 = value;
-
-            let new_eq_value = controller_state.eq_lows[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_low(deck_state, 3, new_eq_value);
-                }))
-                .ok();
-        }
-        // eq mid
-        (address, value) if address == combine_addr_channel(0xB00B, 0) => {
-            controller_state.eq_mids[0].0 = value;
-
-            let new_eq_value = controller_state.eq_mids[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_mid(deck_state, 0, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB02B, 0) => {
-            controller_state.eq_mids[0].1 = value;
-
-            let new_eq_value = controller_state.eq_mids[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_mid(deck_state, 0, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB00B, 1) => {
-            controller_state.eq_mids[1].0 = value;
-
-            let new_eq_value = controller_state.eq_mids[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_mid(deck_state, 1, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB02B, 1) => {
-            controller_state.eq_mids[1].1 = value;
-
-            let new_eq_value = controller_state.eq_mids[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_mid(deck_state, 1, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB00B, 2) => {
-            controller_state.eq_mids[2].0 = value;
-
-            let new_eq_value = controller_state.eq_mids[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_mid(deck_state, 2, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB02B, 2) => {
-            controller_state.eq_mids[2].1 = value;
-
-            let new_eq_value = controller_state.eq_mids[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_mid(deck_state, 2, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB00B, 3) => {
-            controller_state.eq_mids[3].0 = value;
-
-            let new_eq_value = controller_state.eq_mids[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_mid(deck_state, 3, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB02B, 3) => {
-            controller_state.eq_mids[3].1 = value;
-
-            let new_eq_value = controller_state.eq_mids[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_mid(deck_state, 3, new_eq_value);
-                }))
-                .ok();
-        }
-        // eq high
-        (address, value) if address == combine_addr_channel(0xB007, 0) => {
-            controller_state.eq_highs[0].0 = value;
-
-            let new_eq_value = controller_state.eq_highs[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_high(deck_state, 0, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB027, 0) => {
-            controller_state.eq_highs[0].1 = value;
-
-            let new_eq_value = controller_state.eq_highs[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_high(deck_state, 0, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB007, 1) => {
-            controller_state.eq_highs[1].0 = value;
-
-            let new_eq_value = controller_state.eq_highs[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_high(deck_state, 1, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB027, 1) => {
-            controller_state.eq_highs[1].1 = value;
-
-            let new_eq_value = controller_state.eq_highs[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_high(deck_state, 1, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB007, 2) => {
-            controller_state.eq_highs[2].0 = value;
-
-            let new_eq_value = controller_state.eq_highs[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_high(deck_state, 2, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB027, 2) => {
-            controller_state.eq_highs[2].1 = value;
-
-            let new_eq_value = controller_state.eq_highs[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_high(deck_state, 2, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB007, 3) => {
-            controller_state.eq_highs[3].0 = value;
-
-            let new_eq_value = controller_state.eq_highs[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_high(deck_state, 3, new_eq_value);
-                }))
-                .ok();
-        }
-        (address, value) if address == combine_addr_channel(0xB027, 3) => {
-            controller_state.eq_highs[3].1 = value;
-
-            let new_eq_value = controller_state.eq_highs[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_eq_high(deck_state, 3, new_eq_value);
-                }))
-                .ok();
-        }
-        // filter
-        (0xB617, value) => {
-            controller_state.filters[0].0 = value;
-
-            let new_filters_value = controller_state.filters[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_filter(deck_state, 0, new_filters_value);
-                }))
-                .ok();
-        }
-        (0xB637, value) => {
-            controller_state.filters[0].1 = value;
-
-            let new_filters_value = controller_state.filters[0];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_filter(deck_state, 0, new_filters_value);
-                }))
-                .ok();
-        }
-        (0xB618, value) => {
-            controller_state.filters[1].0 = value;
-
-            let new_filters_value = controller_state.filters[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_filter(deck_state, 1, new_filters_value);
-                }))
-                .ok();
-        }
-        (0xB638, value) => {
-            controller_state.filters[1].1 = value;
-
-            let new_filters_value = controller_state.filters[1];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_filter(deck_state, 1, new_filters_value);
-                }))
-                .ok();
-        }
-        (0xB619, value) => {
-            controller_state.filters[2].0 = value;
-
-            let new_filters_value = controller_state.filters[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_filter(deck_state, 2, new_filters_value);
-                }))
-                .ok();
-        }
-        (0xB639, value) => {
-            controller_state.filters[2].1 = value;
-
-            let new_filters_value = controller_state.filters[2];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_filter(deck_state, 2, new_filters_value);
-                }))
-                .ok();
-        }
-        (0xB61A, value) => {
-            controller_state.filters[3].0 = value;
-
-            let new_filters_value = controller_state.filters[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_filter(deck_state, 3, new_filters_value);
-                }))
-                .ok();
-        }
-        (0xB63A, value) => {
-            controller_state.filters[3].1 = value;
-
-            let new_filters_value = controller_state.filters[3];
-
-            deck_update_sender
-                .send(Box::new(move |deck_state, _| {
-                    channel_filter(deck_state, 3, new_filters_value);
-                }))
-                .ok();
-        }
-        // play
-        (address, 127)
-            if address == combine_addr_channel(0x900B, 0)
-                || address == combine_addr_channel(0x9047, 0) =>
-        {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| play_press(deck_state, 0)))
-                .ok();
-        }
-        (address, 127)
-            if address == combine_addr_channel(0x900B, 1)
-                || address == combine_addr_channel(0x9047, 1) =>
-        {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| play_press(deck_state, 1)))
-                .ok();
-        }
-        (address, 127)
-            if address == combine_addr_channel(0x900B, 2)
-                || address == combine_addr_channel(0x9047, 2) =>
-        {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| play_press(deck_state, 2)))
-                .ok();
-        }
-        (address, 127)
-            if address == combine_addr_channel(0x900B, 3)
-                || address == combine_addr_channel(0x9047, 3) =>
-        {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| play_press(deck_state, 3)))
-                .ok();
-        }
-        // cue
-        (address, 127) if address == combine_addr_channel(0x900C, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_press(deck_state, 0, false)))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9048, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_press(deck_state, 0, true)))
-                .ok();
-        }
-        (address, 0)
-            if address == combine_addr_channel(0x900C, 0)
-                || address == combine_addr_channel(0x9048, 0) =>
-        {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_release(deck_state, 0)))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x900C, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_press(deck_state, 1, false)))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9048, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_press(deck_state, 1, true)))
-                .ok();
-        }
-        (address, 0)
-            if address == combine_addr_channel(0x900C, 1)
-                || address == combine_addr_channel(0x9048, 1) =>
-        {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_release(deck_state, 1)))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x900C, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_press(deck_state, 2, false)))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9048, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_press(deck_state, 2, true)))
-                .ok();
-        }
-        (address, 0)
-            if address == combine_addr_channel(0x900C, 2)
-                || address == combine_addr_channel(0x9048, 2) =>
-        {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_release(deck_state, 2)))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x900C, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_press(deck_state, 3, false)))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9048, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_press(deck_state, 3, true)))
-                .ok();
-        }
-        (address, 0)
-            if address == combine_addr_channel(0x900C, 3)
-                || address == combine_addr_channel(0x9048, 3) =>
-        {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| cue_release(deck_state, 3)))
-                .ok();
-        }
-        // beat jump
-        (address, 0) if address == combine_addr_channel(0x905E, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 0, false, false);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x905F, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 0, true, false);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x9061, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 0, false, true);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x9062, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 0, true, true);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x905E, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 1, false, false);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x905F, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 1, true, false);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x9061, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 1, false, true);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x9062, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 1, true, true);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x905E, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 2, false, false);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x905F, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 2, true, false);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x9061, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 2, false, true);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x9062, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 2, true, true);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x905E, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 3, false, false);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x905F, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 3, true, false);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x9061, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 3, false, true);
-                }))
-                .ok();
-        }
-        (address, 0) if address == combine_addr_channel(0x9062, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_jump_release(deck_state, 3, true, true);
-                }))
-                .ok();
-        }
-        // beat sync
-        (address, 127) if address == combine_addr_channel(0x9058, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_sync(deck_state, 0);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9058, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_sync(deck_state, 1);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9058, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_sync(deck_state, 2);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9058, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    beat_sync(deck_state, 3);
-                }))
-                .ok();
-        }
-        // master
-        (address, 127) if address == combine_addr_channel(0x905C, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    set_master(deck_state, 0);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x905C, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    set_master(deck_state, 1);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x905C, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    set_master(deck_state, 2);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x905C, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    set_master(deck_state, 3);
-                }))
-                .ok();
-        }
-        // tempo reset
-        (address, 127) if address == combine_addr_channel(0x9041, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    tempo_reset(deck_state, 0);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9041, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    tempo_reset(deck_state, 1);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9041, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    tempo_reset(deck_state, 2);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9041, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    tempo_reset(deck_state, 3);
-                }))
-                .ok();
-        }
-        // tempo range
-        (address, 127) if address == combine_addr_channel(0x9060, 0) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    next_tempo_range(deck_state, 0);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9060, 1) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    next_tempo_range(deck_state, 1);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9060, 2) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    next_tempo_range(deck_state, 2);
-                }))
-                .ok();
-        }
-        (address, 127) if address == combine_addr_channel(0x9060, 3) => {
-            deck_update_sender
-                .send(Box::new(|deck_state, _| {
-                    next_tempo_range(deck_state, 3);
-                }))
-                .ok();
-        }
-        _ => {}
     }
+
+    mapping
+}
+
+fn process_midi_command(
+    address: u16,
+    value: u8,
+    mappings: &MidiMapping,
+    persistence_store: &mut BTreeMap<(&str, usize), (u8, u8)>,
+    deck_control_event_sender: &tokio::sync::mpsc::UnboundedSender<DeckControlEvent>,
+) {
+    if let Some(mappings) = mappings.direct.get(&address) {
+        for (mapping_target, event) in mappings {
+            if let Some(event) =
+                apply_mapping_to_event(value, 0, mapping_target, *event, persistence_store)
+            {
+                let _ = deck_control_event_sender.send(event);
+            }
+        }
+
+        return;
+    }
+
+    if let Some(mappings) = mappings.direct_equals.get(&address) {
+        for (channel, mapping_target, action) in mappings {
+            if let Some(event) =
+                apply_mapping_to_event(value, *channel, mapping_target, *action, persistence_store)
+            {
+                let _ = deck_control_event_sender.send(event);
+            }
+        }
+
+        return;
+    }
+
+    for index in (0..4).rev() {
+        let masked_address = address & !(0xf << (index * 4));
+        let channel = usize::from((address >> (index * 4)) & 0xf);
+
+        if let Some(map) = mappings.integrated.get(index)
+            && let Some(mappings) = map.get(&masked_address)
+        {
+            for (mapping_target, event) in mappings {
+                if let Some(event) = apply_mapping_to_event(
+                    value,
+                    channel,
+                    mapping_target,
+                    *event,
+                    persistence_store,
+                ) {
+                    let _ = deck_control_event_sender.send(event);
+                }
+            }
+
+            return;
+        }
+    }
+}
+
+fn apply_mapping_to_event(
+    value: u8,
+    channel: usize,
+    target: &MappingTarget,
+    event: DeckControlEvent,
+    persistence_store: &mut BTreeMap<(&str, usize), (u8, u8)>,
+) -> Option<DeckControlEvent> {
+    let mut new_position: f32 = 0.0;
+    let mut new_velocity: f32 = 0.0;
+    let mut new_delta: f32 = 0.0;
+
+    let mut source_number: usize = 0;
+
+    match target {
+        MappingTarget::Button(target) => {
+            if value != *target {
+                return None;
+            }
+        }
+        MappingTarget::NumberedButton(target, number) => {
+            if value != *target {
+                return None;
+            }
+
+            source_number = *number;
+        }
+        MappingTarget::Absolute(byte_position, min, max) => {
+            let (msb, lsb) = if let Some((msb, lsb)) =
+                persistence_store.get_mut(&(DeckControlEvent::to_str(event), channel))
+            {
+                match byte_position {
+                    BytePosition::MSB => {
+                        *msb = value;
+                    }
+                    BytePosition::LSB => {
+                        *lsb = value;
+                    }
+                }
+
+                (*msb, *lsb)
+            } else {
+                let bytes = match byte_position {
+                    BytePosition::MSB => (value, 0),
+                    BytePosition::LSB => (0, value),
+                };
+
+                persistence_store.insert((DeckControlEvent::to_str(event), channel), bytes);
+
+                bytes
+            };
+
+            new_position = midi_split_pair_to_f32_range(msb, lsb, *min, *max);
+        }
+        MappingTarget::Relative(
+            clockwise_start,
+            counterclockwise_start,
+            center_threshold,
+            size,
+        ) => {
+            new_delta = midi_ticks_to_relative_ticks(
+                value,
+                *clockwise_start,
+                *counterclockwise_start,
+                *center_threshold,
+            ) * size;
+        }
+        MappingTarget::Jog => {
+            new_velocity = midi_rpm_to_f32(value);
+        }
+    }
+
+    let new_channel = channel;
+
+    let mut new_event = event;
+
+    match &mut new_event {
+        DeckControlEvent::BrowserEncoderPress
+        | DeckControlEvent::BrowserSourcePress
+        | DeckControlEvent::BrowserBrowsePress
+        | DeckControlEvent::BrowserPlaylistPress
+        | DeckControlEvent::BrowserBackPress
+        | DeckControlEvent::MixerMasterFXEnablePress
+        | DeckControlEvent::BrowserSearchPress
+        | DeckControlEvent::MixerMasterCuePress
+        | DeckControlEvent::MixerMasterFXSelectTouchPress
+        | DeckControlEvent::MixerMasterFXSelectTouchRelease
+        | DeckControlEvent::MixerMasterFXParameterSelectPress
+        | DeckControlEvent::MixerMasterFXBPMSelectPress
+        | DeckControlEvent::MixerChannelFXProximityPress
+        | DeckControlEvent::MixerChannelFXProximityRelease
+        | DeckControlEvent::MixerMasterMasterFXTargetPress => {}
+
+        DeckControlEvent::BrowserEncoderAdjust { delta }
+        | DeckControlEvent::MixerMasterFXSelect { delta }
+        | DeckControlEvent::MixerMasterFXParameterAdjust { delta }
+        | DeckControlEvent::MixerMasterFXBPMAdjust { delta } => {
+            *delta = new_delta;
+        }
+
+        DeckControlEvent::PlayerPlayPress { channel }
+        | DeckControlEvent::PlayerCuePress { channel }
+        | DeckControlEvent::PlayerCueRelease { channel }
+        | DeckControlEvent::PlayerAltCuePress { channel }
+        | DeckControlEvent::PlayerAltCueRelease { channel }
+        | DeckControlEvent::PlayerBeatJumpBackwardRelease { channel }
+        | DeckControlEvent::PlayerLongBeatJumpBackwardRelease { channel }
+        | DeckControlEvent::PlayerBeatJumpForwardRelease { channel }
+        | DeckControlEvent::PlayerLongBeatJumpForwardRelease { channel }
+        | DeckControlEvent::PlayerBeatSyncPress { channel }
+        | DeckControlEvent::PlayerMasterPress { channel }
+        | DeckControlEvent::PlayerTempoResetPress { channel }
+        | DeckControlEvent::PlayerTempoRangePress { channel }
+        | DeckControlEvent::PlayerMasterTempoPress { channel }
+        | DeckControlEvent::PlayerJogTouchPress { channel }
+        | DeckControlEvent::PlayerJogTouchRelease { channel }
+        | DeckControlEvent::MixerChannelCuePress { channel }
+        | DeckControlEvent::MixerChannelCrossfaderAssignAPress { channel }
+        | DeckControlEvent::MixerChannelCrossfaderAssignNonePress { channel }
+        | DeckControlEvent::MixerChannelCrossfaderAssignBPress { channel }
+        | DeckControlEvent::PlayerQuantizePress { channel }
+        | DeckControlEvent::PlayerSlipPress { channel }
+        | DeckControlEvent::PlayerReversePress { channel }
+        | DeckControlEvent::PlayerReverseRelease { channel }
+        | DeckControlEvent::PlayerBPMSyncPress { channel }
+        | DeckControlEvent::PlayerKeySyncPress { channel }
+        | DeckControlEvent::PlayerBeatLoopInPress { channel }
+        | DeckControlEvent::PlayerBeatLoopInAdjustPress { channel }
+        | DeckControlEvent::PlayerBeatLoopOutPress { channel }
+        | DeckControlEvent::PlayerBeatLoopOutAdjustPress { channel }
+        | DeckControlEvent::PlayerReLoopPress { channel }
+        | DeckControlEvent::PlayerInstantLoopPress { channel }
+        | DeckControlEvent::MixerChannelMasterFXTargetPress { channel } => {
+            *channel = new_channel;
+        }
+
+        DeckControlEvent::PlayerJogVelocitySet { channel, velocity }
+        | DeckControlEvent::PlayerJogSearchVelocitySet { channel, velocity } => {
+            *channel = new_channel;
+            *velocity = new_velocity;
+        }
+
+        DeckControlEvent::MixerChannelGainSet { channel, position }
+        | DeckControlEvent::MixerChannelEqHighSet { channel, position }
+        | DeckControlEvent::MixerChannelEqMidSet { channel, position }
+        | DeckControlEvent::MixerChannelEqLowSet { channel, position }
+        | DeckControlEvent::MixerChannelFXSet { channel, position }
+        | DeckControlEvent::PlayerTempoSet { channel, position }
+        | DeckControlEvent::MixerChannelFaderSet { channel, position } => {
+            *channel = new_channel;
+            *position = new_position;
+        }
+
+        DeckControlEvent::MixerHeadphonesMixSet { position }
+        | DeckControlEvent::MixerHeadphonesGainSet { position }
+        | DeckControlEvent::MixerMasterFXDepthSet { position }
+        | DeckControlEvent::MixerMasterGainSet { position }
+        | DeckControlEvent::MixerCrossfaderSet { position } => {
+            *position = new_position;
+        }
+
+        DeckControlEvent::PlayerPadPress { channel, number } => {
+            *channel = new_channel;
+            *number = source_number;
+        }
+
+        DeckControlEvent::MixerChannelFXPress { number } => {
+            *number = source_number;
+        }
+
+        DeckControlEvent::USBEjectPress { slot } | DeckControlEvent::USBEjectRelease { slot } => {
+            *slot = source_number;
+        }
+    }
+
+    Some(new_event)
 }
 
 // we use the same safe code a lot here, and there's a lot of code here to
 // handle, this is probably cleanupable later
 #[allow(
     clippy::cast_possible_truncation,
-    clippy::too_many_lines,
     clippy::indexing_slicing,
     clippy::cast_sign_loss,
     clippy::bool_to_int_with_if
