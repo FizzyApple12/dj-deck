@@ -78,7 +78,7 @@ FlexboxLayout {
 
                 direction: FlexboxLayout.Column
                 justifyContent: FlexboxLayout.JustifyStart
-                alignItems: FlexboxLayout.AlignStretch
+                alignContent: FlexboxLayout.AlignStretch
 
                 gap: 0
 
@@ -186,7 +186,7 @@ FlexboxLayout {
 
                 direction: FlexboxLayout.Column
                 justifyContent: FlexboxLayout.JustifyStart
-                alignItems: FlexboxLayout.AlignStretch
+                alignContent: FlexboxLayout.AlignStretch
 
                 gap: 0
 
@@ -303,7 +303,7 @@ FlexboxLayout {
 
                 direction: FlexboxLayout.Column
                 justifyContent: FlexboxLayout.JustifyStart
-                alignItems: FlexboxLayout.AlignStretch
+                alignContent: FlexboxLayout.AlignStretch
 
                 gap: 0
 
@@ -403,7 +403,7 @@ FlexboxLayout {
 
                 direction: FlexboxLayout.Column
                 justifyContent: FlexboxLayout.JustifyStart
-                alignItems: FlexboxLayout.AlignStretch
+                alignContent: FlexboxLayout.AlignStretch
 
                 gap: 0
 

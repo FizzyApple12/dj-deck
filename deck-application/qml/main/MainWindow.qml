@@ -22,7 +22,7 @@ ApplicationWindow {
         justifyContent: FlexboxLayout.JustifySpaceBetween
         alignItems: FlexboxLayout.AlignCenter
 
-        visible: true
+        visible: false
 
         PlayerColumn {
             player_number: 2
@@ -68,7 +68,7 @@ ApplicationWindow {
         justifyContent: FlexboxLayout.JustifySpaceBetween
         alignItems: FlexboxLayout.AlignCenter
 
-        visible: false
+        visible: true
 
         FlexboxLayout {
             Layout.fillWidth: true

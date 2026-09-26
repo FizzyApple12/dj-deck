@@ -19,6 +19,8 @@ Window {
         justifyContent: FlexboxLayout.JustifySpaceAround
         alignItems: FlexboxLayout.AlignCenter
 
+        visible: false
+
         Label {
             Layout.fillWidth: true
             lineHeight: 0.75
@@ -45,7 +47,7 @@ Window {
         justifyContent: FlexboxLayout.JustifySpaceAround
         alignItems: FlexboxLayout.AlignCenter
 
-        visible: false
+        visible: true
 
         Label {
             Layout.fillWidth: true
@@ -86,14 +88,14 @@ Window {
         justifyContent: FlexboxLayout.JustifySpaceBetween
         alignItems: FlexboxLayout.AlignCenter
 
-        visible: false
+        visible: true
 
         FlexboxLayout {
             id: bpmBox
 
             direction: FlexboxLayout.Column
             justifyContent: FlexboxLayout.JustifyStart
-            alignItems: FlexboxLayout.AlignStretch
+            alignContent: FlexboxLayout.AlignStretch
 
             FlexboxLayout {
                 Layout.preferredWidth: 180

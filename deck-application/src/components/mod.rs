@@ -1,4 +1,4 @@
-pub mod greeter;
+pub mod engine_bridge;
 
 #[cxx_qt::bridge]
 pub mod ffi {

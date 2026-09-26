@@ -49,4 +49,5 @@ too_many_lines = "allow"
 # Give me the best optimizations you've got, Rust
 [profile.release]
 codegen-units = 1
+lto = true
 opt-level = 3

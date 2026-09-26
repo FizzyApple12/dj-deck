@@ -129,7 +129,7 @@ pub struct Track {
     pub title: String,
 
     pub bpm: f32,
-    pub duration: u32,
+    pub duration: i64, // nanoseconds
 
     pub composer_id: ArtistID,
     pub artist_id: ArtistID,

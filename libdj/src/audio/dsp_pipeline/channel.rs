@@ -21,7 +21,9 @@ pub struct ChannelDSP {
 
     player: PlayerDSP,
 
-    eq_coefficients: (f32, f32, f32),
+    eq_low_coefficient: f32,
+    eq_mid_coefficient: f32,
+    eq_high_coefficient: f32,
     filter_coefficient: f32,
 
     master_output_buffers: [Vec<f32>; AUDIO_CHANNELS],
@@ -54,7 +56,9 @@ impl ChannelDSP {
 
             player: PlayerDSP::new(sample_rate),
 
-            eq_coefficients: (0.0, 0.0, 0.0),
+            eq_low_coefficient: 0.0,
+            eq_mid_coefficient: 0.0,
+            eq_high_coefficient: 0.0,
             filter_coefficient: 0.0,
 
             master_output_buffers: Default::default(),
@@ -116,7 +120,9 @@ impl ChannelDSP {
             number_samples,
         );
 
-        self.eq_coefficients = channel_state.eq;
+        self.eq_low_coefficient = channel_state.eq_low;
+        self.eq_mid_coefficient = channel_state.eq_mid;
+        self.eq_high_coefficient = channel_state.eq_high;
         self.filter_coefficient = channel_state.fx;
 
         self.update_filters();
@@ -224,19 +230,19 @@ impl ChannelDSP {
 
             self.master_eq_filters.0[buffer_index].low_shelf(
                 MIXER_EQ_LOW_CUTOFF / f64::from(self.target_sample_rate),
-                f64::from(self.eq_coefficients.0 + 1.0),
+                f64::from(self.eq_low_coefficient + 1.0),
                 MIXER_EQ_LOW_OCTAVES,
                 BiquadDesign::OneSided,
             );
             self.master_eq_filters.1[buffer_index].peak_q(
                 MIXER_EQ_MID_CENTER / f64::from(self.target_sample_rate),
-                f64::from(self.eq_coefficients.1 + 1.0),
+                f64::from(self.eq_mid_coefficient + 1.0),
                 MIXER_EQ_MID_Q,
                 BiquadDesign::Cookbook,
             );
             self.master_eq_filters.2[buffer_index].high_shelf(
                 MIXER_EQ_HIGH_CUTOFF / f64::from(self.target_sample_rate),
-                f64::from(self.eq_coefficients.2 + 1.0),
+                f64::from(self.eq_high_coefficient + 1.0),
                 MIXER_EQ_HIGH_OCTAVES,
                 BiquadDesign::OneSided,
             );
@@ -262,19 +268,19 @@ impl ChannelDSP {
 
             self.touch_cue_eq_filters.0[buffer_index].low_shelf(
                 MIXER_EQ_LOW_CUTOFF / f64::from(self.target_sample_rate),
-                f64::from(self.eq_coefficients.0 + 1.0),
+                f64::from(self.eq_low_coefficient + 1.0),
                 MIXER_EQ_LOW_OCTAVES,
                 BiquadDesign::OneSided,
             );
             self.touch_cue_eq_filters.1[buffer_index].peak_q(
                 MIXER_EQ_MID_CENTER / f64::from(self.target_sample_rate),
-                f64::from(self.eq_coefficients.1 + 1.0),
+                f64::from(self.eq_mid_coefficient + 1.0),
                 MIXER_EQ_MID_Q,
                 BiquadDesign::Cookbook,
             );
             self.touch_cue_eq_filters.2[buffer_index].high_shelf(
                 MIXER_EQ_HIGH_CUTOFF / f64::from(self.target_sample_rate),
-                f64::from(self.eq_coefficients.2 + 1.0),
+                f64::from(self.eq_high_coefficient + 1.0),
                 MIXER_EQ_HIGH_OCTAVES,
                 BiquadDesign::OneSided,
             );

@@ -4,17 +4,16 @@ pub mod statuses;
 
 use std::pin::Pin;
 
-use cxx_qt_lib::{QFont, QFontStyle, QGuiApplication, QQmlApplicationEngine, QString, QUrl};
-use libdatabase::device_manager::{DeviceManager, DeviceManagerEvent};
-use libdj::{
-    engine::DJEngine,
-    types::{deck::DeckState, playback::DeckUpdate},
-};
-use libdsp::audio_loader::TrackAudioData;
+use cxx_qt_lib::{QFont, QGuiApplication, QQmlApplicationEngine, QString, QUrl};
+use libdatabase::device_manager::DeviceManager;
+use libdj::{engine::DJEngine, types::deck::DeckState};
 use libio::controller::Controller;
 use log::{debug, info, warn};
 
-use crate::{components::ffi::set_qfont_feature, logger::setup_logger, statuses::DJEngineStatus};
+use crate::{
+    components::{engine_bridge::EngineBridgeRust, ffi::set_qfont_feature},
+    logger::setup_logger,
+};
 
 const LOCAL_AUTOMOUNTS: [(&str, usize); 2] = [("/djusb/usb0", 0), ("/djusb/usb1", 1)];
 
@@ -63,19 +62,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     device_manager.start_local_watch(&LOCAL_AUTOMOUNTS)?;
     // device_manager.start_prodj_link_watch(0x10)?;
 
-    let mut device_manager_events = device_manager.subscribe();
-
     debug!("Starting DJ Engine...");
 
-    let (deck_state_sender, mut deck_state_receiver) =
+    let (deck_state_sender, deck_state_receiver) =
         tokio::sync::watch::channel(DeckState::default());
     let (deck_update_sender, deck_update_receiver) = tokio::sync::mpsc::unbounded_channel();
     let (loaded_track_sender, loaded_track_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-    let (ui_control_event_sender, mut ui_control_event_receiver) =
+    let (ui_control_event_sender, ui_control_event_receiver) =
         tokio::sync::mpsc::unbounded_channel();
 
-    let mut dj_engine = DJEngine::start(
+    let dj_engine = DJEngine::start(
         deck_control_event_receiver,
         ui_control_event_sender,
         deck_update_receiver,
@@ -87,12 +84,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let handle = runtime.handle().clone();
 
+    EngineBridgeRust::register(
+        handle,
+        dj_engine,
+        deck_state_receiver,
+        deck_update_sender,
+        ui_control_event_receiver,
+        loaded_track_sender,
+        device_manager,
+    );
+
     let mut app = QGuiApplication::new();
 
     if let Some(app) = app.as_mut() {
         let mut font = QFont::default();
 
         font.set_family(&QString::from("Helvetica"));
+        // font.clear_features();
 
         // i hate this but cxx_qt is out of date and i can't be bothered to open a pr
         // right now

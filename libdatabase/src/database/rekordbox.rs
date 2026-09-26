@@ -275,7 +275,7 @@ impl RekordboxDatabase {
 
                                                 #[allow(clippy::cast_precision_loss)]
                                                 bpm: track.tempo as f32 / 100.0,
-                                                duration: u32::from(track.duration),
+                                                duration: i64::from(track.duration) * 1_000_000_000,
 
                                                 composer_id: track.composer_id.0,
                                                 artist_id: track.artist_id.0,

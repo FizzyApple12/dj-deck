@@ -22,7 +22,10 @@ fn main() {
         .qrc("qml/shaders/shaders.qrc")
         .qrc("qml/test_images/test_images.qrc")
         .include_dir("include/")
-        .files(vec!["src/components/mod.rs", "src/components/greeter.rs"])
+        .files(vec![
+            "src/components/mod.rs",
+            "src/components/engine_bridge.rs",
+        ])
         .qt_module("Qml")
         .qt_module("Network")
         .qt_module("QuickLayouts")

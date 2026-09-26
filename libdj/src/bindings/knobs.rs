@@ -16,7 +16,7 @@ pub fn mixer_channel_gain_set(deck_state: &mut DeckState, channel: usize, positi
 
 pub fn mixer_channel_eq_low_set(deck_state: &mut DeckState, channel: usize, position: f32) {
     if let Some(channel) = deck_state.mixer_channels.get_mut(channel) {
-        channel.eq.0 = if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&position) {
+        channel.eq_low = if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&position) {
             0.0
         } else {
             position
@@ -26,7 +26,7 @@ pub fn mixer_channel_eq_low_set(deck_state: &mut DeckState, channel: usize, posi
 
 pub fn mixer_channel_eq_mid_set(deck_state: &mut DeckState, channel: usize, position: f32) {
     if let Some(channel) = deck_state.mixer_channels.get_mut(channel) {
-        channel.eq.1 = if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&position) {
+        channel.eq_mid = if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&position) {
             0.0
         } else {
             position
@@ -36,7 +36,7 @@ pub fn mixer_channel_eq_mid_set(deck_state: &mut DeckState, channel: usize, posi
 
 pub fn mixer_channel_eq_high_set(deck_state: &mut DeckState, channel: usize, position: f32) {
     if let Some(channel) = deck_state.mixer_channels.get_mut(channel) {
-        channel.eq.2 = if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&position) {
+        channel.eq_high = if (-KNOB_DEADBAND..=KNOB_DEADBAND).contains(&position) {
             0.0
         } else {
             position

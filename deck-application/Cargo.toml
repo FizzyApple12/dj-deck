@@ -11,13 +11,15 @@ tokio-stream.workspace = true
 fern = { version = "0.7", features = [ "colored" ] }
 humantime = "2.4.0"
 timecode = { path = "../timecode" }
-libdj = { path = "../libdj" }
+libdj = { path = "../libdj", features = [ "full" ] }
 libdatabase = { path = "../libdatabase" }
 libio = { path = "../libio" }
 libdsp = { path = "../libdsp" }
 cxx = "1"
 cxx-qt = "0.10"
 cxx-qt-lib = { version = "0.10", features = [ "full" ] }
+# cxx-qt = { path = "../../cxx-qt/crates/cxx-qt" }
+# cxx-qt-lib = { path = "../../cxx-qt/crates/cxx-qt-lib", features = [ "full" ] }
 
 [build-dependencies]
 cxx-qt-build = { version = "0.10", features = [ "link_qt_object_files" ] }

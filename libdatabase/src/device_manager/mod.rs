@@ -38,6 +38,16 @@ pub struct DeviceManagerHandle {
     event_receiver: tokio::sync::broadcast::Receiver<DeviceManagerEvent>,
 }
 
+impl Clone for DeviceManagerHandle {
+    fn clone(&self) -> Self {
+        Self {
+            devices: self.devices.clone(),
+
+            event_receiver: self.event_receiver.resubscribe(),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum StartLocalDeviceWatchError {
     #[error("Failed to connect to NetLink: {0}")]

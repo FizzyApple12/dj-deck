@@ -3,8 +3,19 @@ import QtQuick 2.3
 import "./main"
 import "./mixer"
 
+import engineering.fizzy.deck_application
+
 MainWindow {
     id: main_window
+
+    EngineBridge {
+    	id: engine
+    }
+
+    Connections {
+        target: main_window
+        function onBeforeSynchronizing() { engine.before_frame() }
+    }
 
     palette {
         accent: "#ff820e"
@@ -66,9 +77,9 @@ MainWindow {
         }
     }
 
-    MixerWindow {
-        id: mixer_window
+    // MixerWindow {
+    //     id: mixer_window
 
-        palette: main_window.palette
-    }
+    //     palette: main_window.palette
+    // }
 }

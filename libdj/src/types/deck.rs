@@ -93,9 +93,11 @@ impl Default for DeckState {
 pub struct ChannelState {
     pub player: PlayerState,
 
-    pub gain: f32,           // decibels
-    pub eq: (f32, f32, f32), // decibels
-    pub fx: f32,             // percent
+    pub gain: f32,    // decibels
+    pub eq_low: f32,  // decibels
+    pub eq_mid: f32,  // decibels
+    pub eq_high: f32, // decibels
+    pub fx: f32,      // percent
 
     pub cue: bool, // cue enabled
 
@@ -110,7 +112,9 @@ impl Default for ChannelState {
             player: PlayerState::default(),
 
             gain: 0.0,
-            eq: (0.0, 0.0, 0.0),
+            eq_low: 0.0,  // decibels
+            eq_mid: 0.0,  // decibels
+            eq_high: 0.0, // decibels
             fx: 0.0,
 
             cue: false,
