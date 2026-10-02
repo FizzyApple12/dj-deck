@@ -14,9 +14,10 @@ layout(binding = 1) uniform sampler2D waveform;
 #define uv qt_TexCoord0
 
 void main() {
-    vec2 target_position = vec2(
+	float y_nudge = (1.0 / ceil(stride)) / 2.0;
+	vec2 target_position = vec2(
             mod(uv.x * stride, 1.0),
-            floor(uv.x * stride) / ceil(stride)
+            (floor(uv.x * stride) / ceil(stride)) + y_nudge
         );
     vec4 wave_data = texture(waveform, target_position);
 
@@ -45,6 +46,7 @@ void main() {
     // frag_color = mix(vec4(1.0, 1.0, 1.0, 1.0), frag_color, 1.0 - inside_high);
 
     frag_color = vec4(0.0);
+    // frag_color = vec4(target_position.x, 0.0, target_position.y, 1.0);
     frag_color = mix(vec4(vec3(0.0), 1.0), frag_color, 1.0 - inside_high);
     frag_color = mix(
             vec4(0.0745098039216, 0.305882352941, 0.843137254902, 1.0),

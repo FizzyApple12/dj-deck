@@ -288,7 +288,7 @@ FlexboxLayout {
                 required property real bpm
 
                 width: listView.width
-                height: 48
+                height: 24
 
                 color: (index % 2 == 0) ? palette.base : palette.alternateBase
 
@@ -373,6 +373,7 @@ FlexboxLayout {
 
                     FlexboxLayout {
                         Layout.fillWidth: false
+                        Layout.fillHeight: true
                         Layout.preferredWidth: 350
                         direction: FlexboxLayout.Row
                         justifyContent: FlexboxLayout.JustifyEnd
@@ -383,7 +384,7 @@ FlexboxLayout {
                         gap: 1
 
                         Button {
-                            Layout.preferredHeight: 48
+                        	Layout.fillHeight: true
 
                             text: "  Load on 1  "
                             font.pointSize: 12
@@ -398,7 +399,7 @@ FlexboxLayout {
                             enabled: listView.engine.device_selected
                         }
                         Button {
-                            Layout.preferredHeight: 48
+                        	Layout.fillHeight: true
 
                             text: "  Load on 2  "
                             font.pointSize: 12
@@ -413,7 +414,7 @@ FlexboxLayout {
                             enabled: listView.engine.device_selected
                         }
                         Button {
-                            Layout.preferredHeight: 48
+                        	Layout.fillHeight: true
 
                             text: "  Load on 3  "
                             font.pointSize: 12
@@ -428,7 +429,7 @@ FlexboxLayout {
                             enabled: listView.engine.device_selected
                         }
                         Button {
-                            Layout.preferredHeight: 48
+                        	Layout.fillHeight: true
 
                             text: "  Load on 4  "
                             font.pointSize: 12

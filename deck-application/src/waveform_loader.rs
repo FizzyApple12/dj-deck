@@ -24,15 +24,15 @@ pub fn waveform_to_shader_texture(waveform: &[WaveformColumn]) -> (QImage, f32, 
         .iter()
         .flat_map(|column| match column {
             WaveformColumn::Grayscale { height, saturation } => [
-                *height,
-                95 - saturation,
-                95 - saturation / 2,
                 95 - saturation / 4,
+                95 - saturation / 2,
+                95 - saturation,
+                *height,
             ],
             WaveformColumn::RGB { height, color_rgb } => {
-                [*height, color_rgb.0, color_rgb.1, color_rgb.2]
+                [color_rgb.2, color_rgb.1, color_rgb.0, *height]
             }
-            WaveformColumn::ThreeBand { height, bands } => [*height, bands.0, bands.1, bands.2],
+            WaveformColumn::ThreeBand { height, bands } => [bands.2, bands.1, bands.0, *height],
         })
         .collect();
 
@@ -74,16 +74,16 @@ pub fn preview_waveform_to_shader_texture(waveform: &[PreviewWaveformColumn]) ->
         .iter()
         .flat_map(|column| match column {
             PreviewWaveformColumn::Grayscale { height, saturation } => [
-                *height,
-                95 - saturation,
-                95 - saturation / 2,
                 95 - saturation / 4,
+                95 - saturation / 2,
+                95 - saturation,
+                *height,
             ],
             PreviewWaveformColumn::RGB { height, color_rgb } => {
-                [*height, color_rgb.0, color_rgb.1, color_rgb.2]
+                [color_rgb.2, color_rgb.1, color_rgb.1, *height]
             }
             PreviewWaveformColumn::ThreeBand { height, bands } => {
-                [*height, bands.0, bands.1, bands.2]
+                [bands.2, bands.1, bands.0, *height]
             }
         })
         .collect();
