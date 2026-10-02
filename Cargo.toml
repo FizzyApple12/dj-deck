@@ -8,7 +8,6 @@ members = [
     "libio",
     "timecode",
     "macro-helpers",
-    "godot-ui-code",
 ]
 exclude = [
 ]

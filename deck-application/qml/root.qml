@@ -10,11 +10,19 @@ MainWindow {
 
     EngineBridge {
     	id: engine
+
+    	source_index: SourceListModel {}
+    	browser_index: BrowserListModel {}
     }
+
+    engine: engine
 
     Connections {
         target: main_window
-        function onBeforeSynchronizing() { engine.before_frame() }
+        function onFrameSwapped() {
+            engine.before_frame()
+            main_window.update()
+        }
     }
 
     palette {
@@ -79,6 +87,7 @@ MainWindow {
 
     // MixerWindow {
     //     id: mixer_window
+    //     engine: engine
 
     //     palette: main_window.palette
     // }

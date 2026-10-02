@@ -47,8 +47,6 @@ impl DeckState {
         }
 
         while let Ok(control_change) = control_event_receiver.try_recv() {
-            info!(target: "libdj::playback::deck", "Control change: {control_change:?}");
-
             control_change.use_binding(self, control_event_sender);
         }
 

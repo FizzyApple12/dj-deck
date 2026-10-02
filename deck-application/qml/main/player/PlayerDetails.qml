@@ -3,11 +3,14 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
+import engineering.fizzy.deck_application
+
 FlexboxLayout {
     id: root
+    required property EngineBridge engine
     required property int player_number
 
-    Layout.fillHeight: false
+    Layout.fillHeight: true
 
     direction: FlexboxLayout.Row
     justifyContent: FlexboxLayout.JustifyCenter
@@ -29,7 +32,7 @@ FlexboxLayout {
 
     FlexboxLayout {
         Layout.fillWidth: true
-        Layout.fillHeight: false
+        Layout.fillHeight: true
 
         direction: FlexboxLayout.Column
         justifyContent: FlexboxLayout.JustifyStart
@@ -40,14 +43,16 @@ FlexboxLayout {
             justifyContent: FlexboxLayout.JustifyStart
             alignItems: FlexboxLayout.AlignCenter
             Layout.fillWidth: true
-            Layout.fillHeight: false
+            Layout.fillHeight: true
 
+            /*
             Image {
                 Layout.preferredWidth: 42
                 Layout.preferredHeight: 42
 
                 source: "qrc:/test_images/test-album-art.png"
             }
+            */
 
             Label {
                 leftPadding: 4
@@ -62,7 +67,15 @@ FlexboxLayout {
 
                 color: palette.text
 
-                text: qsTr("Above The Cloud (Original Mix)")
+                text: {
+                    if (root.engine.deck_state.mixer_channel(root.player_number).player.is_loading) {
+                        return qsTr("Loading...");
+                    } else if (root.engine.deck_state.mixer_channel(root.player_number).player.track_loaded) {
+                        return root.engine.deck_state.mixer_channel(root.player_number).player.track_name;
+                    } else {
+                        return qsTr("Not Loaded");
+                    }
+                }
             }
         }
 
@@ -82,6 +95,10 @@ FlexboxLayout {
 
                 gap: 0
 
+                TapHandler {
+                    onTapped: root.engine.deck_state.mixer_channel(root.player_number).player.setDisplay_remaining(!root.engine.deck_state.mixer_channel(root.player_number).player.display_remaining)
+                }
+
                 FlexboxLayout {
                     Layout.fillWidth: true
 
@@ -100,39 +117,40 @@ FlexboxLayout {
                         }
                         font.weight: Font.Medium
 
-                        color: palette.text
-
-                        text: qsTr("TIME")
-                    }
-                    Label {
-                        leftPadding: 4
-                        rightPadding: 4
-                        horizontalAlignment: Text.AlignHCenter
-
-                        font.pointSize: 10
-                        font.variableAxes: {
-                            "opsz": 4
-                        }
-                        font.weight: Font.Medium
-
-                        color: palette.text
-
-                        text: qsTr("/")
-                    }
-                    Label {
-                        leftPadding: 4
-                        rightPadding: 4
-                        horizontalAlignment: Text.AlignHCenter
-
-                        font.pointSize: 10
-                        font.variableAxes: {
-                            "opsz": 4
-                        }
-                        font.weight: Font.Medium
-
-                        color: palette.text
+                        color: root.engine.deck_state.mixer_channel(root.player_number).player.display_remaining ? palette.text : palette.disabled.text
 
                         text: qsTr("REMAIN")
+                    }
+                    Label {
+
+                        leftPadding: 4
+                        rightPadding: 4
+                        horizontalAlignment: Text.AlignHCenter
+
+                        font.pointSize: 10
+                        font.variableAxes: {
+                            "opsz": 4
+                        }
+                        font.weight: Font.Medium
+
+                        color: palette.disabled.text
+
+                        text: "/"
+                    }
+                    Label {
+                        leftPadding: 4
+                        rightPadding: 4
+                        horizontalAlignment: Text.AlignHCenter
+
+                        font.pointSize: 10
+                        font.variableAxes: {
+                            "opsz": 4
+                        }
+                        font.weight: Font.Medium
+
+                        color: root.engine.deck_state.mixer_channel(root.player_number).player.display_remaining ? palette.disabled.text : palette.text
+
+                        text: qsTr("TIME")
                     }
                 }
 
@@ -158,7 +176,26 @@ FlexboxLayout {
 
                         color: palette.text
 
-                        text: qsTr("00:00")
+                        text: {
+                            let time_seconds = root.engine.deck_state.mixer_channel(root.player_number).player.time / 1000000000;
+
+                            if (root.engine.deck_state.mixer_channel(root.player_number).player.display_remaining) {
+                                time_seconds = (root.engine.deck_state.mixer_channel(root.player_number).player.track_length / 1000000000) - time_seconds;
+                            }
+
+                            let timecode_minutes = (time_seconds / 60) % 100;
+                            let timecode_seconds = time_seconds % 60;
+
+                            if (time_seconds >= 0) {
+                                timecode_minutes = Math.floor(timecode_minutes);
+                                timecode_seconds = Math.floor(timecode_seconds);
+                            } else {
+                                timecode_minutes = Math.abs(Math.ceil(timecode_minutes));
+                                timecode_seconds = Math.abs(Math.ceil(timecode_seconds));
+                            }
+
+                            return `${timecode_minutes.toString().padStart(2, "0")}:${timecode_seconds.toString().padStart(2, "0")}`;
+                        }
                     }
 
                     Label {
@@ -176,7 +213,23 @@ FlexboxLayout {
 
                         color: palette.text
 
-                        text: qsTr(".000")
+                        text: {
+                            let time_milliseconds = root.engine.deck_state.mixer_channel(root.player_number).player.time / 1000000;
+
+                            if (root.engine.deck_state.mixer_channel(root.player_number).player.display_remaining) {
+                                time_milliseconds = (root.engine.deck_state.mixer_channel(root.player_number).player.track_length / 1000000) - time_milliseconds;
+                            }
+
+                            let timecode_milliseconds = time_milliseconds % 1000;
+
+                            if (time_milliseconds >= 0) {
+                                timecode_milliseconds = Math.floor(timecode_milliseconds);
+                            } else {
+                                timecode_milliseconds = Math.abs(Math.ceil(timecode_milliseconds));
+                            }
+
+                            return `.${timecode_milliseconds.toString().padStart(3, "0")}`;
+                        }
                     }
                 }
             }
@@ -232,7 +285,20 @@ FlexboxLayout {
                             visible: true
                         }
 
-                        text: qsTr("± 16")
+                        text: {
+                            switch (root.engine.deck_state.mixer_channel(root.player_number).player.tempo_range) {
+                            case TempoRange.SixPercent:
+                                return "± 6%";
+                            case TempoRange.TenPercent:
+                                return "± 10%";
+                            case TempoRange.SixteenPercent:
+                                return "± 16%";
+                            case TempoRange.OneHundredPercent:
+                                return "± 100%";
+                            default:
+                                return "± ???%";
+                            }
+                        }
                     }
                 }
 
@@ -244,6 +310,7 @@ FlexboxLayout {
                     alignItems: FlexboxLayout.AlignEnd
 
                     Label {
+                        Layout.preferredWidth: 34
                         leftPadding: 4
                         topPadding: -8
                         bottomPadding: -8
@@ -257,7 +324,13 @@ FlexboxLayout {
 
                         color: palette.text
 
-                        text: qsTr("+")
+                        text: {
+                            if (root.engine.deck_state.mixer_channel(root.player_number).player.tempo_percent >= 1) {
+                                return "+";
+                            } else {
+                                return "-";
+                            }
+                        }
                     }
 
                     Label {
@@ -275,7 +348,7 @@ FlexboxLayout {
 
                         color: palette.text
 
-                        text: qsTr("0")
+                        text: Math.floor(Math.abs(root.engine.deck_state.mixer_channel(root.player_number).player.tempo_percent - 1) * 100).toString()
                     }
 
                     Label {
@@ -293,7 +366,7 @@ FlexboxLayout {
 
                         color: palette.text
 
-                        text: qsTr(".00%")
+                        text: "." + Math.floor((Math.abs(root.engine.deck_state.mixer_channel(root.player_number).player.tempo_percent - 1) * 10000) % 100).toString().padStart(2, "0") + "%"
                     }
                 }
             }
@@ -344,7 +417,7 @@ FlexboxLayout {
                         color: palette.highlightedText
 
                         background: Rectangle {
-                            color: palette.accent
+                            color: (root.engine.deck_state.master_channel_set && (root.engine.deck_state.master_channel == root.player_number)) ? palette.accent : palette.window
 
                             visible: true
                         }
@@ -375,7 +448,7 @@ FlexboxLayout {
 
                         color: palette.text
 
-                        text: qsTr("0")
+                        text: Math.floor(root.engine.deck_state.mixer_channel(root.player_number).player.current_bpm).toString()
                     }
 
                     Label {
@@ -393,7 +466,7 @@ FlexboxLayout {
 
                         color: palette.text
 
-                        text: qsTr(".0")
+                        text: "." + Math.floor(((root.engine.deck_state.mixer_channel(root.player_number).player.current_bpm) * 10) % 10).toString()
                     }
                 }
             }
@@ -441,7 +514,7 @@ FlexboxLayout {
                         }
                         font.weight: Font.Medium
 
-                        color: "#ff0000"
+                        color: root.engine.deck_state.mixer_channel(root.player_number).player.master_tempo ? "#ff0000" : palette.window
 
                         text: qsTr("MT")
                     }
@@ -469,23 +542,15 @@ FlexboxLayout {
 
                         color: palette.text
 
-                        text: qsTr("4A")
+                        text: "--"
                     }
                 }
             }
         }
 
-        Image {
-            id: preview_waveform_image
-
-            visible: false
-
-            sourceSize {
-                width: 16384
-                height: 2
-            }
-
-            source: "qrc:/test_images/test-preview-waveform.png"
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 16
         }
 
         ShaderEffect {
@@ -495,8 +560,8 @@ FlexboxLayout {
             vertexShader: "qrc:/shaders/preview_waveform.vert.qsb"
             fragmentShader: "qrc:/shaders/preview_waveform.frag.qsb"
 
-            property real progress: 0.35
-            property variant waveform: preview_waveform_image
+            property real progress: root.engine.deck_state.mixer_channel(root.player_number).player.time / root.engine.deck_state.mixer_channel(root.player_number).player.track_length
+            property variant waveform: root.engine.deck_state.mixer_channel(root.player_number).player.preview_waveform_texture_source
         }
     }
 }

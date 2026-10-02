@@ -3,7 +3,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
+import engineering.fizzy.deck_application
+
 FlexboxLayout {
+    id: root
+    required property EngineBridge engine
+
     Layout.preferredHeight: 64
     Layout.fillHeight: false
     direction: FlexboxLayout.Row
@@ -24,7 +29,7 @@ FlexboxLayout {
             width: 1
             height: waveform_container.height
 
-            color: "#ff0000"
+            color: palette.light
         }
     }
 }

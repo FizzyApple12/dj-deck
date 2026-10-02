@@ -130,10 +130,10 @@
 0x9n60->b(0x7F):PlayerTempoRangePress
 0x9n1A->b(0x7F):PlayerMasterTempoPress
 
-0xBn00->a(msb,0.0,2.0):PlayerTempoSet
-0xBn05->a(msb,0.0,2.0):PlayerTempoSet
-0xBn20->a(lsb,0.0,2.0):PlayerTempoSet
-0xBn25->a(lsb,0.0,2.0):PlayerTempoSet
+0xBn00->a(msb,-1.0,1.0):PlayerTempoSet
+0xBn05->a(msb,-1.0,1.0):PlayerTempoSet
+0xBn20->a(lsb,-1.0,1.0):PlayerTempoSet
+0xBn25->a(lsb,-1.0,1.0):PlayerTempoSet
 
 0x9n10->b(0x7F):PlayerBeatLoopInPress
 0x9n4C->b(0x7F):PlayerBeatLoopInAdjustPress

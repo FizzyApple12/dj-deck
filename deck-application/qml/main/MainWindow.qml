@@ -3,10 +3,16 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
+import engineering.fizzy.deck_application
+
 import "./player"
 import "./layouts"
+import "./browser"
 
 ApplicationWindow {
+    id: root
+    required property EngineBridge engine
+
     x: 0
     y: 0
     width: 2560
@@ -25,6 +31,7 @@ ApplicationWindow {
         visible: false
 
         PlayerColumn {
+            engine: root.engine
             player_number: 2
         }
 
@@ -36,6 +43,7 @@ ApplicationWindow {
         }
 
         PlayerColumn {
+            engine: root.engine
             player_number: 0
         }
 
@@ -47,6 +55,7 @@ ApplicationWindow {
         }
 
         PlayerColumn {
+            engine: root.engine
             player_number: 1
         }
 
@@ -58,6 +67,7 @@ ApplicationWindow {
         }
 
         PlayerColumn {
+            engine: root.engine
             player_number: 3
         }
     }
@@ -80,6 +90,7 @@ ApplicationWindow {
             alignItems: FlexboxLayout.AlignCenter
 
             PlayerSync {
+                engine: root.engine
                 Layout.fillWidth: true
             }
 
@@ -89,19 +100,71 @@ ApplicationWindow {
         }
 
         PlayerRow {
+            engine: root.engine
             player_number: 2
         }
 
         PlayerRow {
+            engine: root.engine
             player_number: 0
         }
 
         PlayerRow {
+            engine: root.engine
             player_number: 1
         }
 
         PlayerRow {
+            engine: root.engine
             player_number: 3
+        }
+    }
+
+    Rectangle {
+        x: 0
+        y: 0
+        width: 2560
+        height: 700
+
+        visible: root.engine.browser_page != BrowserPage.Closed
+
+        color: "#000000"
+    }
+
+    FlexboxLayout {
+        anchors.fill: parent
+        direction: FlexboxLayout.Row
+        justifyContent: FlexboxLayout.JustifySpaceBetween
+        alignItems: FlexboxLayout.AlignCenter
+
+        visible: root.engine.browser_page != BrowserPage.Closed
+
+        Browser {
+            engine: root.engine
+        }
+    }
+
+    Rectangle {
+        x: 0
+        y: 0
+        width: 2560
+        height: 700
+
+        visible: root.engine.source_open
+
+        color: "#000000"
+    }
+
+    FlexboxLayout {
+        anchors.fill: parent
+        direction: FlexboxLayout.Row
+        justifyContent: FlexboxLayout.JustifySpaceBetween
+        alignItems: FlexboxLayout.AlignCenter
+
+        visible: root.engine.source_open
+
+        SourceSelect {
+            engine: root.engine
         }
     }
 }

@@ -216,6 +216,8 @@ pub fn player_tempo_range_press(deck_state: &mut DeckState, channel: usize) {
             TempoRange::SixteenPercent => TempoRange::OneHundredPercent,
             TempoRange::OneHundredPercent => TempoRange::SixPercent,
         };
+
+        channel.player.tempo_slider_is_accurate = false;
     }
 }
 

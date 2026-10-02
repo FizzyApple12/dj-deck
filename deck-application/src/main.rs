@@ -1,14 +1,16 @@
 pub mod components;
 pub mod logger;
 pub mod statuses;
+pub mod waveform_loader;
 
 use std::pin::Pin;
 
 use cxx_qt_lib::{QFont, QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 use libdatabase::device_manager::DeviceManager;
 use libdj::{engine::DJEngine, types::deck::DeckState};
-use libio::controller::Controller;
+use libio::{controller::Controller, types::controller::ControllerMessage};
 use log::{debug, info, warn};
+use tokio::task;
 
 use crate::{
     components::{engine_bridge::EngineBridgeRust, ffi::set_qfont_feature},
@@ -79,6 +81,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         deck_state_sender,
         loaded_track_receiver,
     );
+
+    let mut controller_deck_state_updater = deck_state_receiver.clone();
+
+    task::spawn(async move {
+        loop {
+            let _ = controller_deck_state_updater.changed().await;
+
+            let new_deck_state = controller_deck_state_updater.borrow_and_update().clone();
+
+            let _ = controller.send(ControllerMessage::UpdateDeckState(new_deck_state));
+        }
+    });
 
     drop(enter_handle);
 

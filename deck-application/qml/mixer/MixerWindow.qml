@@ -3,7 +3,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 
+import engineering.fizzy.deck_application
+
 Window {
+	required property EngineBridge engine
+
     x: 2048
     y: 0
     width: 280

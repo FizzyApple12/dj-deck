@@ -322,6 +322,10 @@ impl DeviceManager {
     pub async fn next(&mut self) -> Option<DeviceManagerEvent> {
         self.event_receiver.recv().await.ok()
     }
+
+    pub fn try_recv(&mut self) -> Option<DeviceManagerEvent> {
+        self.event_receiver.try_recv().ok()
+    }
 }
 
 impl Drop for DeviceManager {
