@@ -8,10 +8,9 @@
    stroke-width="2"
    stroke-linecap="round"
    stroke-linejoin="round"
-   class="lucide lucide-network preview-icon"
    version="1.1"
    id="svg4"
-   sodipodi:docname="network.svg"
+   sodipodi:docname="history.svg"
    inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -37,36 +36,26 @@
      inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg4" />
-  <rect
-     x="16"
-     y="16"
-     width="6"
-     height="6"
-     rx="1"
-     id="rect1"
-     style="stroke:#ffffff" />
-  <rect
-     x="2"
-     y="16"
-     width="6"
-     height="6"
-     rx="1"
-     id="rect2"
-     style="stroke:#ffffff" />
-  <rect
-     x="9"
-     y="2"
-     width="6"
-     height="6"
-     rx="1"
-     id="rect3"
+  <path
+     d="M16 14v2.2l1.6 1"
+     id="path1"
      style="stroke:#ffffff" />
   <path
-     d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"
+     d="M16 5H3"
+     id="path2"
+     style="stroke:#ffffff" />
+  <path
+     d="M6.46 19H3"
      id="path3"
      style="stroke:#ffffff" />
   <path
-     d="M12 12V8"
+     d="M6.835 12H3"
      id="path4"
+     style="stroke:#ffffff" />
+  <circle
+     cx="16"
+     cy="16"
+     r="6"
+     id="circle4"
      style="stroke:#ffffff" />
 </svg>

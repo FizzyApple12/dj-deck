@@ -43,6 +43,7 @@
               qtdeclarative
               qtwayland
               qtshadertools
+              qtsvg
             ];
           in pkgs.mkShell rec {
           buildInputs = [

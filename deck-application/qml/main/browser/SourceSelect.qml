@@ -11,33 +11,11 @@ FlexboxLayout {
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    direction: FlexboxLayout.Column
+    direction: FlexboxLayout.Row
     justifyContent: FlexboxLayout.JustifyStart
     alignItems: FlexboxLayout.AlignCenter
 
-    Label {
-        text: qsTr("Source Select")
-
-        font.pointSize: 12
-        font.variableAxes: {
-            "opsz": 10
-        }
-        font.weight: Font.Medium
-    }
-
-    Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 4
-
-        color: palette.window
-    }
-
-    Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 1
-
-        color: palette.mid
-    }
+    gap: 8
 
     ListView {
         id: listView
@@ -56,76 +34,179 @@ FlexboxLayout {
             required property int device_number
             required property string label
 
-            width: root.width
+            width: listView.width
             direction: FlexboxLayout.Column
             justifyContent: FlexboxLayout.JustifyCenter
             alignContent: FlexboxLayout.AlignStretch
 
-            Rectangle {
+            Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 4
-
-                color: palette.window
+                Layout.preferredHeight: 8
             }
 
-            FlexboxLayout {
+            Rectangle {
                 Layout.fillWidth: true
-                direction: FlexboxLayout.Row
-                justifyContent: FlexboxLayout.JustifySpaceBetween
-                alignContent: FlexboxLayout.AlignStretch
+                Layout.preferredHeight: 48
 
-                Text {
-                	Layout.fillHeight: true
-                	Layout.preferredWidth: 400
-                	verticalAlignment: Text.AlignVCenter
+                color: palette.base
 
-                    text: delegate_root.label
-
-                    font.pointSize: 12
-                    font.variableAxes: {
-                        "opsz": 10
-                    }
-                    font.weight: Font.Medium
-
-                    color: palette.text
+                TapHandler {
+                    onTapped: listView.engine.select_device(delegate_root.device_number)
                 }
 
                 FlexboxLayout {
+                    anchors.fill: parent
                     direction: FlexboxLayout.Row
-                    justifyContent: FlexboxLayout.JustifyEnd
-                    alignItems: FlexboxLayout.AlignCenter
+                    justifyContent: FlexboxLayout.JustifyStart
+                    alignContent: FlexboxLayout.AlignStretch
 
-                    Layout.fillWidth: false
+                    gap: 8
 
-                    Button {
-                        text: "Browse"
+                    Item {
+                        Layout.preferredWidth: 48
+                        Layout.preferredHeight: 48
+
+                        Rectangle {
+                            width: 48
+                            height: 48
+
+                            color: palette.accent
+
+                            Image {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                sourceSize.width: 24
+                                sourceSize.height: 24
+
+                                source: "qrc:/icons/usb.svg"
+                            }
+                        }
+
+                        Rectangle {
+                            width: 14
+                            height: 14
+
+                            color: palette.light
+
+                            Label {
+                                anchors.centerIn: parent
+
+                                text: "" + delegate_root.device_number
+
+                                font.pointSize: 8
+                                font.variableAxes: {
+                                    "opsz": 10
+                                }
+                                font.weight: Font.Medium
+
+                                color: palette.dark
+                            }
+                        }
+                    }
+
+                    Item {
+                        Layout.preferredWidth: 0
+                    }
+
+                    Text {
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: 400
+                        verticalAlignment: Text.AlignVCenter
+
+                        text: delegate_root.label
+
                         font.pointSize: 12
                         font.variableAxes: {
                             "opsz": 10
                         }
                         font.weight: Font.Medium
 
-                        onClicked: () => {
-                            listView.engine.select_device(delegate_root.device_number);
+                        color: palette.text
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                    }
+
+                    Item {
+                        Layout.preferredWidth: 48
+                        Layout.preferredHeight: 48
+
+                        Image {
+                            anchors.centerIn: parent
+                            width: 24
+                            height: 24
+                            sourceSize.width: 24
+                            sourceSize.height: 24
+
+                            source: {
+                                if (root.engine.device_selected && root.engine.active_device == delegate_root.device_number) {
+                                    return "qrc:/icons/check.svg";
+                                } else {
+                                    return "qrc:/icons/chevron-right.svg";
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 4
+    Rectangle {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
-                color: palette.window
+        color: palette.base
+
+        FlexboxLayout {
+            anchors.centerIn: parent
+            direction: FlexboxLayout.Column
+            justifyContent: FlexboxLayout.JustifyCenter
+            alignContent: FlexboxLayout.AlignCenter
+            alignItems: FlexboxLayout.AlignCenter
+
+            gap: 8
+
+            Image {
+                Layout.preferredWidth: 200
+                Layout.preferredHeight: 200
+                sourceSize.width: 200
+                sourceSize.height: 200
+
+                source: "qrc:/icons/fizzyengineering.svg"
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
+            Text {
+                Layout.preferredWidth: 400
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignHCenter
 
-                visible: (delegate_root.index < (listView.count - 1))
+                text: "DJ Software"
 
-                color: palette.mid
+                font.pointSize: 24
+                font.variableAxes: {
+                    "opsz": 30
+                }
+                font.weight: Font.Medium
+
+                color: palette.text
+            }
+
+            Text {
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignLeft
+
+                text: "Development Testing Build"
+
+                font.pointSize: 12
+                font.variableAxes: {
+                    "opsz": 10
+                }
+                font.weight: Font.Medium
+
+                color: palette.text
             }
         }
     }

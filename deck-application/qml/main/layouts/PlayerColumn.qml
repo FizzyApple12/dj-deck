@@ -20,28 +20,21 @@ FlexboxLayout {
     alignItems: FlexboxLayout.AlignCenter
 
     PlayerSync {
-    	engine: root.engine
+        engine: root.engine
 
         Layout.fillWidth: true
     }
 
     PlayerWaveform {
-   		engine: root.engine
+        engine: root.engine
 
         player_number: root.player_number
 
         Layout.fillHeight: true
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 1
-
-        color: palette.mid
-    }
-
     PlayerDetails {
-   		engine: root.engine
+        engine: root.engine
 
         player_number: root.player_number
 

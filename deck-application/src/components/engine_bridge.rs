@@ -1007,13 +1007,13 @@ impl qobject::EngineBridge {
             return;
         };
 
-        self.as_mut().rebuild_browse_index(engine_connection);
-
-        self.as_mut().set_source_open(false);
-
         if *self.as_ref().browser_page() == BrowserPage::Closed {
             self.as_mut().set_browser_page(BrowserPage::Device);
         }
+
+        self.as_mut().rebuild_browse_index(engine_connection);
+
+        self.as_mut().set_source_open(false);
     }
 
     #[allow(clippy::cast_sign_loss)]
@@ -1072,7 +1072,7 @@ impl qobject::EngineBridge {
                 {
                     artist.name.clone()
                 } else {
-                    "Unknown".to_string()
+                    "".to_string()
                 };
                 let cloned_track_duration = track.duration;
 
@@ -1599,7 +1599,7 @@ impl qobject::EngineBridge {
             .devices
             .blocking_lock()
             .get(&number)
-            .map_or("Unknown".to_string(), |device| device.name.clone());
+            .map_or("".to_string(), |device| device.name.clone());
 
         // Safety: Probably not
         let mut source_index_pin = unsafe {
@@ -1757,7 +1757,7 @@ impl qobject::EngineBridge {
                                     .library
                                     .artists
                                     .get(&track.artist_id)
-                                    .map_or("Unknown".to_string(), |artist| artist.name.clone()),
+                                    .map_or("".to_string(), |artist| artist.name.clone()),
                             ),
                             duration: track.duration,
                             bpm: track.bpm,
@@ -1798,7 +1798,7 @@ impl qobject::EngineBridge {
                                     .library
                                     .artists
                                     .get(&track.artist_id)
-                                    .map_or("Unknown".to_string(), |artist| artist.name.clone()),
+                                    .map_or("".to_string(), |artist| artist.name.clone()),
                             ),
                             duration: track.duration,
                             bpm: track.bpm,

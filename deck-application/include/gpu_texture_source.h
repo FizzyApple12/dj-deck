@@ -82,7 +82,8 @@ protected:
                 QQuickWindow::TextureHasAlphaChannel
             );
 
-            new_image_texture->setFiltering(QSGTexture::Linear);
+            new_image_texture->setFiltering(QSGTexture::Nearest);
+            new_image_texture->setMipmapFiltering(QSGTexture::Nearest);
             new_image_texture->setHorizontalWrapMode(QSGTexture::ClampToEdge);
             new_image_texture->setVerticalWrapMode(QSGTexture::ClampToEdge);
 

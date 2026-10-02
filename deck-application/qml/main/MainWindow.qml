@@ -19,56 +19,69 @@ ApplicationWindow {
     height: 700
     visible: true
     flags: Qt.FramelessWindowHint
-    color: "#000000"
+    color: palette.window
     title: "1"
 
     FlexboxLayout {
         anchors.fill: parent
-        direction: FlexboxLayout.Row
+        direction: FlexboxLayout.Column
         justifyContent: FlexboxLayout.JustifySpaceBetween
         alignItems: FlexboxLayout.AlignCenter
 
         visible: false
 
-        PlayerColumn {
+        TopBar {
             engine: root.engine
-            player_number: 2
+            page_title: ""
         }
 
-        Rectangle {
+        FlexboxLayout {
+            Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredWidth: 1
+            direction: FlexboxLayout.Row
+            justifyContent: FlexboxLayout.JustifySpaceBetween
+            alignItems: FlexboxLayout.AlignCenter
 
-            color: palette.mid
-        }
+            PlayerColumn {
+                engine: root.engine
+                player_number: 2
+            }
 
-        PlayerColumn {
-            engine: root.engine
-            player_number: 0
-        }
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
 
-        Rectangle {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 1
+                color: palette.mid
+            }
 
-            color: palette.mid
-        }
+            PlayerColumn {
+                engine: root.engine
+                player_number: 0
+            }
 
-        PlayerColumn {
-            engine: root.engine
-            player_number: 1
-        }
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
 
-        Rectangle {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 1
+                color: palette.mid
+            }
 
-            color: palette.mid
-        }
+            PlayerColumn {
+                engine: root.engine
+                player_number: 1
+            }
 
-        PlayerColumn {
-            engine: root.engine
-            player_number: 3
+            Rectangle {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 1
+
+                color: palette.mid
+            }
+
+            PlayerColumn {
+                engine: root.engine
+                player_number: 3
+            }
         }
     }
 
@@ -76,7 +89,7 @@ ApplicationWindow {
         anchors.fill: parent
         direction: FlexboxLayout.Column
         justifyContent: FlexboxLayout.JustifySpaceBetween
-        alignItems: FlexboxLayout.AlignCenter
+        alignItems: FlexboxLayout.AlignEnd
 
         visible: true
 
@@ -94,8 +107,19 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
 
-            Rectangle {
+            FlexboxLayout {
+                Layout.fillWidth: false
+                Layout.fillHeight: true
                 Layout.preferredWidth: 640
+                direction: FlexboxLayout.Column
+                justifyContent: FlexboxLayout.JustifyStart
+                alignContent: FlexboxLayout.AlignStart
+                alignItems: FlexboxLayout.AlignStart
+
+                TopBar {
+                    engine: root.engine
+                    page_title: ""
+                }
             }
         }
 
@@ -128,16 +152,21 @@ ApplicationWindow {
 
         visible: root.engine.browser_page != BrowserPage.Closed
 
-        color: "#000000"
+        color: palette.window
     }
 
     FlexboxLayout {
         anchors.fill: parent
-        direction: FlexboxLayout.Row
-        justifyContent: FlexboxLayout.JustifySpaceBetween
-        alignItems: FlexboxLayout.AlignCenter
+        direction: FlexboxLayout.Column
+        justifyContent: FlexboxLayout.JustifyStart
+        alignItems: FlexboxLayout.AlignStart
 
         visible: root.engine.browser_page != BrowserPage.Closed
+
+        TopBar {
+            engine: root.engine
+            page_title: "Browser"
+        }
 
         Browser {
             engine: root.engine
@@ -152,16 +181,21 @@ ApplicationWindow {
 
         visible: root.engine.source_open
 
-        color: "#000000"
+        color: palette.window
     }
 
     FlexboxLayout {
         anchors.fill: parent
-        direction: FlexboxLayout.Row
-        justifyContent: FlexboxLayout.JustifySpaceBetween
-        alignItems: FlexboxLayout.AlignCenter
+        direction: FlexboxLayout.Column
+        justifyContent: FlexboxLayout.JustifyStart
+        alignItems: FlexboxLayout.AlignStart
 
         visible: root.engine.source_open
+
+        TopBar {
+            engine: root.engine
+            page_title: "Source"
+        }
 
         SourceSelect {
             engine: root.engine

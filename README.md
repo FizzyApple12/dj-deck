@@ -9,7 +9,6 @@ consider pruning:
 * libui
 
 rc1 todos:
-* rewrite the ui with qt
 * control quantize system
 * usb-stored settings system
 * finish button bindings
@@ -40,8 +39,6 @@ rc1 todos:
 	* crush
 	* pitch
 * usb recording
-* onelibrary support + deduplication with old rekordbox format
-* usb library switching (for multiple libraries)
 * switch waveform generation to use an onboard stft for consistency
 * add graceful error handling for everything
 * screen io board firmware
@@ -50,6 +47,8 @@ rc1 todos:
 
 1.0 todos:
 * pro dj link
+* onelibrary support + deduplication with old rekordbox format
+* usb library switching (for multiple libraries)
 * engine dj library support
 * onboarding flow
 * track analysis algorithm

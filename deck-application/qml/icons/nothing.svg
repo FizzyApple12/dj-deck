@@ -8,19 +8,19 @@
    stroke-width="2"
    stroke-linecap="round"
    stroke-linejoin="round"
-   class="lucide lucide-network preview-icon"
+   class="lucide lucide-circle-check preview-icon"
    version="1.1"
-   id="svg4"
-   sodipodi:docname="network.svg"
+   id="svg1"
+   sodipodi:docname="nothing.svg"
    inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
-     id="defs4" />
+     id="defs1" />
   <sodipodi:namedview
-     id="namedview4"
+     id="namedview1"
      pagecolor="#505050"
      bordercolor="#ffffff"
      borderopacity="1"
@@ -29,44 +29,22 @@
      inkscape:pagecheckerboard="1"
      inkscape:deskcolor="#505050"
      inkscape:zoom="50.333333"
-     inkscape:cx="11.990066"
+     inkscape:cx="12"
      inkscape:cy="12"
      inkscape:window-width="2560"
      inkscape:window-height="1410"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg4" />
-  <rect
-     x="16"
-     y="16"
-     width="6"
-     height="6"
-     rx="1"
-     id="rect1"
-     style="stroke:#ffffff" />
-  <rect
-     x="2"
-     y="16"
-     width="6"
-     height="6"
-     rx="1"
-     id="rect2"
-     style="stroke:#ffffff" />
-  <rect
-     x="9"
-     y="2"
-     width="6"
-     height="6"
-     rx="1"
-     id="rect3"
+     inkscape:current-layer="svg1" />
+  <circle
+     cx="12"
+     cy="12"
+     r="10"
+     id="circle1"
      style="stroke:#ffffff" />
   <path
-     d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"
-     id="path3"
-     style="stroke:#ffffff" />
-  <path
-     d="M12 12V8"
-     id="path4"
+     d="m16 9-5.5 5.5L8 12"
+     id="path1"
      style="stroke:#ffffff" />
 </svg>

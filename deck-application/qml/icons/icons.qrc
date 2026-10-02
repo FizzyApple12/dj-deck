@@ -1,11 +1,24 @@
 <RCC>
-    <qresource prefix="/test_images">
+    <qresource prefix="/icons">
+        <file>album.svg</file>
+        <file>artist.svg</file>
+        <file>check.svg</file>
+        <file>chevron-right.svg</file>
         <file>edit.svg</file>
         <file>eject.svg</file>
+        <file>empty.svg</file>
         <file>error.svg</file>
+        <file>fizzyengineering.svg</file>
+        <file>folder.svg</file>
+        <file>history.svg</file>
+        <file>info.svg</file>
+        <file>key.svg</file>
         <file>network.svg</file>
+        <file>nothing.svg</file>
         <file>player.svg</file>
+        <file>playlist.svg</file>
         <file>settings.svg</file>
+        <file>track.svg</file>
         <file>usb.svg</file>
         <file>warning.svg</file>
     </qresource>

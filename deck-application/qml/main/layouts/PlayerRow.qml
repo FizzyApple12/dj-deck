@@ -34,25 +34,19 @@ FlexboxLayout {
         justifyContent: FlexboxLayout.JustifySpaceAround
         alignItems: FlexboxLayout.AlignCenter
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-
-            color: palette.mid
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-
-            color: palette.window
-        }
-
         PlayerDetails {
             engine: root.engine
             Layout.preferredWidth: 640
+            Layout.fillHeight: true
 
             player_number: root.player_number
+        }
+
+        Rectangle {
+            Layout.preferredWidth: 640
+            Layout.preferredHeight: 1
+
+            color: palette.mid
         }
     }
 }

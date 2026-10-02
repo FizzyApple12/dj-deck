@@ -40,6 +40,7 @@ fn main() {
                 "qml/main/player/PlayerDetails.qml",
                 "qml/main/player/PlayerWaveform.qml",
                 "qml/main/player/PlayerSync.qml",
+                "qml/main/layouts/TopBar.qml",
                 "qml/main/layouts/PlayerRow.qml",
                 "qml/main/layouts/PlayerColumn.qml",
                 "qml/mixer/MixerWindow.qml",
@@ -57,8 +58,11 @@ fn main() {
         .qt_module("Qml")
         .qt_module("Network")
         .qt_module("QuickLayouts")
+        .qt_module("Svg")
         .cc_builder(|cc| {
-            cc.define("QT_QML_DEBUG", None);
+            // cc.define("QT_QML_DEBUG", None);
+
+            let _ = cc;
         })
         .build();
     }
