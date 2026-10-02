@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/test_images">
+        <file>test-album-art.png</file>
+        <file>test-preview-waveform.png</file>
+        <file>test-waveform.png</file>
+    </qresource>
+</RCC>

@@ -4,7 +4,12 @@ members = [
     "deck-application",
     "libdatabase",
     "libdj",
-    "libui"
+    "libdsp",
+    "libio",
+    "timecode",
+    "macro-helpers",
+]
+exclude = [
 ]
 
 [workspace.package]
@@ -15,7 +20,12 @@ edition = "2024"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
 thiserror = "2.0.18"
-nix = { version = "0.31.2", features = ["mount", "fs"] }
+rkyv = "0.8.15"
+base64 = "0.22.1"
+num = "0.4.3"
+num-complex = { version = "0.4.3", features = ["bytemuck"] }
+criterion = "0.8.2"
+log = { version = "0.4", features = ["max_level_debug", "release_max_level_info"] }
 
 [workspace.lints.rust]
 async_fn_in_trait = "allow"
@@ -33,3 +43,10 @@ missing_panics_doc = "allow"
 must_use_candidate = "allow"
 result_large_err = "allow"
 zero_sized_map_values = "allow"
+too_many_lines = "allow"
+
+# Give me the best optimizations you've got, Rust
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3

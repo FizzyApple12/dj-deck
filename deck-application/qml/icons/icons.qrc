@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/test_images">
+        <file>edit.svg</file>
+        <file>eject.svg</file>
+        <file>error.svg</file>
+        <file>network.svg</file>
+        <file>player.svg</file>
+        <file>settings.svg</file>
+        <file>usb.svg</file>
+        <file>warning.svg</file>
+    </qresource>
+</RCC>

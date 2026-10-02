@@ -1,216 +1,143 @@
-use std::time::Duration;
+pub mod components;
+pub mod logger;
+pub mod statuses;
+pub mod waveform_loader;
 
-use libdatabase::device_manager::{DeviceManager, DeviceManagerEvent, device::OpenDeviceError};
-use libdj::types::deck::{DeckState, PlayDirection, TempoPercent};
-use libui::{
-    gui::UI,
-    types::ui::{UIEvent, UIMessage},
+use std::pin::Pin;
+
+use cxx_qt_lib::{QFont, QGuiApplication, QQmlApplicationEngine, QString, QUrl};
+use libdatabase::device_manager::DeviceManager;
+use libdj::{engine::DJEngine, types::deck::DeckState};
+use libio::{controller::Controller, types::controller::ControllerMessage};
+use log::{debug, info, warn};
+use tokio::task;
+
+use crate::{
+    components::{engine_bridge::EngineBridgeRust, ffi::set_qfont_feature},
+    logger::setup_logger,
 };
-use tokio::signal;
-use tokio_stream::StreamExt;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
-async fn main() {
-    let mut device_manager = match DeviceManager::start() {
-        Ok(device_manager) => device_manager,
-        Err(err) => {
-            println!("failed to start device manager: {err:#?}");
+const LOCAL_AUTOMOUNTS: [(&str, usize); 2] = [("/djusb/usb0", 0), ("/djusb/usb1", 1)];
 
-            return;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    setup_logger()?;
+
+    info!("Starting tokio runtime...");
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()?;
+
+    debug!("Entering tokio to start managers");
+
+    let enter_handle = runtime.enter();
+
+    debug!("Starting IO Manager...");
+
+    let (deck_control_event_sender, deck_control_event_receiver) =
+        tokio::sync::mpsc::unbounded_channel();
+
+    // todo: this needs to be replaced with a proper io manager
+    let mut controller = Controller::default();
+
+    'controller_init: {
+        if let Err(err) = controller.open_midi_input() {
+            warn!("Failed to find MIDI input for testing, MIDI has been disabled: {err}");
+            break 'controller_init;
         }
-    };
-
-    let mut ui = match UI::start_ui().await {
-        Ok(ui) => ui,
-        Err(err) => {
-            println!("failed to start ui: {err:#?}");
-
-            device_manager.stop().await;
-
-            return;
+        if let Err(err) = controller.open_midi_output() {
+            warn!("Failed to find MIDI output for testing, MIDI has been disabled: {err}");
+            break 'controller_init;
         }
-    };
 
-    let mut temp_deck_state = DeckState::default();
-
-    // todo: vsync?
-    let mut ui_deck_update_interval = tokio::time::interval(Duration::from_millis(5));
-
-    let mut deck_update_interval = tokio::time::interval(Duration::from_millis(1));
-
-    loop {
-        tokio::select! {
-            device_event = device_manager.next() => {
-                match device_event {
-                    Some(DeviceManagerEvent::DeviceConnected(Ok(id))) => {
-                        println!("Device {id} Connected Successfully");
-
-                        let _ = ui.send(UIMessage::DeviceConnected(id));
-
-                        // if let Ok(locked_device_database) = device_manager.devices.lock()
-                        //     && let Some(device) = locked_device_database.get(&id) {
-                        //     println!("Device Database: {:#?}", device.database.library);
-                        // }
-                    }
-                    Some(DeviceManagerEvent::DeviceConnected(Err(err))) => {
-                        if let OpenDeviceError::InvalidDeviceType = err {
-                            continue;
-                        }
-
-                        println!("Device Connect Failed: {err}");
-                    }
-                    Some(DeviceManagerEvent::DeviceDisconnected(id)) => {
-                        let _ = ui.send(UIMessage::DeviceDisconnected(id));
-
-                        println!("Device {id} Disconnected");
-                    }
-                    None => {
-                        println!("Device Manager Hung Up");
-                        break;
-                    }
-                }
-            }
-            ui_event = ui.next() => {
-                if let Some(ui_event) = ui_event {
-                    match ui_event {
-                        UIEvent::LoadTrack { device, id, playlist: _, deck } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck)
-                                && let Ok(locked_device_database) = device_manager.devices.lock()
-                                && let Some(device) = locked_device_database.get(&device)
-                                   && let Some(track) = device.database.library.tracks.get(&id){
-
-                                deck.current_track = Some(track.clone());
-
-                                deck.time = 0.0;
-                                deck.slip_time = 0.0;
-                                deck.cue_time = None;
-                                deck.needle_time = None;
-
-                                deck.beat_loop_start = None;
-                                deck.beat_loop_end = None;
-
-                                // node: this is bad, switch this when moving to libdj
-                                deck.bpm = track.tempo;
-
-                                deck.keyshift = 0;
-                            }
-                        },
-                        UIEvent::Eject(deck) => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
-                               deck.current_track = None;
-
-                               deck.time = 0.0;
-                               deck.slip_time = 0.0;
-                               deck.cue_time = None;
-                               deck.needle_time = None;
-
-                               deck.beat_loop_start = None;
-                               deck.beat_loop_end = None;
-
-                               deck.bpm = 0.0;
-
-                               deck.keyshift = 0;
-                            }
-                        }
-                        UIEvent::GetLibrary(id) => {
-                            if let Ok(locked_device_database) = device_manager.devices.lock()
-                                && let Some(device) = locked_device_database.get(&id) {
-                                let _ = ui.send(UIMessage::DeviceLibrary{
-                                    device: id,
-                                    library: device.database.library.clone(),
-                                });
-                            }
-                        },
-                        UIEvent::NeedleSearch { needle_time, deck } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
-                               deck.needle_time = needle_time;
-                            }
-                        },
-                        UIEvent::BeatJump { beats, deck } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
-                                deck.time += beats * (1. / deck.bpm) * 60.;
-                            }
-                        },
-                        UIEvent::SetBeatLoop { beats, deck } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
-                                deck.beat_loop_start = Some(deck.time);
-                                deck.beat_loop_end = Some(deck.time + (beats * (1. / deck.bpm) * 60.));
-                            }
-                        },
-                        UIEvent::DoubleBeatLoop(deck) => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck)
-                               && let Some(beat_loop_start) = deck.beat_loop_start
-                               && let Some(beat_loop_end) = deck.beat_loop_end {
-                                deck.beat_loop_start = Some(deck.time);
-                                deck.beat_loop_end = Some(beat_loop_end + (beat_loop_end - beat_loop_start));
-                            }
-                        },
-                        UIEvent::HalveBeatLoop(deck) => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck)
-                               && let Some(beat_loop_start) = deck.beat_loop_start
-                               && let Some(beat_loop_end) = deck.beat_loop_end {
-                                deck.beat_loop_start = Some(deck.time);
-                                deck.beat_loop_end = Some(beat_loop_end - ((beat_loop_end - beat_loop_start) / 2.));
-                            }
-                        },
-                        UIEvent::SetKeyShift { deck, semitones } => {
-                            if let Some(deck) = temp_deck_state.players.get_mut(deck) {
-                                deck.keyshift = semitones;
-                            }
-                        },
-                    }
-
-                    println!("UI Event: {ui_event:#?}");
-                } else {
-                    println!("UI Hung Up");
-                    break;
-                }
-            }
-            _ = ui_deck_update_interval.tick() => {
-                let _ = ui.send(UIMessage::UpdateDeckState(temp_deck_state.clone()));
-            }
-            _ = deck_update_interval.tick() => {
-                #[allow(clippy::explicit_iter_loop)] // i think this is more readable
-                for deck in temp_deck_state.players.iter_mut() {
-                    let tempo_percent = match deck.tempo_percent {
-                        TempoPercent::Zero => 0.0,
-                        TempoPercent::Percent(percent) => percent,
-                    };
-
-                    match deck.play_direction {
-                        PlayDirection::Stop => {},
-                        PlayDirection::Forward => {
-                            deck.time += 0.001 * tempo_percent;
-                            deck.slip_time += 0.001 * tempo_percent;
-                        },
-                        PlayDirection::Reverse => {
-                            deck.time -= 0.001 * tempo_percent;
-                            deck.slip_time -= 0.001 * tempo_percent;
-                        },
-                        PlayDirection::SlipReverse => {
-                            deck.time -= 0.001 * tempo_percent;
-                            deck.slip_time += 0.001 * tempo_percent;
-                        },
-                        PlayDirection::Jog => {
-                            deck.slip_time = deck.time;
-                        },
-                        PlayDirection::SlipJog => {
-                            deck.slip_time += 0.001 * tempo_percent;
-                        },
-                    }
-
-                    if let Some(beat_loop_start) = deck.beat_loop_start
-                        && let Some(beat_loop_end) = deck.beat_loop_end {
-                        if deck.time < beat_loop_start {
-                            deck.time += beat_loop_end - beat_loop_start;
-                        } else if deck.time > beat_loop_end {
-                            deck.time -= beat_loop_end - beat_loop_start;
-                        }
-                    }
-                }
-            }
+        if let Err(err) = controller.start(deck_control_event_sender) {
+            warn!("Failed to start MIDI processing, MIDI has been disabled: {err}");
+            break 'controller_init;
         }
     }
 
-    device_manager.stop().await;
+    debug!("Starting Device Manager...");
+
+    let mut device_manager = DeviceManager::default();
+
+    device_manager.start_local_watch(&LOCAL_AUTOMOUNTS)?;
+    // device_manager.start_prodj_link_watch(0x10)?;
+
+    debug!("Starting DJ Engine...");
+
+    let (deck_state_sender, deck_state_receiver) =
+        tokio::sync::watch::channel(DeckState::default());
+    let (deck_update_sender, deck_update_receiver) = tokio::sync::mpsc::unbounded_channel();
+    let (loaded_track_sender, loaded_track_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    let (ui_control_event_sender, ui_control_event_receiver) =
+        tokio::sync::mpsc::unbounded_channel();
+
+    let dj_engine = DJEngine::start(
+        deck_control_event_receiver,
+        ui_control_event_sender,
+        deck_update_receiver,
+        deck_state_sender,
+        loaded_track_receiver,
+    );
+
+    let mut controller_deck_state_updater = deck_state_receiver.clone();
+
+    task::spawn(async move {
+        loop {
+            let _ = controller_deck_state_updater.changed().await;
+
+            let new_deck_state = controller_deck_state_updater.borrow_and_update().clone();
+
+            let _ = controller.send(ControllerMessage::UpdateDeckState(new_deck_state));
+        }
+    });
+
+    drop(enter_handle);
+
+    let handle = runtime.handle().clone();
+
+    EngineBridgeRust::register(
+        handle,
+        dj_engine,
+        deck_state_receiver,
+        deck_update_sender,
+        ui_control_event_receiver,
+        loaded_track_sender,
+        device_manager,
+    );
+
+    let mut app = QGuiApplication::new();
+
+    if let Some(app) = app.as_mut() {
+        let mut font = QFont::default();
+
+        font.set_family(&QString::from("Helvetica"));
+        // font.clear_features();
+
+        // i hate this but cxx_qt is out of date and i can't be bothered to open a pr
+        // right now
+        set_qfont_feature(Pin::new(&mut font), &QString::from("kern"), 1);
+        set_qfont_feature(Pin::new(&mut font), &QString::from("liga"), 1);
+        set_qfont_feature(Pin::new(&mut font), &QString::from("tnum"), 1);
+
+        app.set_application_font(&font);
+    }
+
+    let mut engine = QQmlApplicationEngine::new();
+
+    if let Some(engine) = engine.as_mut() {
+        engine.load(&QUrl::from(
+            "qrc:/qt/qml/engineering/fizzy/deck_application/qml/root.qml",
+        ));
+    }
+
+    if let Some(app) = app.as_mut() {
+        app.exec();
+    }
+
+    runtime.shutdown_background();
+
+    Ok(())
 }
